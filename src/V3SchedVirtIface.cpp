@@ -57,6 +57,55 @@ private:
 
     // METHODS
     // For each write across a virtual interface boundary
+    static void foreachWrittenVirtIface(AstNode* const nodep, const OnWriteToVirtIface& onWrite) {
+        nodep->foreach([&](AstVarRef* const refp) {
+            if (refp->access().isReadOnly()) return;
+            if (AstIfaceRefDType* const dtypep = VN_CAST(refp->varp()->dtypep(), IfaceRefDType)) {
+                if (dtypep->isVirtual() && VN_IS(refp->firstAbovep(), MemberSel)) {
+                    onWrite(refp, dtypep->ifacep());
+                }
+            } else if (AstIface* const ifacep = refp->varp()->sensIfacep()) {
+                // Only trigger if access is through a virtual interface MemberSel (#6613)
+                // Static interface writes should not fire triggers
+                if (AstMemberSel* const memberSelp = VN_CAST(refp->firstAbovep(), MemberSel)) {
+                    if (AstIfaceRefDType* const fromDtp
+                        = VN_CAST(memberSelp->fromp()->dtypep(), IfaceRefDType)) {
+                        if (fromDtp->isVirtual()) {
+                            onWrite(refp, ifacep);
+                        }
+                    }
+                }
+            }
+        });
+    }
+    // For each write across a virtual interface boundary (member-level tracking)
+    static void foreachWrittenVirtIfaceMember(
+        AstNode* const nodep, const std::function<void(AstVarRef*, AstIface*, AstVar*)>& onWrite) {
+        nodep->foreach([&](AstVarRef* const refp) {
+            if (refp->access().isReadOnly()) return;
+            if (AstIfaceRefDType* const dtypep = VN_CAST(refp->varp()->dtypep(), IfaceRefDType)) {
+                if (dtypep->isVirtual()) {
+                    if (AstMemberSel* const memberSelp = VN_CAST(refp->firstAbovep(), MemberSel)) {
+                        // Extract the member varp from the MemberSel node
+                        AstVar* memberVarp = memberSelp->varp();
+                        onWrite(refp, dtypep->ifacep(), memberVarp);
+                    }
+                }
+            } else if (AstIface* const ifacep = refp->varp()->sensIfacep()) {
+                // Only trigger if access is through a virtual interface MemberSel (#6613)
+                // Static interface writes should not fire triggers
+                if (AstMemberSel* const memberSelp = VN_CAST(refp->firstAbovep(), MemberSel)) {
+                    if (AstIfaceRefDType* const fromDtp
+                        = VN_CAST(memberSelp->fromp()->dtypep(), IfaceRefDType)) {
+                        if (fromDtp->isVirtual()) {
+                            AstVar* memberVarp = refp->varp();
+                            onWrite(refp, ifacep, memberVarp);
+                        }
+                    }
+                }
+            }
+        });
+    }
     // Returns true if there is a write across a virtual interface boundary
     static bool writesToVirtIface(const AstNode* const nodep) {
         return nodep->exists([](const AstVarRef* const refp) {
@@ -64,7 +113,17 @@ private:
             AstIfaceRefDType* const dtypep = VN_CAST(refp->varp()->dtypep(), IfaceRefDType);
             const bool writesToVirtIfaceMember
                 = (dtypep && dtypep->isVirtual() && VN_IS(refp->firstAbovep(), MemberSel));
-            const bool writesToIfaceSensVar = refp->varp()->sensIfacep();
+            // Only consider sensIfacep if accessed through virtual interface (#6613)
+            bool writesToIfaceSensVar = false;
+            if (refp->varp()->sensIfacep()) {
+                if (const AstMemberSel* const memberSelp
+                    = VN_CAST(refp->firstAbovep(), MemberSel)) {
+                    if (const AstIfaceRefDType* const fromDtp
+                        = VN_CAST(memberSelp->fromp()->dtypep(), IfaceRefDType)) {
+                        writesToIfaceSensVar = fromDtp->isVirtual();
+                    }
+                }
+            }
             return writesToVirtIfaceMember || writesToIfaceSensVar;
         });
     }
