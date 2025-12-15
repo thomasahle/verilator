@@ -555,6 +555,26 @@ class AssertPropIfVisitor final : public VNVisitor {
         nodep->replaceWith(andp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
+    void visit(AstStrong* nodep) override {
+        // SVA strong sequence qualifier (IEEE 1800-2017 16.12.1)
+        // "strong(seq)" - sequence must complete (not match infinitely)
+        // For simulation, this is a no-op - just pass through the sequence
+        iterateChildren(nodep);
+
+        AstNodeExpr* const seqp = nodep->seqp()->unlinkFrBack();
+        nodep->replaceWith(seqp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
+    void visit(AstWeak* nodep) override {
+        // SVA weak sequence qualifier (IEEE 1800-2017 16.12.1)
+        // "weak(seq)" - sequence allowed to match infinitely
+        // For simulation, this is a no-op - just pass through the sequence
+        iterateChildren(nodep);
+
+        AstNodeExpr* const seqp = nodep->seqp()->unlinkFrBack();
+        nodep->replaceWith(seqp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
     void visit(AstNode* nodep) override { iterateChildren(nodep); }
 
 public:
