@@ -357,6 +357,12 @@ const char* AstExecGraph::broken() const {
 AstNodeExpr* AstInsideRange::newAndFromInside(AstNodeExpr* exprp, AstNodeExpr* lhsp,
                                               AstNodeExpr* rhsp) {
     AstNodeExpr* const ap = new AstGte{fileline(), exprp, lhsp};
+    ap->fileline()->modifyWarnOff(V3ErrorCode::UNSIGNED, true);
+    // If rhsp is unbounded ($), the upper bound is infinite, so just check lower bound
+    if (VN_IS(rhsp, Unbounded)) {
+        VL_DO_DANGLING(rhsp->deleteTree(), rhsp);
+        return ap;
+    }
     AstNodeExpr* lteLhsp;
     if (const AstExprStmt* const exprStmt = VN_CAST(exprp, ExprStmt)) {
         lteLhsp = exprStmt->resultp()->cloneTreePure(true);
@@ -364,7 +370,6 @@ AstNodeExpr* AstInsideRange::newAndFromInside(AstNodeExpr* exprp, AstNodeExpr* l
         lteLhsp = exprp->cloneTreePure(true);
     }
     AstNodeExpr* const bp = new AstLte{fileline(), lteLhsp, rhsp};
-    ap->fileline()->modifyWarnOff(V3ErrorCode::UNSIGNED, true);
     bp->fileline()->modifyWarnOff(V3ErrorCode::CMPCONST, true);
     return new AstLogAnd{fileline(), ap, bp};
 }
