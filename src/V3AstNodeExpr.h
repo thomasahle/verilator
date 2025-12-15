@@ -1605,6 +1605,29 @@ public:
     string emitC() override { V3ERROR_NA_RETURN(""); }
     bool cleanOut() const override { return true; }
 };
+class AstGotoRep final : public AstNodeExpr {
+    // SVA goto repetition operator (IEEE 1800-2017 16.9.2)
+    // expr[->n] or expr[->m:n] - boolean is true exactly n times (not necessarily consecutive)
+    // Match completes on the n-th true occurrence
+    // @astgen op1 := exprp : AstNodeExpr  // Boolean expression
+    // @astgen op2 := countp : AstNodeExpr // Repetition count (or min for range)
+    // @astgen op3 := maxp : Optional[AstNodeExpr] // Max count for range (null if not range)
+public:
+    AstGotoRep(FileLine* fl, AstNodeExpr* exprp, AstNodeExpr* countp,
+               AstNodeExpr* maxp = nullptr)
+        : ASTGEN_SUPER_GotoRep(fl) {
+        this->exprp(exprp);
+        this->countp(countp);
+        this->maxp(maxp);
+    }
+    ASTGEN_MEMBERS_AstGotoRep;
+    string emitVerilog() override { return "%l[->%r]"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+    bool isRange() const { return maxp() != nullptr; }
+};
 class AstImplication final : public AstNodeExpr {
     // Verilog Implication Operator
     // Nonoverlapped "|=>"
