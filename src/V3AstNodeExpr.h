@@ -2424,6 +2424,23 @@ public:
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
     bool isSystemFunc() const override { return true; }
 };
+class AstStrong final : public AstNodeExpr {
+    // SVA strong sequence qualifier (IEEE 1800-2017 16.12.1)
+    // "strong(seq)" - the sequence must complete (not match infinitely)
+    // For simulation (as opposed to formal), this is essentially a no-op
+    // @astgen op1 := seqp : AstNodeExpr  // Sequence expression
+public:
+    AstStrong(FileLine* fl, AstNodeExpr* seqp)
+        : ASTGEN_SUPER_Strong(fl) {
+        this->seqp(seqp);
+    }
+    ASTGEN_MEMBERS_AstStrong;
+    string emitVerilog() override { return "strong(%l)"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
 class AstStructSel final : public AstNodeExpr {
     // Unpacked struct/union member access
     // Parents: math|stmt
@@ -2665,6 +2682,23 @@ public:
     bool isPure() override { return !outp(); }
     bool isSystemFunc() const override { return true; }
     bool cleanOut() const override { return true; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
+class AstWeak final : public AstNodeExpr {
+    // SVA weak sequence qualifier (IEEE 1800-2017 16.12.1)
+    // "weak(seq)" - the sequence is allowed to match infinitely (not required to complete)
+    // For simulation (as opposed to formal), this is essentially a no-op
+    // @astgen op1 := seqp : AstNodeExpr  // Sequence expression
+public:
+    AstWeak(FileLine* fl, AstNodeExpr* seqp)
+        : ASTGEN_SUPER_Weak(fl) {
+        this->seqp(seqp);
+    }
+    ASTGEN_MEMBERS_AstWeak;
+    string emitVerilog() override { return "weak(%l)"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
 };
 class AstWith final : public AstNodeExpr {

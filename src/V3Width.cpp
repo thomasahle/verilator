@@ -1629,6 +1629,24 @@ class WidthVisitor final : public VNVisitor {
             nodep->dtypeSetBit();
         }
     }
+    void visit(AstStrong* nodep) override {
+        // SVA strong sequence qualifier (IEEE 1800-2017 16.12.1)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            userIterateAndNext(nodep->seqp(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstWeak* nodep) override {
+        // SVA weak sequence qualifier (IEEE 1800-2017 16.12.1)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            userIterateAndNext(nodep->seqp(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
     void visit(AstGotoRep* nodep) override {
         // SVA goto repetition operator (IEEE 1800-2017 16.9.2)
         m_seqUnsupp = nodep;
