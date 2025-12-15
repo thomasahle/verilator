@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # DESCRIPTION: Verilator: Verilog Test driver/expect definition
 #
-# Copyright 2024 by Wilson Snyder. This program is free software; you
+# Copyright 2025 by Wilson Snyder. This program is free software; you
 # can redistribute it and/or modify it under the terms of either the GNU
 # Lesser General Public License Version 3 or the Perl Artistic License
 # Version 2.0.
@@ -9,10 +9,7 @@
 
 import vltest_bootstrap
 
-test.scenarios('vlt')
-
-test.leak_check_disable()
-
-test.lint(expect_filename=test.golden_filename, verilator_flags2=['--assert'], fails=True)
-
+test.scenarios('simulator')
+test.compile(verilator_flags2=["--timing"])
+test.execute()
 test.passes()

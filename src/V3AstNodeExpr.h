@@ -521,6 +521,32 @@ public:
     bool cleanOut() const override { return true; }
     AstCFunc* funcp() const { return m_funcp; }
 };
+class AstAlwaysProp final : public AstNodeExpr {
+    // SVA always property operator (IEEE 1800-2017 16.12.7)
+    // "always p" - property p holds at every clock tick
+    // "always [m:n] p" - property p holds at every tick in range
+    // "s_always [m:n] p" - strong version (requires range)
+    // @astgen op1 := propp : AstNodeExpr  // Property expression
+    // @astgen op2 := rangep : Optional[AstNodeRange]  // Optional range
+    bool m_isStrong = false;  // True if s_always
+public:
+    AstAlwaysProp(FileLine* fl, AstNodeExpr* propp, AstNodeRange* rangep, bool isStrong)
+        : ASTGEN_SUPER_AlwaysProp(fl)
+        , m_isStrong{isStrong} {
+        this->propp(propp);
+        this->rangep(rangep);
+    }
+    ASTGEN_MEMBERS_AstAlwaysProp;
+    string emitVerilog() override { return m_isStrong ? "s_always(%l)" : "always(%l)"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* samep) const override {
+        const AstAlwaysProp* const sp = VN_DBG_AS(samep, AlwaysProp);
+        return m_isStrong == sp->m_isStrong;
+    }
+    bool isStrong() const { return m_isStrong; }
+};
 class AstArg final : public AstNodeExpr {
     // An argument to a function/task, which is either an expression, or is a placeholder for an
     // omitted argument.
@@ -1335,6 +1361,32 @@ public:
     bool cleanOut() const override { return true; }
     AstNodeModule* classOrPackagep() const { return m_classOrPackagep; }
     void classOrPackagep(AstNodeModule* nodep) { m_classOrPackagep = nodep; }
+};
+class AstEventually final : public AstNodeExpr {
+    // SVA eventually property operator (IEEE 1800-2017 16.12.8-16.12.9)
+    // "s_eventually p" - property p eventually holds (strong)
+    // "s_eventually [m:n] p" - property p eventually holds within range (strong)
+    // "eventually [m:n] p" - property p eventually holds within range (weak)
+    // @astgen op1 := propp : AstNodeExpr  // Property expression
+    // @astgen op2 := rangep : Optional[AstNodeRange]  // Optional range
+    bool m_isStrong = false;  // True if s_eventually
+public:
+    AstEventually(FileLine* fl, AstNodeExpr* propp, AstNodeRange* rangep, bool isStrong)
+        : ASTGEN_SUPER_Eventually(fl)
+        , m_isStrong{isStrong} {
+        this->propp(propp);
+        this->rangep(rangep);
+    }
+    ASTGEN_MEMBERS_AstEventually;
+    string emitVerilog() override { return m_isStrong ? "s_eventually(%l)" : "eventually(%l)"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* samep) const override {
+        const AstEventually* const sp = VN_DBG_AS(samep, Eventually);
+        return m_isStrong == sp->m_isStrong;
+    }
+    bool isStrong() const { return m_isStrong; }
 };
 class AstExprStmt final : public AstNodeExpr {
     // Perform a statement, often assignment inside an expression node,

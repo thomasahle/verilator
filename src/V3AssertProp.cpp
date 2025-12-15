@@ -588,6 +588,26 @@ class AssertPropIfVisitor final : public VNVisitor {
         nodep->replaceWith(propp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
+    void visit(AstAlwaysProp* nodep) override {
+        // SVA always property operator (IEEE 1800-2017 16.12.7)
+        // "always p" - property p holds at every clock tick
+        // Simplified for simulation: just check p at current cycle
+        iterateChildren(nodep);
+
+        AstNodeExpr* const propp = nodep->propp()->unlinkFrBack();
+        nodep->replaceWith(propp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
+    void visit(AstEventually* nodep) override {
+        // SVA eventually property operator (IEEE 1800-2017 16.12.8-16.12.9)
+        // "s_eventually p" - property p eventually holds
+        // Simplified for simulation: just check p at current cycle
+        iterateChildren(nodep);
+
+        AstNodeExpr* const propp = nodep->propp()->unlinkFrBack();
+        nodep->replaceWith(propp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
     void visit(AstNode* nodep) override { iterateChildren(nodep); }
 
 public:

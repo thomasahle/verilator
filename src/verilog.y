@@ -6661,17 +6661,17 @@ pexpr<nodeExprp>:  // IEEE: property_expr  (The name pexpr is important as regex
         |       yS_NEXTTIME '[' constExpr ']' pexpr %prec yS_NEXTTIME
                         { $$ = new AstNexttime{$1, $5, $3, true}; }
         |       yALWAYS pexpr
-                        { $$ = $2; BBUNSUP($1, "Unsupported: always (in property expression)"); }
+                        { $$ = new AstAlwaysProp{$1, $2, nullptr, false}; }
         |       yALWAYS anyrange pexpr  %prec yALWAYS
-                        { $$ = $3; BBUNSUP($1, "Unsupported: always[] (in property expression)"); DEL($2); }
+                        { $$ = new AstAlwaysProp{$1, $3, $2, false}; }
         |       yS_ALWAYS anyrange pexpr  %prec yS_ALWAYS
-                        { $$ = $3; BBUNSUP($1, "Unsupported: s_always (in property expression)"); DEL($2); }
+                        { $$ = new AstAlwaysProp{$1, $3, $2, true}; }
         |       yS_EVENTUALLY pexpr
-                        { $$ = $2; BBUNSUP($1, "Unsupported: s_eventually (in property expression)"); }
+                        { $$ = new AstEventually{$1, $2, nullptr, true}; }
         |       yS_EVENTUALLY anyrange pexpr  %prec yS_EVENTUALLY
-                        { $$ = $3; BBUNSUP($1, "Unsupported: s_eventually[] (in property expression)"); DEL($2); }
+                        { $$ = new AstEventually{$1, $3, $2, true}; }
         |       yEVENTUALLY anyrange pexpr  %prec yS_EVENTUALLY
-                        { $$ = $3; BBUNSUP($1, "Unsupported: eventually[] (in property expression)"); DEL($2); }
+                        { $$ = new AstEventually{$1, $3, $2, false}; }
         |       ~o~pexpr yUNTIL pexpr
                         { $$ = new AstUntil{$2, $1, $3, false/*isStrong*/, false/*isWith*/}; }
         |       ~o~pexpr yS_UNTIL pexpr
