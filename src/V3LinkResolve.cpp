@@ -252,7 +252,13 @@ class LinkResolveVisitor final : public VNVisitor {
             seqp->user2(true);
             // The sequence body is in stmtsp() - it's the sexpr (sequence expression)
             // It can be an AstNodeExpr or AstSExprClocked (for clocked sequences)
-            AstNode* const bodyp = seqp->stmtsp();
+            // Note: stmtsp() may contain AstVar nodes (ports) before the body expression
+            AstNode* bodyp = nullptr;
+            for (AstNode* stmtp = seqp->stmtsp(); stmtp; stmtp = stmtp->nextp()) {
+                if (VN_IS(stmtp, Var)) continue;  // Skip port declarations
+                bodyp = stmtp;
+                break;
+            }
             if (!bodyp) {
                 nodep->v3error("Sequence has no body " << seqp->prettyNameQ());
                 nodep->replaceWith(new AstConst{nodep->fileline(), AstConst::BitFalse{}});
