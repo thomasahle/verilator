@@ -1086,6 +1086,34 @@ class ConstraintExprVisitor final : public VNVisitor {
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
         iterate(neqp);
     }
+    void visit(AstOneHot* nodep) override {
+        // Convert $onehot(x) to ($countones(x) == 1)
+        FileLine* const fl = nodep->fileline();
+        AstNodeExpr* const argp = nodep->lhsp()->unlinkFrBack();
+        AstCountOnes* const cntonesp = new AstCountOnes{fl, argp};
+        cntonesp->dtypeSetUInt32();
+        V3Number numOne{nodep, 32, 1};
+        AstEq* const eqp = new AstEq{fl, cntonesp, new AstConst{fl, numOne}};
+        eqp->dtypeSetBit();
+        eqp->user1(true);
+        nodep->replaceWith(eqp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+        iterate(eqp);
+    }
+    void visit(AstOneHot0* nodep) override {
+        // Convert $onehot0(x) to ($countones(x) <= 1)
+        FileLine* const fl = nodep->fileline();
+        AstNodeExpr* const argp = nodep->lhsp()->unlinkFrBack();
+        AstCountOnes* const cntonesp = new AstCountOnes{fl, argp};
+        cntonesp->dtypeSetUInt32();
+        V3Number numOne{nodep, 32, 1};
+        AstLteS* const ltep = new AstLteS{fl, cntonesp, new AstConst{fl, numOne}};
+        ltep->dtypeSetBit();
+        ltep->user1(true);
+        nodep->replaceWith(ltep);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+        iterate(ltep);
+    }
     void visit(AstNodeBiop* nodep) override {
         if (editFormat(nodep)) return;
         editSMT(nodep, nodep->lhsp(), nodep->rhsp());
@@ -1245,10 +1273,21 @@ class ConstraintExprVisitor final : public VNVisitor {
         // Check if rootVar is globalConstrained
         if (nodep->varp()->rand().isRandomizable() && nodep->fromp()) {
             AstNode* rootNode = nodep->fromp();
-            while (const AstMemberSel* const selp = VN_CAST(rootNode, MemberSel))
-                rootNode = selp->fromp();
-            // Detect array/assoc array access in global constraints
-            if (VN_IS(rootNode, ArraySel) || VN_IS(rootNode, AssocSel)) {
+            bool hasNonConstArrayAccess = false;
+            // Walk up through MemberSel and ArraySel nodes to find root
+            while (true) {
+                if (const AstMemberSel* const selp = VN_CAST(rootNode, MemberSel)) {
+                    rootNode = selp->fromp();
+                } else if (const AstArraySel* const arrp = VN_CAST(rootNode, ArraySel)) {
+                    // Allow constant array indices, reject non-constant
+                    if (!VN_IS(arrp->bitp(), Const)) hasNonConstArrayAccess = true;
+                    rootNode = arrp->fromp();
+                } else {
+                    break;  // VarRef or other terminal node
+                }
+            }
+            // Only error if there's a non-constant array access or assoc array access
+            if (hasNonConstArrayAccess || VN_IS(rootNode, AssocSel)) {
                 nodep->v3warn(E_UNSUPPORTED,
                               "Unsupported: Array element access in global constraint ");
             }
