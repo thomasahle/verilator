@@ -1717,6 +1717,10 @@ class WidthVisitor final : public VNVisitor {
         if (const auto* const selp = VN_CAST(backp, SelBit)) {
             if (VN_IS(selp->fromp()->dtypep()->skipRefp(), QueueDType)) return;
         }
+        // Allow $ as max value in range delay ##[min:$]
+        if (const auto* const delayp = VN_CAST(backp, Delay)) {
+            if (delayp->rhsp() == nodep) return;  // Ok, $ is the max of range delay
+        }
         // queue_slice[#:$] and queue_bitsel[$] etc handled in V3WidthSel
         nodep->v3warn(E_UNSUPPORTED, "Unsupported/illegal unbounded ('$') in this context.");
     }
@@ -7269,13 +7273,9 @@ class WidthVisitor final : public VNVisitor {
         if (m_vup->prelim()) {
             iterateCheckBool(nodep, "LHS", nodep->op1p(), BOTH);
             nodep->dtypeSetBit();
-            if (m_underSExpr) {
-                nodep->v3error("Unexpected 'not' in sequence expression context");
-                AstConst* const newp = new AstConst{nodep->fileline(), 0};
-                newp->dtypeFrom(nodep);
-                nodep->replaceWith(newp);
-                VL_DO_DANGLING(pushDeletep(nodep), nodep);
-            }
+            // Note: Boolean negation (!) is allowed in sequence expressions.
+            // SVA 'not' operator (sequence negation) is different from logical !.
+            // Logical ! is just a boolean operation: !expr means "expr is false".
         }
     }
     void visit_log_and_or(AstNodeBiop* nodep) {
