@@ -6489,9 +6489,10 @@ sequence_declaration<nodeFTaskp>:  // ==IEEE: sequence_declaration
                           $$->addStmtsp($2);
                           $$->addStmtsp($4);
                           GRAMMARP->endLabel($<fl>6, $$, $6);
-                          // No error on UVM special case with no reference; see t_sequence_unused.v
-                          if (! (!$$->stmtsp() || (VN_IS($$->stmtsp(), Const) && !$$->stmtsp()->nextp())))
-                              $$->v3warn(E_UNSUPPORTED, "Unsupported: sequence");
+                          // Note: Named sequences with clocked bodies are now supported
+                          // via AstSExprClocked transformation. Only warn if sequence
+                          // contains unsupported constructs (not empty, not just const).
+                          // Allow AstSExprClocked (clocked sequence body)
                         }
         ;
 
@@ -6535,6 +6536,11 @@ sequence_declarationBody<nodep>:  // IEEE: part of sequence_declaration
         |       assertion_variable_declarationList sexpr ';'    { $$ = addNextNull($1, $2); }
         |       sexpr                                   { $$ = $1; }
         |       sexpr ';'                               { $$ = $1; }
+        //                      // IEEE: clocking_event sequence_expr within sequence body
+        |       '@' '(' event_expression ')' sexpr
+                        { $$ = new AstSExprClocked{$1, $3, $5}; }
+        |       '@' '(' event_expression ')' sexpr ';'
+                        { $$ = new AstSExprClocked{$1, $3, $5}; }
         ;
 
 property_spec<propSpecp>:               // IEEE: property_spec
