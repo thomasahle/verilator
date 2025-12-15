@@ -5492,8 +5492,10 @@ class LinkDotResolveVisitor final : public VNVisitor {
                 } else if (AstClass* const defp
                            = foundp ? VN_CAST(foundp->nodep(), Class) : nullptr) {
                     // Don't check if typedef is to a <type T>::<reference> as might not be
-                    // resolved yet
-                    if (!nodep->classOrPackagep()) checkDeclOrder(nodep, defp);
+                    // resolved yet. Also skip if class was found through a package (imported)
+                    // since the class definition is in a different compilation unit.
+                    if (!nodep->classOrPackagep() && !foundp->classOrPackagep())
+                        checkDeclOrder(nodep, defp);
                     AstPin* const paramsp = nodep->paramsp();
                     if (paramsp) paramsp->unlinkFrBackWithNext();
                     AstClassRefDType* const newp
