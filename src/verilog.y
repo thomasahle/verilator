@@ -6653,13 +6653,13 @@ pexpr<nodeExprp>:  // IEEE: property_expr  (The name pexpr is important as regex
         |       ~o~pexpr/*sexpr*/ yP_POUNDEQPD pexpr
                         { $$ = $1; BBUNSUP($2, "Unsupported: #=# (in property expression)"); DEL($3); }
         |       yNEXTTIME pexpr
-                        { $$ = $2; BBUNSUP($1, "Unsupported: nexttime (in property expression)"); }
+                        { $$ = new AstNexttime{$1, $2, nullptr, false}; }
         |       yS_NEXTTIME pexpr
-                        { $$ = $2; BBUNSUP($1, "Unsupported: s_nexttime (in property expression)"); }
+                        { $$ = new AstNexttime{$1, $2, nullptr, true}; }
         |       yNEXTTIME '[' constExpr ']' pexpr %prec yNEXTTIME
-                        { $$ = $5; BBUNSUP($1, "Unsupported: nexttime[] (in property expression)"); DEL($3); }
+                        { $$ = new AstNexttime{$1, $5, $3, false}; }
         |       yS_NEXTTIME '[' constExpr ']' pexpr %prec yS_NEXTTIME
-                        { $$ = $5; BBUNSUP($1, "Unsupported: s_nexttime[] (in property expression)"); DEL($3); }
+                        { $$ = new AstNexttime{$1, $5, $3, true}; }
         |       yALWAYS pexpr
                         { $$ = $2; BBUNSUP($1, "Unsupported: always (in property expression)"); }
         |       yALWAYS anyrange pexpr  %prec yALWAYS
