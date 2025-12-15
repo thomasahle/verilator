@@ -1723,6 +1723,10 @@ class WidthVisitor final : public VNVisitor {
         if (const auto* const delayp = VN_CAST(backp, Delay)) {
             if (delayp->rhsp() == nodep) return;  // Ok, $ is the max of range delay
         }
+        // Allow $ as max value in inside/dist range [min:$]
+        if (const auto* const rangep = VN_CAST(backp, InsideRange)) {
+            if (rangep->rhsp() == nodep) return;  // Ok, $ is the max of range
+        }
         // queue_slice[#:$] and queue_bitsel[$] etc handled in V3WidthSel
         nodep->v3warn(E_UNSUPPORTED, "Unsupported/illegal unbounded ('$') in this context.");
     }
