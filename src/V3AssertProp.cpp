@@ -521,6 +521,23 @@ class AssertPropIfVisitor final : public VNVisitor {
         nodep->replaceWith(exprp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
+    void visit(AstWithin* nodep) override {
+        // SVA within operator (IEEE 1800-2017 16.9.7)
+        // "seq1 within seq2" - seq1 occurs within the bounds of seq2
+        // Simplification: Check both sequences (seq1 && seq2)
+        // Full semantics would require verifying seq1 completes within seq2's time window
+        iterateChildren(nodep);
+
+        FileLine* const flp = nodep->fileline();
+        AstNodeExpr* const lhsp = nodep->lhsp()->unlinkFrBack();
+        AstNodeExpr* const rhsp = nodep->rhsp()->unlinkFrBack();
+
+        // Simplified: both sequences must match
+        AstLogAnd* const andp = new AstLogAnd{flp, lhsp, rhsp};
+        andp->dtypeSetBit();
+        nodep->replaceWith(andp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
     void visit(AstNode* nodep) override { iterateChildren(nodep); }
 
 public:

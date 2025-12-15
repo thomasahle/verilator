@@ -2702,6 +2702,25 @@ public:
     string emitC() override { V3ERROR_NA_RETURN(""); }
     bool cleanOut() const override { V3ERROR_NA_RETURN(true); }
 };
+class AstWithin final : public AstNodeExpr {
+    // SVA within operator (IEEE 1800-2017 16.9.7)
+    // "seq1 within seq2" - seq1 occurs within the bounds of seq2
+    // seq1 must start at or after seq2 starts, and end at or before seq2 ends
+    // @astgen op1 := lhsp : AstNodeExpr  // Inner sequence (seq1)
+    // @astgen op2 := rhsp : AstNodeExpr  // Outer sequence (seq2)
+public:
+    AstWithin(FileLine* fl, AstNodeExpr* lhsp, AstNodeExpr* rhsp)
+        : ASTGEN_SUPER_Within(fl) {
+        this->lhsp(lhsp);
+        this->rhsp(rhsp);
+    }
+    ASTGEN_MEMBERS_AstWithin;
+    string emitVerilog() override { return "%l within %r"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
 
 // === AstNodeBiop ===
 class AstBufIf1 final : public AstNodeBiop {
