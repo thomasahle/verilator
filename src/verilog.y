@@ -6667,13 +6667,13 @@ pexpr<nodeExprp>:  // IEEE: property_expr  (The name pexpr is important as regex
         |       yEVENTUALLY anyrange pexpr  %prec yS_EVENTUALLY
                         { $$ = $3; BBUNSUP($1, "Unsupported: eventually[] (in property expression)"); DEL($2); }
         |       ~o~pexpr yUNTIL pexpr
-                        { $$ = $1; BBUNSUP($2, "Unsupported: until (in property expression)"); DEL($3); }
+                        { $$ = new AstUntil{$2, $1, $3, false/*isStrong*/, false/*isWith*/}; }
         |       ~o~pexpr yS_UNTIL pexpr
-                        { $$ = $1; BBUNSUP($2, "Unsupported: s_until (in property expression)"); DEL($3); }
+                        { $$ = new AstUntil{$2, $1, $3, true/*isStrong*/, false/*isWith*/}; }
         |       ~o~pexpr yUNTIL_WITH pexpr
-                        { $$ = $1; BBUNSUP($2, "Unsupported: until_with (in property expression)"); DEL($3); }
+                        { $$ = new AstUntil{$2, $1, $3, false/*isStrong*/, true/*isWith*/}; }
         |       ~o~pexpr yS_UNTIL_WITH pexpr
-                        { $$ = $1; BBUNSUP($2, "Unsupported: s_until_with (in property expression)"); DEL($3); }
+                        { $$ = new AstUntil{$2, $1, $3, true/*isStrong*/, true/*isWith*/}; }
         |       ~o~pexpr yIMPLIES pexpr
                         { $$ = new AstLogOr{$2, new AstLogNot{$2, $1}, $3}; }
         //                      // yIFF also used by event_expression

@@ -2514,6 +2514,37 @@ public:
     string emitC() override { V3ERROR_NA_RETURN(""); }
     bool cleanOut() const override { V3ERROR_NA_RETURN(true); }
 };
+class AstUntil final : public AstNodeExpr {
+    // SVA Until Operators (IEEE 1800-2017 16.12.15)
+    // until, s_until (strong), until_with, s_until_with
+    // "a until b" - a holds at every cycle until b holds
+    // "with" variants require a to also hold when b holds
+    // "s_" variants are strong (b must eventually hold)
+    // @astgen op1 := lhsp : AstNodeExpr
+    // @astgen op2 := rhsp : AstNodeExpr
+
+private:
+    const bool m_isStrong;  // True if strong (s_until*)
+    const bool m_isWith;    // True if _with variant
+
+public:
+    AstUntil(FileLine* fl, AstNodeExpr* lhsp, AstNodeExpr* rhsp, bool isStrong, bool isWith)
+        : ASTGEN_SUPER_Until(fl)
+        , m_isStrong{isStrong}
+        , m_isWith{isWith} {
+        this->lhsp(lhsp);
+        this->rhsp(rhsp);
+    }
+    ASTGEN_MEMBERS_AstUntil;
+    string emitVerilog() override { V3ERROR_NA_RETURN(""); }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    string emitSimpleOperator() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { V3ERROR_NA_RETURN(""); }
+    int instrCount() const override { return widthInstrs(); }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+    bool isStrong() const { return m_isStrong; }
+    bool isWith() const { return m_isWith; }
+};
 class AstValuePlusArgs final : public AstNodeExpr {
     // Search expression. If nullptr then this is a $test$plusargs instead of $value$plusargs.
     // @astgen op1 := searchp : Optional[AstNode]

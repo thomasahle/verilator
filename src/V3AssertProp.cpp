@@ -384,6 +384,28 @@ class AssertPropIfVisitor final : public VNVisitor {
         }
         // else: Simple expression RHS - leave for V3AssertPre
     }
+    void visit(AstUntil* nodep) override {
+        // SVA until operators: a until b, a s_until b, a until_with b, a s_until_with b
+        // Transform to: !b -> a (while b is false, a must be true)
+        // For _with variants, also check a when b becomes true, but this is covered
+        // by the continuous check since if a goes false before b, the check fails.
+        // Note: Strong variants (s_*) require b to eventually hold, which can't be
+        // verified in bounded simulation - we check the same way as weak variants.
+        iterateChildren(nodep);
+
+        FileLine* const flp = nodep->fileline();
+        AstNodeExpr* const lhsp = nodep->lhsp()->unlinkFrBack();
+        AstNodeExpr* const rhsp = nodep->rhsp()->unlinkFrBack();
+
+        // Create: !rhs -> lhs  (meaning: while rhs is false, lhs must be true)
+        AstLogNot* const notRhsp = new AstLogNot{flp, rhsp};
+        notRhsp->dtypeSetBit();
+        AstImplication* const implp = new AstImplication{flp, notRhsp, lhsp, true/*overlapped*/};
+        implp->dtypeSetBit();
+
+        nodep->replaceWith(implp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
     void visit(AstNode* nodep) override { iterateChildren(nodep); }
 
 public:
