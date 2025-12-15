@@ -1752,6 +1752,25 @@ public:
     // Create AstAnd(AstGte(...), AstLte(...))
     AstNodeExpr* newAndFromInside(AstNodeExpr* exprp, AstNodeExpr* lhsp, AstNodeExpr* rhsp);
 };
+class AstIntersect final : public AstNodeExpr {
+    // SVA intersect operator (IEEE 1800-2017 16.9.6)
+    // "seq1 intersect seq2" - both sequences must start at the same time and
+    // end at the same time, with both being satisfied
+    // @astgen op1 := lhsp : AstNodeExpr  // First sequence
+    // @astgen op2 := rhsp : AstNodeExpr  // Second sequence
+public:
+    AstIntersect(FileLine* fl, AstNodeExpr* lhsp, AstNodeExpr* rhsp)
+        : ASTGEN_SUPER_Intersect(fl) {
+        this->lhsp(lhsp);
+        this->rhsp(rhsp);
+    }
+    ASTGEN_MEMBERS_AstIntersect;
+    string emitVerilog() override { return "%l intersect %r"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
 class AstLambdaArgRef final : public AstNodeExpr {
     // Lambda argument usage
     // These are not AstVarRefs because we need to be able to delete/clone lambdas during

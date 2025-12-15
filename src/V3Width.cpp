@@ -1618,6 +1618,17 @@ class WidthVisitor final : public VNVisitor {
             nodep->dtypeSetBit();
         }
     }
+    void visit(AstIntersect* nodep) override {
+        // SVA intersect operator (IEEE 1800-2017 16.9.6)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            // Both operands are sequence expressions
+            userIterateAndNext(nodep->lhsp(), WidthVP{SELF, BOTH}.p());
+            userIterateAndNext(nodep->rhsp(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
     void visit(AstGotoRep* nodep) override {
         // SVA goto repetition operator (IEEE 1800-2017 16.9.2)
         m_seqUnsupp = nodep;
