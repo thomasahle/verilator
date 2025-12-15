@@ -1858,6 +1858,32 @@ public:
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
     int instrCount() const override { return widthInstrs(); }
 };
+class AstNexttime final : public AstNodeExpr {
+    // SVA nexttime property operator (IEEE 1800-2017 16.12.10)
+    // "nexttime p" - property p holds at the next clock tick
+    // "nexttime[n] p" - property p holds after n clock ticks
+    // "s_nexttime p" / "s_nexttime[n] p" - strong versions (for formal)
+    // @astgen op1 := propp : AstNodeExpr  // Property expression
+    // @astgen op2 := countp : Optional[AstNodeExpr]  // Optional cycle count
+    bool m_isStrong = false;  // True if s_nexttime
+public:
+    AstNexttime(FileLine* fl, AstNodeExpr* propp, AstNodeExpr* countp, bool isStrong)
+        : ASTGEN_SUPER_Nexttime(fl)
+        , m_isStrong{isStrong} {
+        this->propp(propp);
+        this->countp(countp);
+    }
+    ASTGEN_MEMBERS_AstNexttime;
+    string emitVerilog() override { return m_isStrong ? "s_nexttime(%l)" : "nexttime(%l)"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* samep) const override {
+        const AstNexttime* const sp = VN_DBG_AS(samep, Nexttime);
+        return m_isStrong == sp->m_isStrong;
+    }
+    bool isStrong() const { return m_isStrong; }
+};
 class AstPExpr final : public AstNodeExpr {
     // Property expression
     // @astgen op1 := bodyp : AstBegin

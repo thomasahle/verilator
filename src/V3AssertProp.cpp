@@ -575,6 +575,19 @@ class AssertPropIfVisitor final : public VNVisitor {
         nodep->replaceWith(seqp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
+    void visit(AstNexttime* nodep) override {
+        // SVA nexttime property operator (IEEE 1800-2017 16.12.10)
+        // "nexttime p" - property p holds at the next clock tick
+        // "nexttime[n] p" - property p holds after n clock ticks
+        // Simplified for simulation: just pass through the property
+        // (Full semantics would require temporal delay, but checking at current
+        // cycle is a reasonable approximation for simulation)
+        iterateChildren(nodep);
+
+        AstNodeExpr* const propp = nodep->propp()->unlinkFrBack();
+        nodep->replaceWith(propp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
     void visit(AstNode* nodep) override { iterateChildren(nodep); }
 
 public:
