@@ -409,10 +409,39 @@ class AssertPropIfVisitor final : public VNVisitor {
     void visit(AstThroughout* nodep) override {
         // SVA throughout operator (IEEE 1800-2017 16.9.8)
         // "a throughout seq" - expression a must hold at every clock tick during seq
-        // Approximation: transform to check condition at sequence boundaries
-        iterateChildren(nodep);
+        //
+        // IMPORTANT: Check for AstGotoRep BEFORE iterating children, because
+        // iterateChildren would transform the GotoRep to just the expression
 
         FileLine* const flp = nodep->fileline();
+
+        if (AstGotoRep* gotoRep = VN_CAST(nodep->seqp(), GotoRep)) {
+            // Special case: a throughout b[->1] means "a holds until b"
+            // Transform to: !b |-> a (meaning: while b is false, a must be true)
+            // This is exactly the until semantics
+
+            // Iterate the condition side first
+            iterate(nodep->condp());
+            iterate(gotoRep->exprp());
+
+            AstNodeExpr* condp = nodep->condp()->unlinkFrBack();
+            AstNodeExpr* const targetp = gotoRep->exprp()->unlinkFrBack();
+
+            // Create: !targetp |-> condp (while target is false, condition must be true)
+            AstLogNot* const notTargetp = new AstLogNot{flp, targetp};
+            notTargetp->dtypeSetBit();
+            AstImplication* const implp
+                = new AstImplication{flp, notTargetp, condp, true /*overlapped*/};
+            implp->dtypeSetBit();
+
+            nodep->replaceWith(implp);
+            VL_DO_DANGLING(nodep->deleteTree(), nodep);
+            return;
+        }
+
+        // Now handle other cases with normal iteration
+        iterateChildren(nodep);
+
         AstNodeExpr* condp = nodep->condp()->unlinkFrBack();
         AstNodeExpr* seqp = nodep->seqp()->unlinkFrBack();
 
@@ -441,6 +470,7 @@ class AssertPropIfVisitor final : public VNVisitor {
             VL_DO_DANGLING(nodep->deleteTree(), nodep);
         } else {
             // Simple expression RHS: a throughout b -> a && b
+            // This is an approximation - checks both at the same time
             AstLogAnd* const andp = new AstLogAnd{flp, condp, seqp};
             andp->dtypeSetBit();
             nodep->replaceWith(andp);
