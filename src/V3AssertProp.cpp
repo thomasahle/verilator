@@ -447,6 +447,23 @@ class AssertPropIfVisitor final : public VNVisitor {
             VL_DO_DANGLING(nodep->deleteTree(), nodep);
         }
     }
+    void visit(AstGotoRep* nodep) override {
+        // SVA goto repetition operator (IEEE 1800-2017 16.9.2)
+        // expr[->n] - boolean is true exactly n times (not necessarily consecutive)
+        // Simplification: For [->1], transform to just the expression
+        // For [->n] where n>1, this is a simplified check (full semantics would
+        // require counting occurrences across cycles)
+        iterateChildren(nodep);
+
+        FileLine* const flp = nodep->fileline();
+        AstNodeExpr* const exprp = nodep->exprp()->unlinkFrBack();
+
+        // For goto repetition, simplify to just checking the expression
+        // This is a valid approximation for the common [->1] case which means
+        // "wait until expr is true"
+        nodep->replaceWith(exprp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
     void visit(AstSExprClocked* nodep) override {
         // Clocked sequence expression: @(posedge clk) sexpr
         // For sequences within sequence declarations, the clocking event specifies

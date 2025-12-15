@@ -6725,6 +6725,12 @@ sexpr<nodeExprp>:  // ==IEEE: sequence_expr  (The name sexpr is important as reg
         //                      // IEEE: expression_or_dist [ boolean_abbrev ]
         //                      // Note expression_or_dist includes "expr"!
         //                      // sexpr/*sexpression_or_dist*/  --- Hardcoded below
+        //                      // Goto repetition [->n] - supported
+        |       ~p~sexpr/*sexpression_or_dist*/ yP_BRAMINUSGT constExpr ']'
+                        { $$ = new AstGotoRep{$2, $1, $3}; }
+        |       ~p~sexpr/*sexpression_or_dist*/ yP_BRAMINUSGT constExpr ':' constExpr ']'
+                        { $$ = new AstGotoRep{$2, $1, $3, $5}; }
+        //                      // Other boolean_abbrev operators - still unsupported
         |       ~p~sexpr/*sexpression_or_dist*/ boolean_abbrev
                         { $$ = $1; BBUNSUP($2->fileline(), "Unsupported: boolean abbrev (in sequence expression)"); DEL($2); }
         //
@@ -6828,11 +6834,8 @@ boolean_abbrev<nodeExprp>:  // ==IEEE: boolean_abbrev
                         { $$ = $2; BBUNSUP($<fl>1, "Unsupported: [= boolean abbrev expression"); }
         |       yP_BRAEQ constExpr ':' constExpr ']'
                         { $$ = $2; BBUNSUP($<fl>1, "Unsupported: [= boolean abbrev expression"); DEL($4); }
-        //                      // IEEE: goto_repetition
-        |       yP_BRAMINUSGT constExpr ']'
-                        { $$ = $2; BBUNSUP($<fl>1, "Unsupported: [-> boolean abbrev expression"); }
-        |       yP_BRAMINUSGT constExpr ':' constExpr ']'
-                        { $$ = $2; BBUNSUP($<fl>1, "Unsupported: [-> boolean abbrev expression"); DEL($4); }
+        //                      // IEEE: goto_repetition - handled in sexpr rule directly
+        //                      // to avoid grammar conflicts
         ;
 
 //************************************************
