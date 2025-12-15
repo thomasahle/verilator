@@ -1657,6 +1657,26 @@ class WidthVisitor final : public VNVisitor {
             nodep->dtypeSetBit();
         }
     }
+    void visit(AstAlwaysProp* nodep) override {
+        // SVA always property operator (IEEE 1800-2017 16.12.7)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            userIterateAndNext(nodep->propp(), WidthVP{SELF, BOTH}.p());
+            if (nodep->rangep()) userIterateAndNext(nodep->rangep(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstEventually* nodep) override {
+        // SVA eventually property operator (IEEE 1800-2017 16.12.8-16.12.9)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            userIterateAndNext(nodep->propp(), WidthVP{SELF, BOTH}.p());
+            if (nodep->rangep()) userIterateAndNext(nodep->rangep(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
     void visit(AstGotoRep* nodep) override {
         // SVA goto repetition operator (IEEE 1800-2017 16.9.2)
         m_seqUnsupp = nodep;
