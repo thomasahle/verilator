@@ -351,6 +351,13 @@ private:
                 return;
             }
             sensesp = m_senip;
+            if (!sensesp) {
+                nodep->v3error("Cycle delay requires property clocking event"
+                               " (IEEE 1800-2023 16.7)");
+                VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+                VL_DO_DANGLING(valuep->deleteTree(), valuep);
+                return;
+            }
         } else {
             sensesp = m_defaultClockingp->sensesp();
         }

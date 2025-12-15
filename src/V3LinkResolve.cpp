@@ -240,6 +240,64 @@ class LinkResolveVisitor final : public VNVisitor {
             letp->user2(false);
             return;
         }
+        // Sequence substitution - inline sequence body where referenced
+        if (AstSequence* seqp = VN_CAST(nodep->taskp(), Sequence)) {
+            UINFO(7, "seqSubstitute() " << nodep << " <- " << seqp);
+            if (seqp->user2()) {
+                nodep->v3error("Recursive sequence substitution " << seqp->prettyNameQ());
+                nodep->replaceWith(new AstConst{nodep->fileline(), AstConst::BitFalse{}});
+                VL_DO_DANGLING(pushDeletep(nodep), nodep);
+                return;
+            }
+            seqp->user2(true);
+            // The sequence body is in stmtsp() - it's the sexpr (sequence expression)
+            // It can be an AstNodeExpr or AstSExprClocked (for clocked sequences)
+            AstNode* const bodyp = seqp->stmtsp();
+            if (!bodyp) {
+                nodep->v3error("Sequence has no body " << seqp->prettyNameQ());
+                nodep->replaceWith(new AstConst{nodep->fileline(), AstConst::BitFalse{}});
+                VL_DO_DANGLING(pushDeletep(nodep), nodep);
+                seqp->user2(false);
+                return;
+            }
+            // Clone the sequence body
+            AstNodeExpr* newp = nullptr;
+            if (AstNodeExpr* const exprp = VN_CAST(bodyp, NodeExpr)) {
+                newp = exprp->cloneTree(false);
+            } else {
+                nodep->v3error("Unsupported sequence body type " << seqp->prettyNameQ());
+                nodep->replaceWith(new AstConst{nodep->fileline(), AstConst::BitFalse{}});
+                VL_DO_DANGLING(pushDeletep(nodep), nodep);
+                seqp->user2(false);
+                return;
+            }
+            // Handle sequence arguments if any
+            const V3TaskConnects tconnects = V3Task::taskConnects(nodep, seqp->stmtsp());
+            std::map<const AstVar*, AstNodeExpr*> portToExprs;
+            for (const auto& tconnect : tconnects) {
+                const AstVar* const portp = tconnect.first;
+                const AstArg* const argp = tconnect.second;
+                AstNodeExpr* const pinp = argp->exprp();
+                if (!pinp) continue;
+                portToExprs.emplace(portp, pinp);
+            }
+            // Replace VarRefs of arguments with the argument values
+            newp->foreach([&](AstVarRef* refp) {
+                const auto it = portToExprs.find(refp->varp());
+                if (it != portToExprs.end()) {
+                    AstNodeExpr* const pinp = it->second;
+                    UINFO(9, "seq pin subst " << refp << " <- " << pinp);
+                    refp->replaceWith(pinp->cloneTree(false));
+                    VL_DO_DANGLING(pushDeletep(refp), refp);
+                }
+            });
+            nodep->replaceWith(newp);
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+            // Iterate to expand further now, so we can look for recursions
+            visit(newp);
+            seqp->user2(false);
+            return;
+        }
     }
 
     void visit(AstCaseItem* nodep) override {

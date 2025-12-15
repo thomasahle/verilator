@@ -2072,6 +2072,25 @@ public:
     bool cleanOut() const override { V3ERROR_NA_RETURN(""); }
     int instrCount() const override { return widthInstrs(); }
 };
+class AstSExprClocked final : public AstNodeExpr {
+    // Clocked sequence expression: @(posedge clk) sexpr
+    // IEEE 1800-2017 16.9: clocking_event sequence_expr
+    // @astgen op1 := sensesp : AstSenItem
+    // @astgen op2 := exprp : AstNodeExpr
+public:
+    AstSExprClocked(FileLine* fl, AstSenItem* sensesp, AstNodeExpr* exprp)
+        : ASTGEN_SUPER_SExprClocked(fl) {
+        this->sensesp(sensesp);
+        this->exprp(exprp);
+    }
+    ASTGEN_MEMBERS_AstSExprClocked;
+    string emitVerilog() override { V3ERROR_NA_RETURN(""); }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    string emitSimpleOperator() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { V3ERROR_NA_RETURN(""); }
+    int instrCount() const override { return widthInstrs(); }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
 class AstSFormatF final : public AstNodeExpr {
     // Convert format to string, generally under an AstDisplay or AstSFormat
     // Also used as "real" function for /*verilator sformat*/ functions

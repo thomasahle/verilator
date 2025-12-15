@@ -1576,7 +1576,8 @@ class WidthVisitor final : public VNVisitor {
     void visit(AstImplication* nodep) override {
         m_seqUnsupp = nodep;
         assertAtExpr(nodep);
-        if (m_vup->prelim()) {
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
             iterateCheckBool(nodep, "LHS", nodep->lhsp(), BOTH);
             iterateCheckBool(nodep, "RHS", nodep->rhsp(), BOTH);
             nodep->dtypeSetBit();
@@ -1585,7 +1586,8 @@ class WidthVisitor final : public VNVisitor {
     void visit(AstUntil* nodep) override {
         // SVA until, s_until, until_with, s_until_with operators
         m_seqUnsupp = nodep;
-        if (m_vup->prelim()) {
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
             iterateCheckBool(nodep, "LHS", nodep->lhsp(), BOTH);
             iterateCheckBool(nodep, "RHS", nodep->rhsp(), BOTH);
             nodep->dtypeSetBit();
@@ -1608,7 +1610,8 @@ class WidthVisitor final : public VNVisitor {
         m_underSExpr = true;
         m_hasSExpr = true;
         assertAtExpr(nodep);
-        if (m_vup->prelim()) {
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
             if (nodep->preExprp()) {
                 iterateCheckBool(nodep, "preExprp", nodep->preExprp(), BOTH);
             }
@@ -1617,9 +1620,23 @@ class WidthVisitor final : public VNVisitor {
             nodep->dtypeSetBit();
         }
     }
+    void visit(AstSExprClocked* nodep) override {
+        // Clocked sequence expression: @(posedge clk) sexpr
+        // IEEE 1800-2017 16.9: clocking_event sequence_expr
+        VL_RESTORER(m_underSExpr);
+        m_underSExpr = true;
+        m_hasSExpr = true;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            userIterateAndNext(nodep->sensesp(), nullptr);
+            userIterateAndNext(nodep->exprp(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
     void visit(AstPropIf* nodep) override {
         // Property if/else expression (IEEE 1800-2017 16.12)
-        if (m_vup->prelim()) {
+        // May be called with null m_vup when visiting sequence/property declarations
+        if (!m_vup || m_vup->prelim()) {
             iterateCheckBool(nodep, "condp", nodep->condp(), BOTH);
             userIterateAndNext(nodep->thenp(), WidthVP{SELF, BOTH}.p());
             if (nodep->elsep()) userIterateAndNext(nodep->elsep(), WidthVP{SELF, BOTH}.p());
@@ -1628,7 +1645,8 @@ class WidthVisitor final : public VNVisitor {
     }
     void visit(AstFirstMatch* nodep) override {
         // SVA first_match(sequence) operator (IEEE 1800-2017 16.9.4)
-        if (m_vup->prelim()) {
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
             userIterateAndNext(nodep->seqp(), WidthVP{SELF, BOTH}.p());
             nodep->dtypeSetBit();
         }
@@ -6583,13 +6601,17 @@ class WidthVisitor final : public VNVisitor {
     }
     void visit(AstReturn* nodep) override { nodep->v3fatalSrc("'return' missed in LinkJump"); }
     void visit(AstSequence* nodep) override {
-        // UNSUPPORTED message is thrown only where the sequence is referenced
-        // in order to enable some UVM tests.
-        // When support more here will need finer-grained UNSUPPORTED if items
-        // under the sequence are not supported
-        if (nodep->isReferenced()) nodep->v3warn(E_UNSUPPORTED, "Unsupported: sequence");
-        userIterateChildren(nodep, nullptr);
-        if (!nodep->isReferenced()) VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+        // Sequences are now supported via substitution in V3LinkResolve.
+        // When the sequence is referenced, it gets inlined at the reference site.
+        // Any unsupported constructs within the sequence will be caught during
+        // their own visitor processing.
+        if (nodep->didWidth()) return;
+        nodep->doingWidth(true);
+        nodep->dtypeSetBit();  // Sequences return bit type (pass/fail)
+        // Pass a valid vup context so child visitors don't crash
+        userIterateChildren(nodep, WidthVP{SELF, BOTH}.p());
+        nodep->didWidth(true);
+        nodep->doingWidth(false);
     }
 
     AstPackage* getItemPackage(AstNode* pkgItemp) {
