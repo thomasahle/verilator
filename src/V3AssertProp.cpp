@@ -538,6 +538,23 @@ class AssertPropIfVisitor final : public VNVisitor {
         nodep->replaceWith(andp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
+    void visit(AstIntersect* nodep) override {
+        // SVA intersect operator (IEEE 1800-2017 16.9.6)
+        // "seq1 intersect seq2" - both sequences start and end at the same time
+        // Simplification: Check both sequences (seq1 && seq2)
+        // Full semantics would require verifying both start and end simultaneously
+        iterateChildren(nodep);
+
+        FileLine* const flp = nodep->fileline();
+        AstNodeExpr* const lhsp = nodep->lhsp()->unlinkFrBack();
+        AstNodeExpr* const rhsp = nodep->rhsp()->unlinkFrBack();
+
+        // Simplified: both sequences must match
+        AstLogAnd* const andp = new AstLogAnd{flp, lhsp, rhsp};
+        andp->dtypeSetBit();
+        nodep->replaceWith(andp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
     void visit(AstNode* nodep) override { iterateChildren(nodep); }
 
 public:

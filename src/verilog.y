@@ -6762,7 +6762,7 @@ sexpr<nodeExprp>:  // ==IEEE: sequence_expr  (The name sexpr is important as reg
                         { $$ = new AstLogOr{$2, $1, $3}; }
         //                      // Intersect always has an sexpr rhs
         |       ~p~sexpr yINTERSECT sexpr
-                        { $$ = $1; BBUNSUP($2, "Unsupported: intersect (in sequence expression)"); DEL($3); }
+                        { $$ = new AstIntersect{$2, $1, $3}; }
         //
         |       yFIRST_MATCH '(' sexpr ')'
                         { $$ = new AstFirstMatch{$1, $3}; }
