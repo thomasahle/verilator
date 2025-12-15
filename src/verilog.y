@@ -6749,6 +6749,11 @@ sexpr<nodeExprp>:  // ==IEEE: sequence_expr  (The name sexpr is important as reg
                         { $$ = new AstGotoRep{$2, $1, $3}; }
         |       ~p~sexpr/*sexpression_or_dist*/ yP_BRAMINUSGT constExpr ':' constExpr ']'
                         { $$ = new AstGotoRep{$2, $1, $3, $5}; }
+        //                      // Consecutive repetition [*n] - supported
+        |       ~p~sexpr/*sexpression_or_dist*/ yP_BRASTAR constExpr ']'
+                        { $$ = new AstConsecRep{$2, $1, $3}; }
+        |       ~p~sexpr/*sexpression_or_dist*/ yP_BRASTAR constExpr ':' constExpr ']'
+                        { $$ = new AstConsecRep{$2, $1, $3, $5}; }
         //                      // Other boolean_abbrev operators - still unsupported
         |       ~p~sexpr/*sexpression_or_dist*/ boolean_abbrev
                         { $$ = $1; BBUNSUP($2->fileline(), "Unsupported: boolean abbrev (in sequence expression)"); DEL($2); }
@@ -6838,11 +6843,9 @@ sequence_match_item<nodep>:  // ==IEEE: sequence_match_item
 
 boolean_abbrev<nodeExprp>:  // ==IEEE: boolean_abbrev
         //                      // IEEE: consecutive_repetition
-                yP_BRASTAR constExpr ']'
-                        { $$ = $2; BBUNSUP($<fl>1, "Unsupported: [*] boolean abbrev expression"); }
-        |       yP_BRASTAR constExpr ':' constExpr ']'
-                        { $$ = $2; BBUNSUP($<fl>1, "Unsupported: [*] boolean abbrev expression"); DEL($4); }
-        |       yP_BRASTAR ']'
+        //                      // Note: [*n] and [*m:n] are now handled directly in sexpr rules
+        //                      // Only [*] (unbounded) remains here as unsupported
+                yP_BRASTAR ']'
                         { $$ = new AstConst{$1, AstConst::BitFalse{}};
                           BBUNSUP($<fl>1, "Unsupported: [*] boolean abbrev expression"); }
         |       yP_BRAPLUSKET

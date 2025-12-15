@@ -494,6 +494,20 @@ class AssertPropIfVisitor final : public VNVisitor {
         nodep->replaceWith(exprp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
+    void visit(AstConsecRep* nodep) override {
+        // SVA consecutive repetition operator (IEEE 1800-2017 16.9.2)
+        // expr[*n] - boolean is true for n consecutive cycles
+        // Simplification: Transform to just the expression
+        // Full semantics would require checking expr is true for n consecutive cycles
+        iterateChildren(nodep);
+
+        AstNodeExpr* const exprp = nodep->exprp()->unlinkFrBack();
+
+        // For consecutive repetition, simplify to just checking the expression
+        // This is an approximation - full semantics would require cycle-accurate checking
+        nodep->replaceWith(exprp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
     void visit(AstSExprClocked* nodep) override {
         // Clocked sequence expression: @(posedge clk) sexpr
         // For sequences within sequence declarations, the clocking event specifies

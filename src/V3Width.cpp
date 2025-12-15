@@ -1621,6 +1621,20 @@ class WidthVisitor final : public VNVisitor {
             nodep->dtypeSetBit();
         }
     }
+    void visit(AstConsecRep* nodep) override {
+        // SVA consecutive repetition operator (IEEE 1800-2017 16.9.2)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            // exprp is a boolean expression
+            iterateCheckBool(nodep, "EXPR", nodep->exprp(), BOTH);
+            // countp is the repetition count
+            userIterateAndNext(nodep->countp(), WidthVP{SELF, BOTH}.p());
+            // maxp is optional max count for range
+            if (nodep->maxp()) userIterateAndNext(nodep->maxp(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
 
     void visit(AstRand* nodep) override {
         assertAtExpr(nodep);
