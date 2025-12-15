@@ -1595,6 +1595,18 @@ class WidthVisitor final : public VNVisitor {
             nodep->dtypeSetBit();
         }
     }
+    void visit(AstThroughout* nodep) override {
+        // SVA throughout operator (IEEE 1800-2017 16.9.8)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            // condp is a boolean expression that must hold throughout
+            iterateCheckBool(nodep, "LHS", nodep->condp(), BOTH);
+            // seqp is a sequence expression
+            userIterateAndNext(nodep->seqp(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
 
     void visit(AstRand* nodep) override {
         assertAtExpr(nodep);

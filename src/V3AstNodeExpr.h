@@ -2466,6 +2466,24 @@ public:
     bool cleanOut() const override { return true; }
     AstNodeDType* getChildDTypep() const override { return childDTypep(); }
 };
+class AstThroughout final : public AstNodeExpr {
+    // SVA throughout operator (IEEE 1800-2017 16.9.8)
+    // "a throughout seq" - expression a must hold at every clock tick during seq
+    // @astgen op1 := condp : AstNodeExpr  // Condition that must hold throughout
+    // @astgen op2 := seqp : AstNodeExpr   // Sequence being evaluated
+public:
+    AstThroughout(FileLine* fl, AstNodeExpr* condp, AstNodeExpr* seqp)
+        : ASTGEN_SUPER_Throughout(fl) {
+        this->condp(condp);
+        this->seqp(seqp);
+    }
+    ASTGEN_MEMBERS_AstThroughout;
+    string emitVerilog() override { return "%l throughout %r"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
 class AstTimePrecision final : public AstNodeExpr {
     // Verilog $timeprecision
 public:

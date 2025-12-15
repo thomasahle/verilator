@@ -406,6 +406,47 @@ class AssertPropIfVisitor final : public VNVisitor {
         nodep->replaceWith(implp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
+    void visit(AstThroughout* nodep) override {
+        // SVA throughout operator (IEEE 1800-2017 16.9.8)
+        // "a throughout seq" - expression a must hold at every clock tick during seq
+        // Approximation: transform to check condition at sequence boundaries
+        iterateChildren(nodep);
+
+        FileLine* const flp = nodep->fileline();
+        AstNodeExpr* condp = nodep->condp()->unlinkFrBack();
+        AstNodeExpr* seqp = nodep->seqp()->unlinkFrBack();
+
+        if (AstPExpr* pexprp = VN_CAST(seqp, PExpr)) {
+            // RHS is a sequence (PExpr) - inject condition as guard
+            // throughout(cond, seq) -> if (!sampled(cond)) { fail } else { seq body }
+            AstSampled* const sampledCond = new AstSampled{flp, condp};
+            sampledCond->dtypeFrom(condp);
+
+            // Get the original sequence body
+            AstBegin* const bodyp = pexprp->bodyp();
+            AstNode* origStmts = nullptr;
+            if (bodyp && bodyp->stmtsp()) origStmts = bodyp->stmtsp()->unlinkFrBackWithNext();
+
+            // Create fail clause for when condition is false
+            AstPExprClause* const failClause = new AstPExprClause{flp, false};
+
+            // Create guard: if (!sampled(cond)) fail else { seq body }
+            AstLogNot* const notCond = new AstLogNot{flp, sampledCond};
+            notCond->dtypeSetBit();
+            AstIf* const guardIf = new AstIf{flp, notCond, failClause, origStmts};
+
+            // Update the PExpr body
+            bodyp->addStmtsp(guardIf);
+            nodep->replaceWith(pexprp);
+            VL_DO_DANGLING(nodep->deleteTree(), nodep);
+        } else {
+            // Simple expression RHS: a throughout b -> a && b
+            AstLogAnd* const andp = new AstLogAnd{flp, condp, seqp};
+            andp->dtypeSetBit();
+            nodep->replaceWith(andp);
+            VL_DO_DANGLING(nodep->deleteTree(), nodep);
+        }
+    }
     void visit(AstSExprClocked* nodep) override {
         // Clocked sequence expression: @(posedge clk) sexpr
         // For sequences within sequence declarations, the clocking event specifies
