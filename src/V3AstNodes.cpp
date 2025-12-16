@@ -3278,6 +3278,24 @@ void AstCgOptionAssign::dumpJson(std::ostream& str) const {
     dumpJsonBoolFunc(str, typeOption);
     dumpJsonGen(str);
 }
+void AstCoverBin::dump(std::ostream& str) const {
+    this->AstNode::dump(str);
+    str << " [" << binType().ascii() << "]";
+    if (isArray()) str << " [ARRAY]";
+    if (isDefault()) str << " [DEFAULT]";
+    if (isDefaultSeq()) str << " [DEFAULTSEQ]";
+}
+void AstCoverBin::dumpJson(std::ostream& str) const {
+    dumpJsonStr(str, "binType", binType().ascii());
+    dumpJsonBoolFunc(str, isArray);
+    dumpJsonBoolFunc(str, isDefault);
+    dumpJsonBoolFunc(str, isDefaultSeq);
+    dumpJsonGen(str);
+}
+void AstCoverCross::dump(std::ostream& str) const { this->AstNode::dump(str); }
+void AstCoverCross::dumpJson(std::ostream& str) const { dumpJsonGen(str); }
+void AstCoverpoint::dump(std::ostream& str) const { this->AstNode::dump(str); }
+void AstCoverpoint::dumpJson(std::ostream& str) const { dumpJsonGen(str); }
 void AstDelay::dump(std::ostream& str) const {
     this->AstNodeStmt::dump(str);
     if (isCycleDelay()) str << " [CYCLE]";

@@ -129,6 +129,7 @@ struct V3ParseBisonYYSType final {
         VLifetime::en lifetime;
         VStrength::en strength;
         VJoinType::en joinType;
+        VCoverBinType::en coverbintypeen;
 
 #include "V3Ast__gen_yystype.h"
     };
