@@ -61,6 +61,10 @@ class CoverageGroupVisitor final : public VNVisitor {
     AstClass* m_enclosingClassp = nullptr;  // Enclosing class if covergroup is class-embedded
     AstVar* m_parentPtrVarp = nullptr;  // __Vparentp member variable
 
+    // Covergroup inheritance support: track bin info by covergroup name (for covergroup extends)
+    // Static map from covergroup name to (coverpoint name -> bin names list)
+    static std::map<string, std::map<string, std::vector<string>>> s_cgBinInfo;
+
     // METHODS
     string makeVarName(const string& prefix, const string& cpName, const string& binName) {
         string name = prefix + cpName;
@@ -469,11 +473,23 @@ class CoverageGroupVisitor final : public VNVisitor {
         auto it2 = m_cpBinHitVars.find(cp2Name);
 
         if (it1 == m_cpBinHitVars.end()) {
+            // For extended covergroups, inherited coverpoints aren't fully supported yet
+            if (m_classp->isExtended()) {
+                xp->v3warn(COVERIGN,
+                           "Cross coverage with inherited coverpoint '" << cp1Name << "' not fully supported");
+                return;
+            }
             xp->v3warn(E_UNSUPPORTED,
                        "Cross coverage references unknown coverpoint '" << cp1Name << "'");
             return;
         }
         if (it2 == m_cpBinHitVars.end()) {
+            // For extended covergroups, inherited coverpoints aren't fully supported yet
+            if (m_classp->isExtended()) {
+                xp->v3warn(COVERIGN,
+                           "Cross coverage with inherited coverpoint '" << cp2Name << "' not fully supported");
+                return;
+            }
             xp->v3warn(E_UNSUPPORTED,
                        "Cross coverage references unknown coverpoint '" << cp2Name << "'");
             return;
@@ -860,6 +876,9 @@ public:
     explicit CoverageGroupVisitor(AstNetlist* rootp) { iterateChildren(rootp); }
     ~CoverageGroupVisitor() override = default;
 };
+
+// Static member definition
+std::map<string, std::map<string, std::vector<string>>> CoverageGroupVisitor::s_cgBinInfo;
 
 //######################################################################
 // CoverageGroup class functions

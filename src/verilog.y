@@ -6904,6 +6904,9 @@ covergroup_declaration<nodep>:  // ==IEEE: covergroup_declaration
         /*cont*/ yENDGROUP endLabelE
                         { AstClass *cgClassp = new AstClass{$<fl>3, *$3, PARSEP->libname()};
                           cgClassp->isCovergroup(true);
+                          // Mark as extended covergroup
+                          cgClassp->isExtended(true);
+
                           AstFunc* const newp = new AstFunc{$<fl>1, "new", nullptr, nullptr};
                           newp->fileline()->warnOff(V3ErrorCode::NORETURN, true);
                           newp->classMethod(true);
