@@ -7066,10 +7066,11 @@ covergroup_range_list<nodep>:  // ==IEEE: covergroup_range_list
 
 
 cover_cross<nodep>:  // ==IEEE: cover_cross
+        //      // Cross coverage not yet implemented, so ignore the body
                 id/*cover_point_identifier*/ ':' yCROSS list_of_cross_items iffE cross_body
-                        { $$ = new AstCoverCross{$<fl>3, *$1, VN_AS($4, Text), $5, $6}; }
+                        { $$ = new AstCoverCross{$<fl>3, *$1, VN_AS($4, Text), $5, nullptr}; DEL($6); }
         |       yCROSS list_of_cross_items iffE cross_body
-                        { $$ = new AstCoverCross{$<fl>1, "", VN_AS($2, Text), $3, $4}; }
+                        { $$ = new AstCoverCross{$<fl>1, "", VN_AS($2, Text), $3, nullptr}; DEL($4); }
         ;
 
 list_of_cross_items<nodep>:  // ==IEEE: list_of_cross_items

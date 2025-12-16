@@ -68,7 +68,7 @@ class CoverageGroupVisitor final : public VNVisitor {
     AstVar* createHitVar(FileLine* fl, const string& name) {
         AstVar* const varp = new AstVar{fl, VVarType::MEMBER, name, m_classp->findBitDType()};
         varp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
-        varp->valuep(new AstConst{fl, 0});
+        varp->valuep(new AstConst{fl, AstConst::BitFalse{}});
         m_classp->addMembersp(varp);
         return varp;
     }
@@ -159,7 +159,7 @@ class CoverageGroupVisitor final : public VNVisitor {
             fl, counterRefW, new AstAdd{fl, counterRefR, new AstConst{fl, 1}}};
 
         AstVarRef* const hitRefW = new AstVarRef{fl, hitVarp, VAccess::WRITE};
-        AstAssign* const setHitp = new AstAssign{fl, hitRefW, new AstConst{fl, 1}};
+        AstAssign* const setHitp = new AstAssign{fl, hitRefW, new AstConst{fl, AstConst::BitTrue{}}};
 
         AstIf* const ifp = new AstIf{fl, condp, incCounterp, nullptr};
         ifp->addThensp(setHitp);
