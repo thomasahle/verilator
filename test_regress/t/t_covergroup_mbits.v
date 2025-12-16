@@ -56,9 +56,9 @@ module t;
          bins pattern5_8 = {8'b01010101};
       }
 
-      // Cross coverage - disabled for now (needs implementation)
-      // DATA_WIDTH_CP_PARITY_CP: cross DATA_WIDTH_CP, PARITY_CP;
-      // DATA_WIDTH_CP_STOP_BIT_CP: cross DATA_WIDTH_CP, STOP_BIT_CP;
+      // Cross coverage (parsed but not yet functional - nodes are removed during lowering)
+      DATA_WIDTH_CP_PARITY_CP: cross DATA_WIDTH_CP, PARITY_CP;
+      DATA_WIDTH_CP_STOP_BIT_CP: cross DATA_WIDTH_CP, STOP_BIT_CP;
    endgroup
 
    tx_covergroup cg;

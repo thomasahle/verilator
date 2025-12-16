@@ -280,9 +280,32 @@ class CoverageGroupVisitor final : public VNVisitor {
         // Generate get_coverage() body
         generateGetCoverage();
 
+        // Collect cross coverage nodes (to delete - not yet implemented)
+        std::vector<AstCoverCross*> crosses;
+        for (AstNode* stmtp = nodep->stmtsp(); stmtp; stmtp = stmtp->nextp()) {
+            if (AstCoverCross* const xp = VN_CAST(stmtp, CoverCross)) {
+                crosses.push_back(xp);
+            }
+        }
+        for (AstNode* memberp = nodep->membersp(); memberp; memberp = memberp->nextp()) {
+            if (AstFunc* const funcp = VN_CAST(memberp, Func)) {
+                for (AstNode* stmtp = funcp->stmtsp(); stmtp; stmtp = stmtp->nextp()) {
+                    if (AstCoverCross* const xp = VN_CAST(stmtp, CoverCross)) {
+                        crosses.push_back(xp);
+                    }
+                }
+            }
+        }
+
         // Clean up - remove AstCoverpoint nodes as they've been lowered
         for (AstCoverpoint* cpp : coverpoints) {
             VL_DO_DANGLING(cpp->unlinkFrBack()->deleteTree(), cpp);
+        }
+
+        // Clean up - remove AstCoverCross nodes (cross coverage not yet implemented)
+        for (AstCoverCross* xp : crosses) {
+            UINFO(4, "Removing unsupported cross coverage: " << xp->name() << endl);
+            VL_DO_DANGLING(xp->unlinkFrBack()->deleteTree(), xp);
         }
 
         m_classp = nullptr;
