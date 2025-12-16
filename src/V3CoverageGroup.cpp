@@ -40,7 +40,8 @@ class CoverageGroupVisitor final : public VNVisitor {
     // STATE
     AstClass* m_classp = nullptr;  // Current covergroup class
     AstFunc* m_sampleFuncp = nullptr;  // sample() function to add code to
-    AstFunc* m_getCoverageFuncp = nullptr;  // get_coverage() function to add code to
+    AstFunc* m_getCoverageFuncp = nullptr;  // get_coverage() (static) function
+    AstFunc* m_getInstCoverageFuncp = nullptr;  // get_inst_coverage() function
     int m_binCount = 0;  // Total number of bins in this covergroup
     int m_coveredExpr = 0;  // Running count expression for get_coverage
 
@@ -195,16 +196,70 @@ class CoverageGroupVisitor final : public VNVisitor {
         }
     }
 
-    // Generate get_coverage() function body
+    // Generate coverage percentage calculation expression
+    AstNodeExpr* generateCoverageExpr(FileLine* fl, AstFunc* funcp) {
+        if (m_hitVars.empty()) {
+            // No bins, return 0.0
+            V3Number zeroNum{funcp, V3Number::Double{}, 0.0};
+            return new AstConst{fl, zeroNum};
+        }
+
+        // Build expression: (hit1 + hit2 + ... + hitN)
+        AstNodeExpr* sumExprp = nullptr;
+        for (AstVar* hitVarp : m_hitVars) {
+            AstVarRef* const hitRefp = new AstVarRef{fl, hitVarp, VAccess::READ};
+            // Cast bit to 32-bit int for proper arithmetic
+            AstNodeExpr* const extendedp = new AstExtend{fl, hitRefp, 32};
+            if (sumExprp) {
+                sumExprp = new AstAdd{fl, sumExprp, extendedp};
+            } else {
+                sumExprp = extendedp;
+            }
+        }
+
+        // Calculate: (sum / binCount) * 100.0
+        // Convert to real: real'(sum) / real'(binCount) * 100.0
+        const int totalBins = static_cast<int>(m_hitVars.size());
+
+        // Cast sum to real
+        AstNodeExpr* const sumRealp = new AstIToRD{fl, sumExprp};
+
+        // Create constant for total bins
+        V3Number totalNum{funcp, V3Number::Double{}, static_cast<double>(totalBins)};
+        AstConst* const totalBinsDblp = new AstConst{fl, totalNum};
+
+        // Divide: sum / totalBins
+        AstNodeExpr* const dividep = new AstDivD{fl, sumRealp, totalBinsDblp};
+
+        // Multiply by 100.0
+        V3Number hundredNum{funcp, V3Number::Double{}, 100.0};
+        AstConst* const hundredp = new AstConst{fl, hundredNum};
+        return new AstMulD{fl, dividep, hundredp};
+    }
+
+    // Generate get_inst_coverage() function body (instance method - can access instance members)
+    void generateGetInstCoverage() {
+        if (!m_getInstCoverageFuncp) return;
+
+        FileLine* const fl = m_getInstCoverageFuncp->fileline();
+        AstNodeExpr* const percentp = generateCoverageExpr(fl, m_getInstCoverageFuncp);
+
+        // Find return variable and assign to it
+        if (AstVar* const fvarp = VN_CAST(m_getInstCoverageFuncp->fvarp(), Var)) {
+            AstVarRef* const retRefp = new AstVarRef{fl, fvarp, VAccess::WRITE};
+            AstAssign* const assignp = new AstAssign{fl, retRefp, percentp};
+            m_getInstCoverageFuncp->addStmtsp(assignp);
+        }
+    }
+
+    // Generate get_coverage() function body (static method - returns 0.0 for now)
+    // IEEE: get_coverage() aggregates coverage from all instances of the covergroup type
     void generateGetCoverage() {
         if (!m_getCoverageFuncp) return;
 
         FileLine* const fl = m_getCoverageFuncp->fileline();
-
-        // For now, return 0.0 as placeholder
-        // TODO: Calculate actual coverage percentage using hit flags
-        // The issue is that VarRefs to class members in expression context
-        // generate static class access instead of this-> access
+        // Static get_coverage() can't access instance members
+        // For now, return 0.0 - full implementation would need static counters
         V3Number zeroNum{m_getCoverageFuncp, V3Number::Double{}, 0.0};
         AstConst* const zeroDbl = new AstConst{fl, zeroNum};
 
@@ -230,16 +285,19 @@ class CoverageGroupVisitor final : public VNVisitor {
         m_classp = nodep;
         m_sampleFuncp = nullptr;
         m_getCoverageFuncp = nullptr;
+        m_getInstCoverageFuncp = nullptr;
         m_binCount = 0;
         m_hitVars.clear();
 
-        // Find sample() and get_coverage() functions
+        // Find sample(), get_coverage(), and get_inst_coverage() functions
         for (AstNode* memberp = nodep->membersp(); memberp; memberp = memberp->nextp()) {
             if (AstFunc* const funcp = VN_CAST(memberp, Func)) {
                 if (funcp->name() == "sample") {
                     m_sampleFuncp = funcp;
                 } else if (funcp->name() == "get_coverage") {
                     m_getCoverageFuncp = funcp;
+                } else if (funcp->name() == "get_inst_coverage") {
+                    m_getInstCoverageFuncp = funcp;
                 }
             }
         }
@@ -277,8 +335,9 @@ class CoverageGroupVisitor final : public VNVisitor {
             processCoverpoint(cpp);
         }
 
-        // Generate get_coverage() body
+        // Generate get_coverage() and get_inst_coverage() bodies
         generateGetCoverage();
+        generateGetInstCoverage();
 
         // Collect cross coverage nodes (to delete - not yet implemented)
         std::vector<AstCoverCross*> crosses;
