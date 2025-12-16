@@ -883,7 +883,8 @@ public:
             foundp = lookSymp->findIdFlat(nodep->name());
             if (foundp && !checkIfClassOrPackage(foundp)) foundp = nullptr;
         }
-        if (!foundp && v3Global.rootp()->stdPackagep()) {  // Look under implied std::
+        if (!foundp && v3Global.rootp()->stdPackagep()
+            && existsNodeSym(v3Global.rootp()->stdPackagep())) {  // Look under implied std::
             foundp = getNodeSym(v3Global.rootp()->stdPackagep())->findIdFlat(nodep->name());
         }
         if (foundp) {
@@ -1005,6 +1006,36 @@ class LinkDotFindVisitor final : public VNVisitor {
         //    if (VN_IS(nodep, Package)) {}}
 
         m_statep->insertDUnit(nodep);
+
+        // Process std:: package first, before backward iteration,
+        // since other packages (like uvm_pkg) may import from it during iteration.
+        // Without this, std:: would be processed last (it's first in the module list).
+        if (m_statep->forPrearray()) {
+            if (AstPackage* const stdPkgp = v3Global.rootp()->stdPackagep()) {
+                if (!m_statep->existsNodeSym(stdPkgp)) {
+                    // Visit std:: package to create symbol entries for its contents
+                    VL_RESTORER(m_scope);
+                    VL_RESTORER(m_classOrPackagep);
+                    VL_RESTORER(m_modSymp);
+                    VL_RESTORER(m_curSymp);
+                    VL_RESTORER(m_paramNum);
+                    VL_RESTORER(m_modBlockNum);
+                    VL_RESTORER(m_modWithNum);
+                    VL_RESTORER(m_modArgNum);
+                    m_classOrPackagep = stdPkgp;
+                    VSymEnt* const upperSymp = m_statep->dunitEntp();
+                    m_scope = stdPkgp->name();
+                    m_curSymp = m_modSymp
+                        = m_statep->insertBlock(upperSymp, stdPkgp->name(), stdPkgp, stdPkgp);
+                    m_paramNum = 0;
+                    m_modBlockNum = 0;
+                    m_modWithNum = 0;
+                    m_modArgNum = 0;
+                    UINFO(9, "Processing std package before backward iteration\n");
+                    iterateChildren(stdPkgp);
+                }
+            }
+        }
 
         // First back iterate, to find all packages. Backward as must do base
         // packages before using packages
