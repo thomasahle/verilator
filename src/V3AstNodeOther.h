@@ -1069,7 +1069,17 @@ public:
         , m_name{name} {
         this->exprp(exprp);
         this->iffp(iffp);
-        addBinsp(static_cast<AstCoverBin*>(binsp));
+        // Separate bins from options in the input list (grammar returns mixed list).
+        // Clone each node individually (without nextp links) to proper list, then delete originals.
+        for (AstNode* nodep = binsp; nodep; nodep = nodep->nextp()) {
+            if (VN_IS(nodep, CoverBin)) {
+                addBinsp(static_cast<AstCoverBin*>(nodep->cloneTree(false)));
+            } else if (VN_IS(nodep, CgOptionAssign)) {
+                addOptionsp(static_cast<AstCgOptionAssign*>(nodep->cloneTree(false)));
+            }
+            // Unknown node types are silently ignored (will be deleted with original list)
+        }
+        if (binsp) VL_DO_DANGLING(binsp->deleteTree(), binsp);
     }
     ASTGEN_MEMBERS_AstCoverpoint;
     void dump(std::ostream& str) const override;
