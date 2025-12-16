@@ -376,6 +376,8 @@ class CoverageGroupVisitor final : public VNVisitor {
                 = new AstDisplay{fl, VDisplayType::DT_ERROR,
                                  "Illegal bin '" + binName + "' hit in coverpoint '" + cpName + "'",
                                  nullptr, nullptr};
+            // Set timeunit to avoid "Use of %t must be under AstDisplay" error
+            displayp->fmtp()->timeunit(v3Global.rootp()->timeunit());
             AstStop* const stopp = new AstStop{fl, false};
             AstIf* const ifp = new AstIf{fl, condp, displayp, nullptr};
             ifp->addThensp(stopp);
