@@ -1091,19 +1091,29 @@ class AstDefParam final : public AstNode {
     // A defparam assignment
     // Parents: MODULE
     // @astgen op1 := rhsp : AstNodeExpr
+    // @astgen op2 := pathp : Optional[AstNodeExpr]  // Hierarchical path (may be null for simple path)
     string m_name;  // Name of variable getting set
-    string m_path;  // Dotted cellname to set parameter of
+    string m_path;  // Dotted cellname to set parameter of (legacy string form)
 public:
+    // Legacy constructor: path as string
     AstDefParam(FileLine* fl, const string& path, const string& name, AstNodeExpr* rhsp)
         : ASTGEN_SUPER_DefParam(fl)
         , m_name{name}
         , m_path{path} {
         this->rhsp(rhsp);
     }
+    // New constructor: path as AST tree
+    AstDefParam(FileLine* fl, AstNodeExpr* pathp, const string& name, AstNodeExpr* rhsp)
+        : ASTGEN_SUPER_DefParam(fl)
+        , m_name{name} {
+        this->rhsp(rhsp);
+        this->pathp(pathp);
+    }
     string name() const override VL_MT_STABLE { return m_name; }  // * = Scope name
     ASTGEN_MEMBERS_AstDefParam;
     bool sameNode(const AstNode*) const override { return true; }
     string path() const { return m_path; }
+    bool hasAstPath() const { return pathp() != nullptr; }
 };
 class AstDefaultDisable final : public AstNode {
     // @astgen op1 := condp : AstNodeExpr
