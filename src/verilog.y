@@ -6846,23 +6846,38 @@ boolean_abbrev<nodeExprp>:  // ==IEEE: boolean_abbrev
 
 covergroup_declaration<nodep>:  // ==IEEE: covergroup_declaration
                  yCOVERGROUP idAny cgPortListE coverage_eventE ';'
+        /*mid*/         { // Create covergroup class and add sample args as members for scope
+                          // (so coverpoint expressions can reference them)
+                          AstClass* cgClassp = new AstClass{$<fl>2, *$2, PARSEP->libname()};
+                          cgClassp->isCovergroup(true);
+                          // Add sample args as class members (cloned) so they're in scope
+                          for (AstNode* argp = $4; argp; argp = argp->nextp()) {
+                              if (AstVar* varp = VN_CAST(argp, Var)) {
+                                  AstVar* memberp = varp->cloneTree(false);
+                                  memberp->varType(VVarType::MEMBER);
+                                  memberp->funcLocal(false);
+                                  memberp->direction(VDirection::NONE);
+                                  memberp->lifetime(VLifetime::NONE);
+                                  cgClassp->addMembersp(memberp);
+                              }
+                          }
+                          $<classp>$ = cgClassp;
+                        }
         /*cont*/    coverage_spec_or_optionListE
         /*cont*/ yENDGROUP endLabelE
-                        { AstClass *cgClassp = new AstClass{$<fl>2, *$2, PARSEP->libname()};
-                          cgClassp->isCovergroup(true);
+                        { AstClass *cgClassp = $<classp>6;
                           AstFunc* const newp = new AstFunc{$<fl>1, "new", nullptr, nullptr};
                           newp->fileline()->warnOff(V3ErrorCode::NORETURN, true);
                           newp->classMethod(true);
                           newp->isConstructor(true);
                           newp->dtypep(cgClassp->dtypep());
                           newp->addStmtsp($3);
-                          newp->addStmtsp($6);
+                          newp->addStmtsp($7);
                           cgClassp->addMembersp(newp);
                           GRAMMARP->createCoverGroupMethods(cgClassp, $4);
 
                           $$ = cgClassp;
-                          GRAMMARP->endLabel($<fl>8, $$, $8);
-                          BBCOVERIGN($<fl>1, "Ignoring unsupported: covergroup");
+                          GRAMMARP->endLabel($<fl>9, $$, $9);
                         }
         |        yCOVERGROUP yEXTENDS idAny ';'
         /*cont*/     coverage_spec_or_optionListE
@@ -6880,7 +6895,6 @@ covergroup_declaration<nodep>:  // ==IEEE: covergroup_declaration
 
                           $$ = cgClassp;
                           GRAMMARP->endLabel($<fl>7, $$, $7);
-                          BBCOVERIGN($<fl>1, "Ignoring unsupported: covergroup");
                         }
         ;
 
