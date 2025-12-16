@@ -2193,18 +2193,77 @@ class LinkDotParamVisitor final : public VNVisitor {
                                     << nodep->warnMore()
                                     << "... Suggest use instantiation with #(."
                                     << nodep->prettyName() << "(...etc...))");
-        VSymEnt* const foundp = m_statep->getNodeSym(nodep)->findIdFallback(nodep->path());
-        AstCell* const cellp = foundp ? VN_AS(foundp->nodep(), Cell) : nullptr;
+
+        AstCell* cellp = nullptr;
+        string paramName = nodep->name();
+        string pathStr;
+
+        if (nodep->hasAstPath()) {
+            // Hierarchical defparam: path is an AstDot tree
+            // The path tree contains ALL components including the parameter name
+            // Last component is the parameter name, all others are cell instances
+            AstNodeExpr* pathNodep = nodep->pathp();
+
+            // Build list of all path components from AstDot tree
+            std::vector<std::pair<string, FileLine*>> pathComponents;
+
+            std::function<void(AstNode*)> collectPath = [&](AstNode* np) {
+                if (AstDot* const dotp = VN_CAST(np, Dot)) {
+                    collectPath(dotp->lhsp());
+                    collectPath(dotp->rhsp());
+                } else if (AstParseRef* const refp = VN_CAST(np, ParseRef)) {
+                    pathComponents.push_back({refp->name(), refp->fileline()});
+                }
+            };
+            collectPath(pathNodep);
+
+            // Last component is the parameter name
+            if (pathComponents.size() >= 2) {
+                paramName = pathComponents.back().first;
+                pathComponents.pop_back();  // Remove parameter name from path
+            }
+
+            // Now resolve the path - all remaining components are cells
+            VSymEnt* curSymp = m_statep->getNodeSym(nodep);
+            for (size_t i = 0; i < pathComponents.size(); ++i) {
+                const string& name = pathComponents[i].first;
+                if (i > 0) pathStr += ".";
+                pathStr += name;
+
+                VSymEnt* const foundp = curSymp->findIdFallback(name);
+                AstCell* const foundCellp = foundp ? VN_CAST(foundp->nodep(), Cell) : nullptr;
+                if (!foundCellp) {
+                    nodep->v3error("In defparam, instance '" << name << "' (in path '"
+                                   << pathStr << "') never declared");
+                    VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+                    return;
+                }
+                cellp = foundCellp;
+                // Move into the cell's scope for next lookup
+                AstNodeModule* const modp = foundCellp->modp();
+                if (modp) {
+                    curSymp = m_statep->getNodeSym(modp);
+                } else {
+                    curSymp = nullptr;
+                }
+            }
+        } else {
+            // Simple defparam: path is a string
+            VSymEnt* const foundp = m_statep->getNodeSym(nodep)->findIdFallback(nodep->path());
+            cellp = foundp ? VN_AS(foundp->nodep(), Cell) : nullptr;
+            pathStr = nodep->path();
+        }
+
         if (!cellp) {
-            nodep->v3error("In defparam, instance " << nodep->path() << " never declared");
+            nodep->v3error("In defparam, instance " << pathStr << " never declared");
         } else {
             AstNodeExpr* const exprp = nodep->rhsp()->unlinkFrBack();
-            UINFO(9, "Defparam cell " << nodep->path() << "." << nodep->name() << " attach-to "
+            UINFO(9, "Defparam cell " << pathStr << "." << paramName << " attach-to "
                                       << cellp << "  <= " << exprp);
             // Don't need to check the name of the defparam exists.  V3Param does.
             AstPin* const pinp = new AstPin{nodep->fileline(),
                                             -1,  // Pin# not relevant
-                                            nodep->name(), exprp};
+                                            paramName, exprp};
             pinp->param(true);
             cellp->addParamsp(pinp);
         }

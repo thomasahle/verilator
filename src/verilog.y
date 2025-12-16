@@ -3176,27 +3176,28 @@ list_of_defparam_assignments<nodep>:    //== IEEE: list_of_defparam_assignments
         ;
 
 defparam_assignment<nodep>:     // ==IEEE: defparam_assignment
-                defparamIdRange '.' defparamIdRange '=' expr
-                        { $$ = new AstDefParam{$4, *$1, *$3, $5}; }
-        |       defparamIdRange '=' expr
-                        { $$ = nullptr; BBUNSUP($2, "Unsupported: defparam with no dot");
-                          DEL($3); }
-        |       defparamIdRange '.' defparamIdRange '.' defparamIdRangeList '=' expr
-                        { $$ = nullptr; BBUNSUP($4, "Unsupported: defparam with more than one dot");
-                          DEL($7); }
+        //                      // IEEE: hierarchical_parameter_identifier = constant_mintypmax_expression
+        //                      // Simple: cell.param = val
+                idAny '.' idAny '=' expr                { $$ = new AstDefParam{$4, *$1, *$3, $5}; }
+        //                      // Hierarchical: cell.subcell[.more...].param = val (3+ components)
+        //                      // Parse full path as AstDot tree, V3LinkDot will split off param name
+        |       defparam_hier_path '=' expr
+                        { $$ = new AstDefParam{$2, $1, "", $3}; }
+        |       idAny '=' expr
+                        { $$ = nullptr; BBUNSUP($2, "Unsupported: defparam with no dot"); DEL($3); }
         ;
 
-defparamIdRangeList<strp>:  // IEEE: part of defparam_assignment
-                defparamIdRange                         { $$ = $1; }
-        |       defparamIdRangeList '.' defparamIdRange  { $$ = $3; }
-        ;
-
-defparamIdRange<strp>:  // IEEE: part of defparam_assignment
-                idAny
-                        { $$ = $1; }
-        |       idAny part_select_rangeList
-                        { $$ = $1; BBUNSUP($2, "Unsupported: defparam with arrayed instance");
-                          DEL($2); }
+defparam_hier_path<nodeExprp>:  // Hierarchical path with at least 2 dots (3+ components)
+        //                      // Builds AstDot tree with AstParseRef leaves
+                idAny '.' idAny '.' idAny
+                        { $$ = new AstDot{$4, false,
+                                new AstDot{$2, false,
+                                    new AstParseRef{$<fl>1, *$1, nullptr, nullptr},
+                                    new AstParseRef{$<fl>3, *$3, nullptr, nullptr}},
+                                new AstParseRef{$<fl>5, *$5, nullptr, nullptr}}; }
+        |       defparam_hier_path '.' idAny
+                        { $$ = new AstDot{$2, false, $1,
+                                new AstParseRef{$<fl>3, *$3, nullptr, nullptr}}; }
         ;
 
 //************************************************
