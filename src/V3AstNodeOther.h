@@ -998,6 +998,85 @@ public:
     bool isPredictOptimizable() const override { return false; }
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
 };
+class AstCoverBin final : public AstNode {
+    // Coverage bin definition inside a coverpoint
+    // Parents: AstCoverpoint
+    // @astgen op1 := rangesp : List[AstNode]  // Value ranges for this bin
+    // @astgen op2 := iffp : Optional[AstNodeExpr]  // iff condition
+    string m_name;  // Bin name
+    VCoverBinType m_type;  // bins/illegal_bins/ignore_bins
+    bool m_isArray;  // bins b[] = ...
+    bool m_isDefault;  // default bin
+    bool m_isDefaultSeq;  // default sequence bin
+public:
+    AstCoverBin(FileLine* fl, const string& name, VCoverBinType type, AstNode* rangesp,
+                AstNodeExpr* iffp, bool isArray = false, bool isDefault = false,
+                bool isDefaultSeq = false)
+        : ASTGEN_SUPER_CoverBin(fl)
+        , m_name{name}
+        , m_type{type}
+        , m_isArray{isArray}
+        , m_isDefault{isDefault}
+        , m_isDefaultSeq{isDefaultSeq} {
+        addRangesp(rangesp);
+        this->iffp(iffp);
+    }
+    ASTGEN_MEMBERS_AstCoverBin;
+    void dump(std::ostream& str) const override;
+    void dumpJson(std::ostream& str) const override;
+    string name() const override VL_MT_STABLE { return m_name; }
+    void name(const string& name) override { m_name = name; }
+    VCoverBinType binType() const { return m_type; }
+    bool isArray() const { return m_isArray; }
+    bool isDefault() const { return m_isDefault; }
+    bool isDefaultSeq() const { return m_isDefaultSeq; }
+};
+class AstCoverCross final : public AstNode {
+    // Cross coverage inside a covergroup
+    // Parents: AstClass (covergroup)
+    // @astgen op1 := itemsp : List[AstText]  // Coverpoint/variable names being crossed
+    // @astgen op2 := binsp : List[AstCoverBin]  // Cross bins
+    // @astgen op3 := iffp : Optional[AstNodeExpr]  // iff condition
+    // @astgen op4 := optionsp : List[AstCgOptionAssign]  // Options
+    string m_name;  // Cross name
+public:
+    AstCoverCross(FileLine* fl, const string& name, AstText* itemsp, AstNodeExpr* iffp,
+                  AstNode* binsp)
+        : ASTGEN_SUPER_CoverCross(fl)
+        , m_name{name} {
+        addItemsp(itemsp);
+        this->iffp(iffp);
+        addBinsp(static_cast<AstCoverBin*>(binsp));
+    }
+    ASTGEN_MEMBERS_AstCoverCross;
+    void dump(std::ostream& str) const override;
+    void dumpJson(std::ostream& str) const override;
+    string name() const override VL_MT_STABLE { return m_name; }
+    void name(const string& name) override { m_name = name; }
+};
+class AstCoverpoint final : public AstNode {
+    // Coverpoint inside a covergroup
+    // Parents: AstClass (covergroup)
+    // @astgen op1 := exprp : AstNodeExpr  // Expression being sampled
+    // @astgen op2 := binsp : List[AstCoverBin]  // List of bins
+    // @astgen op3 := iffp : Optional[AstNodeExpr]  // iff condition
+    // @astgen op4 := optionsp : List[AstCgOptionAssign]  // Options
+    string m_name;  // Coverpoint name
+public:
+    AstCoverpoint(FileLine* fl, const string& name, AstNodeExpr* exprp, AstNodeExpr* iffp,
+                  AstNode* binsp)
+        : ASTGEN_SUPER_Coverpoint(fl)
+        , m_name{name} {
+        this->exprp(exprp);
+        this->iffp(iffp);
+        addBinsp(static_cast<AstCoverBin*>(binsp));
+    }
+    ASTGEN_MEMBERS_AstCoverpoint;
+    void dump(std::ostream& str) const override;
+    void dumpJson(std::ostream& str) const override;
+    string name() const override VL_MT_STABLE { return m_name; }
+    void name(const string& name) override { m_name = name; }
+};
 class AstDefParam final : public AstNode {
     // A defparam assignment
     // Parents: MODULE

@@ -275,6 +275,36 @@ constexpr VAssertType::en operator|(VAssertType::en lhs, VAssertType::en rhs) {
 
 // ######################################################################
 
+class VCoverBinType final {
+public:
+    // IEEE 1800-2017 19.5 - covergroup bins types
+    enum en : uint8_t {
+        BINS,         // Normal bins
+        ILLEGAL_BINS, // illegal_bins - generate error when hit
+        IGNORE_BINS,  // ignore_bins - excluded from coverage
+    };
+    enum en m_e;
+    VCoverBinType()
+        : m_e{BINS} {}
+    // cppcheck-suppress noExplicitConstructor
+    constexpr VCoverBinType(en _e)
+        : m_e{_e} {}
+    string ascii() const {
+        switch (m_e) {
+        case BINS: return "bins";
+        case ILLEGAL_BINS: return "illegal_bins";
+        case IGNORE_BINS: return "ignore_bins";
+        }
+        return "?";
+    }
+    constexpr operator en() const { return m_e; }
+};
+constexpr bool operator==(const VCoverBinType& lhs, const VCoverBinType& rhs) {
+    return lhs.m_e == rhs.m_e;
+}
+
+// ######################################################################
+
 class VAttrType final {
 public:
     // clang-format off

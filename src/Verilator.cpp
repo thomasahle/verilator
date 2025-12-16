@@ -37,6 +37,7 @@
 #include "V3Const.h"
 #include "V3Control.h"
 #include "V3Coverage.h"
+#include "V3CoverageGroup.h"
 #include "V3CoverageJoin.h"
 #include "V3Dead.h"
 #include "V3Delayed.h"
@@ -217,6 +218,10 @@ static void process() {
             cout << "--debug-exit-elab: Exiting after elaboration pass\n";
             v3Global.vlExit(0);
         }
+
+        // Covergroup lowering
+        //    Transform covergroups before general coverage processing
+        V3CoverageGroup::coverageGroup(v3Global.rootp());
 
         // Coverage insertion
         //    Before we do dead code elimination and inlining, or we'll lose it.
