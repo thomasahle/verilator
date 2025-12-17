@@ -555,6 +555,20 @@ class LinkCellsVisitor final : public VNVisitor {
         AstNodeModule* const modp = resolveModule(nodep, nodep->name(), m_modp->libname());
         if (modp) {
             AstNode* const cellsp = nodep->cellsp()->unlinkFrBackWithNext();
+            // IEEE 1800-2017 23.11: Pin expressions should be resolved in the bind
+            // source scope, not target. We store the source module to enable this.
+            // For backward compatibility with existing code that relies on target
+            // scope resolution, the symbol lookup will try source scope first, then
+            // fall back to target scope if not found.
+            for (AstNode* cellp = cellsp; cellp; cellp = cellp->nextp()) {
+                if (AstCell* const cp = VN_CAST(cellp, Cell)) {
+                    // Only set for binds inside real modules, not top-level binds
+                    if (m_modp && (VN_IS(m_modp, Module) || VN_IS(m_modp, Iface))) {
+                        cp->bindSourcep(m_modp);
+                        UINFO(6, "  Set bind source " << m_modp->name() << " for " << cp << endl);
+                    }
+                }
+            }
             // Module may have already linked, so need to pick up these new cells
             VL_RESTORER(m_modp);
             m_modp = modp;
