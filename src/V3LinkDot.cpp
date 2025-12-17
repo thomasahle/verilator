@@ -3352,16 +3352,49 @@ class LinkDotResolveVisitor final : public VNVisitor {
             // instantiator's symbols
             else {
                 m_pinSymp = m_statep->getNodeSym(nodep->modp());
+                // IEEE 1800-2017 23.11: For bind statements, pin expressions should be
+                // resolved in the scope where the bind statement appears (bind source).
+                // We add the bind source as a fallback for both m_curSymp and m_ds.m_dotSymp,
+                // since symbol lookups happen via both paths depending on expression type.
+                // This provides backward compatibility while enabling source scope access.
+                VSymEnt* const origCurFallbackp = m_curSymp ? m_curSymp->fallbackp() : nullptr;
+                VSymEnt* const origDotFallbackp
+                    = m_ds.m_dotSymp ? m_ds.m_dotSymp->fallbackp() : nullptr;
+                if (nodep->bindSourcep()) {
+                    VSymEnt* const bindSrcSymp = m_statep->getNodeSym(nodep->bindSourcep());
+                    if (bindSrcSymp) {
+                        if (m_curSymp) {
+                            UINFO(6, indent() << "Adding bind source scope fallback for " << nodep
+                                              << " on m_curSymp from " << nodep->bindSourcep()
+                                              << endl);
+                            m_curSymp->fallbackp(bindSrcSymp);
+                        }
+                        if (m_ds.m_dotSymp && m_ds.m_dotSymp != m_curSymp) {
+                            UINFO(6, indent() << "Adding bind source scope fallback for " << nodep
+                                              << " on m_ds.m_dotSymp from " << nodep->bindSourcep()
+                                              << endl);
+                            m_ds.m_dotSymp->fallbackp(bindSrcSymp);
+                        }
+                    }
+                }
                 UINFO(4, indent() << "(Backto) visit " << nodep);
                 // UINFOTREE(1, nodep, "", "linkcell");
                 // UINFOTREE(1, nodep->modp(), "", "linkcemd");
                 iterateChildren(nodep);
 
+                // Restore original fallbacks
+                if (nodep->bindSourcep()) {
+                    if (m_curSymp) m_curSymp->fallbackp(origCurFallbackp);
+                    if (m_ds.m_dotSymp && m_ds.m_dotSymp != m_curSymp)
+                        m_ds.m_dotSymp->fallbackp(origDotFallbackp);
+                }
                 if (m_statep->forPrimary())
                     if (const AstModule* const modp = VN_CAST(nodep->modp(), Module)) {
                         if (modp->hasGenericIface())
                             addImplicitParametersOfGenericIface(nodep, modp);
                     }
+                // Note: bindSourcep is cleared at the end of PARAMED pass in linkDotGuts
+                // to ensure it happens before V3Dead::deadifyModules runs.
             }
         }
         // Parent module inherits child's publicity
@@ -5837,6 +5870,16 @@ void V3LinkDot::linkDotGuts(AstNetlist* rootp, VLinkDotStep step) {
     state.dumpSelf("linkdot-preresolve");
     LinkDotResolveVisitor visitor{rootp, &state};
     state.dumpSelf("linkdot-done");
+
+    // After ARRAYED pass, clear all bind source pointers.
+    // The bind source scope is needed through ARRAYED for resolving interface port references.
+    // V3Dead::deadifyModules runs after PARAMED but bind source modules should still be
+    // referenced (instantiated) and thus not deleted.
+    if (step == LDS_ARRAYED) {
+        rootp->foreach([](AstCell* cellp) {
+            if (cellp->bindSourcep()) cellp->bindSourcep(nullptr);
+        });
+    }
 }
 
 void V3LinkDot::linkDotPrimary(AstNetlist* nodep) {

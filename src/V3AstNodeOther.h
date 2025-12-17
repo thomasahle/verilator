@@ -638,6 +638,7 @@ class AstCell final : public AstNode {
     // @astgen op4 := intfRefsp : List[AstIntfRef] // List of interface references, for tracing
     //
     // @astgen ptr := m_modp : Optional[AstNodeModule]  // [AfterLink] Pointer to module instanced
+    // @astgen ptr := m_bindSourcep : Optional[AstNodeModule]  // Module where bind statement was (if bound)
     FileLine* m_modNameFileline;  // Where module the cell instances token was
     string m_name;  // Cell name
     string m_origName;  // Original name before dot addition
@@ -676,6 +677,8 @@ public:
     FileLine* modNameFileline() const { return m_modNameFileline; }
     AstNodeModule* modp() const { return m_modp; }  // [AfterLink] = Pointer to module instantiated
     void modp(AstNodeModule* nodep) { m_modp = nodep; }
+    AstNodeModule* bindSourcep() const { return m_bindSourcep; }  // Module where bind originated
+    void bindSourcep(AstNodeModule* nodep) { m_bindSourcep = nodep; }
     bool hasIfaceVar() const { return m_hasIfaceVar; }
     void hasIfaceVar(bool flag) { m_hasIfaceVar = flag; }
     void trace(bool flag) { m_trace = flag; }
