@@ -6365,6 +6365,33 @@ class WidthVisitor final : public VNVisitor {
         iterateCheckBool(nodep, "Property", nodep->propp(), BOTH);  // it's like an if() condition.
         userIterateAndNext(nodep->passsp(), nullptr);
     }
+    void visit(AstCoverpoint* nodep) override {
+        // Coverpoint inside a covergroup - expression and iff condition need width context
+        if (nodep->exprp()) {
+            userIterateAndNext(nodep->exprp(), WidthVP{SELF, BOTH}.p());
+        }
+        if (nodep->iffp()) {
+            iterateCheckBool(nodep, "iff condition", nodep->iffp(), BOTH);
+        }
+        userIterateAndNext(nodep->binsp(), nullptr);
+        userIterateAndNext(nodep->optionsp(), nullptr);
+    }
+    void visit(AstCoverBin* nodep) override {
+        // Coverage bin - ranges and iff condition need width context
+        userIterateAndNext(nodep->rangesp(), WidthVP{SELF, BOTH}.p());
+        if (nodep->iffp()) {
+            iterateCheckBool(nodep, "iff condition", nodep->iffp(), BOTH);
+        }
+    }
+    void visit(AstCoverCross* nodep) override {
+        // Cross coverage - iff condition needs width context
+        if (nodep->iffp()) {
+            iterateCheckBool(nodep, "iff condition", nodep->iffp(), BOTH);
+        }
+        userIterateAndNext(nodep->itemsp(), nullptr);
+        userIterateAndNext(nodep->binsp(), nullptr);
+        userIterateAndNext(nodep->optionsp(), nullptr);
+    }
     void visit(AstRestrict* nodep) override {
         assertAtStatement(nodep);
         iterateCheckBool(nodep, "Property", nodep->propp(), BOTH);  // it's like an if() condition.
