@@ -460,85 +460,88 @@ class CoverageGroupVisitor final : public VNVisitor {
             return;
         }
 
-        // For now, only support 2-way crosses (most common case)
-        if (cpNames.size() > 2) {
-            xp->v3warn(E_UNSUPPORTED,
-                       "Cross coverage with more than 2 coverpoints not yet supported");
-            return;
-        }
-
         // Look up bin hit vars for each coverpoint
-        const string& cp1Name = cpNames[0];
-        const string& cp2Name = cpNames[1];
-
-        auto it1 = m_cpBinHitVars.find(cp1Name);
-        auto it2 = m_cpBinHitVars.find(cp2Name);
-
-        if (it1 == m_cpBinHitVars.end()) {
-            // For extended covergroups, inherited coverpoints aren't fully supported yet
-            if (m_classp->isExtended()) {
-                xp->v3warn(COVERIGN,
-                           "Cross coverage with inherited coverpoint '" << cp1Name << "' not fully supported");
-                return;
-            }
-            xp->v3warn(E_UNSUPPORTED,
-                       "Cross coverage references unknown coverpoint '" << cp1Name << "'");
-            return;
-        }
-        if (it2 == m_cpBinHitVars.end()) {
-            // For extended covergroups, inherited coverpoints aren't fully supported yet
-            if (m_classp->isExtended()) {
-                xp->v3warn(COVERIGN,
-                           "Cross coverage with inherited coverpoint '" << cp2Name << "' not fully supported");
-                return;
-            }
-            xp->v3warn(E_UNSUPPORTED,
-                       "Cross coverage references unknown coverpoint '" << cp2Name << "'");
-            return;
-        }
-
-        const auto& cp1Bins = it1->second;
-        const auto& cp2Bins = it2->second;
-
-        UINFO(4, "Processing cross " << crossName << " of " << cp1Name << " (" << cp1Bins.size()
-                                     << " bins) x " << cp2Name << " (" << cp2Bins.size()
-                                     << " bins)" << endl);
-
-        // Generate cross product bins
-        for (const auto& bin1 : cp1Bins) {
-            const string& bin1Name = bin1.first;
-            AstVar* hit1Varp = bin1.second;
-            for (const auto& bin2 : cp2Bins) {
-                const string& bin2Name = bin2.first;
-                AstVar* hit2Varp = bin2.second;
-                // Create cross bin hit flag
-                const string crossBinName = crossName + "_" + bin1Name + "_" + bin2Name;
-                AstVar* const crossHitVarp
-                    = createHitVar(fl, makeVarName("__Vcov_hit_", crossBinName, ""));
-
-                // Track for coverage calculation
-                m_hitVars.push_back(crossHitVarp);
-                ++m_binCount;
-
-                // Generate: if (hit1 && hit2) crossHit = 1;
-                AstVarRef* const hit1Refp = new AstVarRef{fl, hit1Varp, VAccess::READ};
-                AstVarRef* const hit2Refp = new AstVarRef{fl, hit2Varp, VAccess::READ};
-                AstNodeExpr* const condp = new AstLogAnd{fl, hit1Refp, hit2Refp};
-
-                // Apply iff condition if present
-                AstNodeExpr* finalCondp = condp;
-                if (xp->iffp()) {
-                    finalCondp = new AstLogAnd{fl, xp->iffp()->cloneTree(false), condp};
+        std::vector<const std::vector<std::pair<string, AstVar*>>*> cpBinLists;
+        for (const string& cpName : cpNames) {
+            auto it = m_cpBinHitVars.find(cpName);
+            if (it == m_cpBinHitVars.end()) {
+                // For extended covergroups, inherited coverpoints aren't fully supported yet
+                if (m_classp->isExtended()) {
+                    xp->v3warn(COVERIGN, "Cross coverage with inherited coverpoint '"
+                                             << cpName << "' not fully supported");
+                    return;
                 }
+                xp->v3warn(E_UNSUPPORTED,
+                           "Cross coverage references unknown coverpoint '" << cpName << "'");
+                return;
+            }
+            cpBinLists.push_back(&(it->second));
+        }
 
-                AstVarRef* const crossHitRefW = new AstVarRef{fl, crossHitVarp, VAccess::WRITE};
-                AstAssign* const setHitp
-                    = new AstAssign{fl, crossHitRefW, new AstConst{fl, AstConst::BitTrue{}}};
+        // Calculate total number of cross bins and log
+        size_t totalCrossBins = 1;
+        std::ostringstream crossDesc;
+        for (size_t i = 0; i < cpNames.size(); ++i) {
+            if (i > 0) crossDesc << " x ";
+            crossDesc << cpNames[i] << " (" << cpBinLists[i]->size() << " bins)";
+            totalCrossBins *= cpBinLists[i]->size();
+        }
+        UINFO(4, "Processing cross " << crossName << " of " << crossDesc.str()
+                                     << " = " << totalCrossBins << " cross bins" << endl);
 
-                AstIf* const ifp = new AstIf{fl, finalCondp, setHitp, nullptr};
-                m_sampleFuncp->addStmtsp(ifp);
+        // Generate N-way cross product bins using iterative approach
+        // Use indices to iterate through all combinations
+        std::vector<size_t> indices(cpNames.size(), 0);
+
+        while (true) {
+            // Build cross bin name and collect hit vars for current combination
+            string crossBinName = crossName;
+            std::vector<AstVar*> hitVars;
+            for (size_t i = 0; i < cpNames.size(); ++i) {
+                const auto& binPair = (*cpBinLists[i])[indices[i]];
+                crossBinName += "_" + binPair.first;
+                hitVars.push_back(binPair.second);
+            }
+
+            // Create cross bin hit flag
+            AstVar* const crossHitVarp
+                = createHitVar(fl, makeVarName("__Vcov_hit_", crossBinName, ""));
+
+            // Track for coverage calculation
+            m_hitVars.push_back(crossHitVarp);
+            ++m_binCount;
+
+            // Generate condition: hit1 && hit2 && hit3 && ...
+            AstNodeExpr* condp = new AstVarRef{fl, hitVars[0], VAccess::READ};
+            for (size_t i = 1; i < hitVars.size(); ++i) {
+                AstVarRef* const hitRefp = new AstVarRef{fl, hitVars[i], VAccess::READ};
+                condp = new AstLogAnd{fl, condp, hitRefp};
+            }
+
+            // Apply iff condition if present
+            AstNodeExpr* finalCondp = condp;
+            if (xp->iffp()) {
+                finalCondp = new AstLogAnd{fl, xp->iffp()->cloneTree(false), condp};
+            }
+
+            AstVarRef* const crossHitRefW = new AstVarRef{fl, crossHitVarp, VAccess::WRITE};
+            AstAssign* const setHitp
+                = new AstAssign{fl, crossHitRefW, new AstConst{fl, AstConst::BitTrue{}}};
+
+            AstIf* const ifp = new AstIf{fl, finalCondp, setHitp, nullptr};
+            m_sampleFuncp->addStmtsp(ifp);
+
+            // Advance to next combination (like incrementing a multi-digit number)
+            size_t pos = cpNames.size() - 1;
+            while (true) {
+                indices[pos]++;
+                if (indices[pos] < cpBinLists[pos]->size()) break;  // No overflow
+                indices[pos] = 0;  // Reset this digit and carry
+                if (pos == 0) goto done;  // All combinations exhausted
+                --pos;
             }
         }
+    done:;
     }
 
     // Generate coverage percentage calculation expression
