@@ -1120,6 +1120,45 @@ class ConstraintExprVisitor final : public VNVisitor {
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
         iterate(ltep);
     }
+    // Helper to handle power expressions (all variants)
+    void handlePow(AstNodeBiop* nodep) {
+        // Handle power expressions: special case 2**n -> (bvshl 1 n)
+        if (editFormat(nodep)) return;
+        // Check if base is constant 2
+        if (AstConst* const basep = VN_CAST(nodep->lhsp(), Const)) {
+            if (basep->num().toUQuad() == 2) {
+                // Transform 2**n to (bvshl #b1 n)
+                // user1 flag indicates dependency on random variable - transfer it
+                const bool dependsOnRand = nodep->user1();
+                FileLine* const fl = nodep->fileline();
+                const int width = nodep->width();
+                AstNodeExpr* const onep = new AstConst{fl, AstConst::WidthedValue{}, width, 1};
+                AstNodeExpr* expp = nodep->rhsp()->unlinkFrBack();
+                // SMT bvshl requires same-width operands, so extend exponent if needed
+                if (expp->width() < width) {
+                    AstExtend* const extendp = new AstExtend{fl, expp, width};
+                    extendp->dtypeSetBitSized(width, VSigning::UNSIGNED);
+                    extendp->user1(expp->user1());
+                    expp = extendp;
+                }
+                // Create shift: 1 << n (which equals 2**n)
+                AstShiftL* const shiftp = new AstShiftL{fl, onep, expp};
+                shiftp->dtypeSetBitSized(width, VSigning::UNSIGNED);
+                shiftp->user1(dependsOnRand);  // Transfer random dependency flag
+                nodep->replaceWith(shiftp);
+                VL_DO_DANGLING(nodep->deleteTree(), nodep);
+                iterate(shiftp);
+                return;
+            }
+        }
+        // For other power expressions, fall back to error
+        nodep->v3warn(E_UNSUPPORTED, "Unsupported expression inside constraint"
+                                         << "\n... note: Power expressions require base 2");
+    }
+    void visit(AstPow* nodep) override { handlePow(nodep); }
+    void visit(AstPowSS* nodep) override { handlePow(nodep); }
+    void visit(AstPowSU* nodep) override { handlePow(nodep); }
+    void visit(AstPowUS* nodep) override { handlePow(nodep); }
     void visit(AstNodeBiop* nodep) override {
         if (editFormat(nodep)) return;
         editSMT(nodep, nodep->lhsp(), nodep->rhsp());
