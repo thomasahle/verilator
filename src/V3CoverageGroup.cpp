@@ -335,7 +335,13 @@ class CoverageGroupVisitor final : public VNVisitor {
         for (AstNode* rangep = binp->rangesp(); rangep; rangep = rangep->nextp()) {
             AstNodeExpr* rangeCondp = nullptr;
 
-            if (AstInsideRange* const irp = VN_CAST(rangep, InsideRange)) {
+            if (AstCovTransition* const transp = VN_CAST(rangep, CovTransition)) {
+                // Transition coverage - warn and skip for now
+                transp->v3warn(COVERIGN,
+                               "Transition coverage (=>) is parsed but not yet "
+                               "fully implemented; bin '" + binName + "' will not be tracked");
+                continue;
+            } else if (AstInsideRange* const irp = VN_CAST(rangep, InsideRange)) {
                 // InsideRange [lo:hi] - use its built-in method to create comparison
                 rangeCondp = irp->newAndFromInside(cloneWithTransforms(cpExprp),
                                                    irp->lhsp()->cloneTree(false),

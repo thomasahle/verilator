@@ -7060,7 +7060,19 @@ trans_set<nodep>:  // ==IEEE: trans_set
                 trans_range_list                        { $$ = $1; }
         //                      // Note the { => } in the grammar, this is really a list
         |       trans_set yP_EQGT trans_range_list
-                        { $$ = $1; BBCOVERIGN($<fl>2, "Ignoring unsupported: cover trans set '=>'"); DEL($3); }
+                        {
+                            // Build a transition sequence
+                            if (AstCovTransition* const transOldp = VN_CAST($1, CovTransition)) {
+                                // Already a transition, append the new step
+                                transOldp->appendStep($3);
+                                $$ = $1;
+                            } else {
+                                // First => encountered, create new transition with both steps
+                                AstCovTransition* const transp = new AstCovTransition{$<fl>2, $1};
+                                transp->appendStep($3);
+                                $$ = transp;
+                            }
+                        }
         ;
 
 trans_range_list<nodep>:  // ==IEEE: trans_range_list
