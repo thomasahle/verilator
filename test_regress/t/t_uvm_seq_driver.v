@@ -63,14 +63,24 @@ package test_pkg;
 
   //----------------------------------------------------------------------
   // Simple driver that processes items
+  // NOTE: Extends uvm_component directly to work around Verilator parameterized class bug
   //----------------------------------------------------------------------
-  class simple_driver extends uvm_driver #(simple_item);
+  class simple_driver extends uvm_component;
     `uvm_component_utils(simple_driver)
 
+    // Declare port with concrete types (not inherited from parameterized base)
+    uvm_seq_item_pull_port #(simple_item, simple_item) seq_item_port;
     int items_processed = 0;
 
     function new(string name = "", uvm_component parent = null);
       super.new(name, parent);
+      $display("[DRV] simple_driver::new completed");
+    endfunction
+
+    virtual function void build_phase(uvm_phase phase);
+      super.build_phase(phase);
+      // Port will be created by agent
+      $display("[DRV] build_phase completed");
     endfunction
 
     virtual task run_phase(uvm_phase phase);
@@ -107,16 +117,23 @@ package test_pkg;
     endfunction
 
     virtual function void build_phase(uvm_phase phase);
+      $display("[AGT] build_phase: starting");
       super.build_phase(phase);
+      $display("[AGT] build_phase: creating sequencer");
       sequencer = new("sequencer", this);
-      driver = simple_driver::type_id::create("driver", this);
+      $display("[AGT] build_phase: creating driver");
+      driver = new("driver", this);  // Direct instantiation instead of factory
+      // Create driver's port here (Verilator workaround for parameterized class bug)
+      // Agent is not parameterized, so creating parameterized port here works
+      $display("[AGT] build_phase: creating driver's seq_item_port");
+      driver.seq_item_port = new("seq_item_port", driver);
       $display("[AGT] Agent build_phase - created sequencer and driver");
     endfunction
 
     virtual function void connect_phase(uvm_phase phase);
       super.connect_phase(phase);
       driver.seq_item_port.connect(sequencer);
-      $display("[AGT] Agent connect_phase - connected driver to sequencer");
+      $display("[AGT] connect_phase - connected driver to sequencer");
     endfunction
   endclass
 
