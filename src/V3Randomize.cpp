@@ -884,7 +884,9 @@ class ConstraintExprVisitor final : public VNVisitor {
         if (varp->user4p()) {
             varp->user4p()->v3warn(
                 CONSTRAINTIGN,
-                "Size constraint combined with element constraint may not work correctly");
+                "Size constraint combined with element constraint (foreach) may not work "
+                "correctly: element constraints are generated before the size is solved. "
+                "Consider pre-sizing the array or using separate randomization calls");
         }
 
         // Check if this variable is marked as globally constrained
