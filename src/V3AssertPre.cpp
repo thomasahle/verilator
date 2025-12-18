@@ -654,6 +654,16 @@ private:
             iterateChildren(nodep);
         }
     }
+    void visit(AstSExprClocked* nodep) override {
+        // Clocked sequence expression: @(event) sexpr
+        // Set m_senip so cycle delays within can use this clock
+        // Also set m_inPExpr so cycle delay handler knows we're in a valid context
+        VL_RESTORER(m_senip);
+        VL_RESTORER(m_inPExpr);
+        m_senip = nodep->sensesp();
+        m_inPExpr = true;  // Clocked sequence acts like a property expression for delays
+        iterateChildren(nodep);
+    }
     void visit(AstNodeModule* nodep) override {
         VL_RESTORER(m_defaultClockingp);
         VL_RESTORER(m_defaultDisablep);
@@ -682,6 +692,11 @@ private:
     void visit(AstProperty* nodep) override {
         // The body will be visited when will be substituted in place of property reference
         // (AstFuncRef)
+        VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
+    }
+    void visit(AstSequence* nodep) override {
+        // Sequence bodies are already substituted/inlined by V3LinkResolve.
+        // Delete the original to prevent visiting cycle delays without proper context.
         VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
     }
     void visit(AstNode* nodep) override { iterateChildren(nodep); }
