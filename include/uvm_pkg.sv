@@ -1350,16 +1350,35 @@ package uvm_pkg;
   endfunction
 
   // Run test function
+  // Note: In real UVM, this creates the test via factory and runs phases.
+  // For Verilator, tests should be instantiated explicitly and this function
+  // is provided for compatibility. It will wait forever (or until $finish).
   task run_test(string test_name = "");
     // Ensure globals are initialized
     __uvm_pkg_init();
 
-    $display("[UVM] run_test: Starting test '%s'", test_name);
-    // Stub - in real UVM this:
-    // 1. Creates the test component via factory
-    // 2. Runs all phases
-    // 3. Handles objections
-    $display("[UVM] run_test: Test completed");
+    $display("[UVM_INFO] %s(%0d) @ %0t: run_test: Test name = '%s' [UVM]",
+             `__FILE__, `__LINE__, $time, test_name);
+    $display("[UVM_INFO] %s(%0d) @ %0t: run_test: Note - Verilator UVM stub requires explicit test instantiation [UVM]",
+             `__FILE__, `__LINE__, $time);
+    $display("[UVM_INFO] %s(%0d) @ %0t: run_test: Waiting for simulation to complete... [UVM]",
+             `__FILE__, `__LINE__, $time);
+
+    // In real UVM, this would:
+    // 1. Look up test_name in factory registry
+    // 2. Create the test component
+    // 3. Run all phases (build, connect, run, etc.)
+    // 4. Wait for objections to be dropped
+    // 5. Report results
+    //
+    // For Verilator, we wait forever. The test should:
+    // - Be instantiated elsewhere in the testbench
+    // - Call $finish when complete
+
+    // Wait forever - simulation ends when test calls $finish
+    forever begin
+      #1000;
+    end
   endtask
 
   // Factory function stubs
