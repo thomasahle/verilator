@@ -1214,107 +1214,139 @@ package uvm_pkg;
   //----------------------------------------------------------------------
   // uvm_config_db - configuration database
   // Functional implementation using associative arrays for storage
+  // Follows standard UVM semantics for hierarchical configuration
   //----------------------------------------------------------------------
   class uvm_config_db #(type T = int);
-    // Storage for configuration values - keyed by "{context}:{inst_name}:{field_name}"
+    // Storage: maps "target_pattern:field_name" to value
+    // target_pattern is the hierarchical path pattern where this value applies
     static T m_config_db[string];
-    // Track wildcard patterns separately for matching
-    static string m_wildcard_keys[$];
+    // List of all keys for pattern matching
+    static string m_all_keys[$];
 
-    // Build a key from context and field info
-    static function string build_key(uvm_component cntxt, string inst_name, string field_name);
-      string context_path;
+    // Build the target path pattern from set() arguments
+    // set(cntxt, "*", field) -> pattern = "cntxt_path.*" (all descendants)
+    // set(cntxt, "env*", field) -> pattern = "cntxt_path.env*"
+    // set(cntxt, "", field) -> pattern = "cntxt_path" (exact)
+    // set(null, "*", field) -> pattern = "*" (global)
+    static function string build_target_pattern(uvm_component cntxt, string inst_name);
+      string cntxt_path;
       if (cntxt != null)
-        context_path = cntxt.get_full_name();
+        cntxt_path = cntxt.get_full_name();
       else
-        context_path = "";
-      return {context_path, ":", inst_name, ":", field_name};
+        cntxt_path = "";
+
+      if (inst_name == "*") begin
+        // Wildcard for all descendants
+        if (cntxt_path == "")
+          return "*";
+        else
+          return {cntxt_path, ".*"};
+      end else if (inst_name == "") begin
+        // Exact match for context itself
+        return cntxt_path;
+      end else begin
+        // Specific inst_name under context
+        if (cntxt_path == "")
+          return inst_name;
+        else
+          return {cntxt_path, ".", inst_name};
+      end
     endfunction
 
-    // Check if a pattern matches a path (simple wildcard matching)
-    static function bit match_pattern(string pattern, string path);
-      // Handle common wildcard patterns
-      if (pattern == "*" || pattern == "")
-        return 1;
-      // Check for "*" at end (e.g., "env*" matches "env.agent")
-      if (pattern[pattern.len()-1] == "*") begin
-        string prefix = pattern.substr(0, pattern.len()-2);
-        if (path.len() >= prefix.len() && path.substr(0, prefix.len()-1) == prefix)
-          return 1;
-      end
-      // Check for exact match
-      if (pattern == path)
-        return 1;
-      // Check if pattern is contained in path
-      foreach (path[i]) begin
-        if (i + pattern.len() <= path.len()) begin
-          if (path.substr(i, i + pattern.len() - 1) == pattern)
-            return 1;
+    // Build the requester path from get() arguments
+    // get(cntxt, "", field) -> path = "cntxt_path"
+    // get(cntxt, "foo", field) -> path = "cntxt_path.foo"
+    static function string build_requester_path(uvm_component cntxt, string inst_name);
+      string cntxt_path;
+      if (cntxt != null)
+        cntxt_path = cntxt.get_full_name();
+      else
+        cntxt_path = "";
+
+      if (inst_name == "")
+        return cntxt_path;
+      else if (cntxt_path == "")
+        return inst_name;
+      else
+        return {cntxt_path, ".", inst_name};
+    endfunction
+
+    // Check if a pattern matches a path
+    // "*" matches anything
+    // "foo.*" matches "foo", "foo.bar", "foo.bar.baz"
+    // "foo*" matches "foo", "foobar", "foo.bar"
+    // "foo" matches only "foo"
+    static function bit pattern_matches_path(string pattern, string path);
+      int plen, pathlen;
+
+      // Empty pattern matches empty path only
+      if (pattern == "") return (path == "");
+
+      // Global wildcard matches everything
+      if (pattern == "*") return 1;
+
+      plen = pattern.len();
+      pathlen = path.len();
+
+      // Check for ".*" suffix (descendant wildcard)
+      if (plen >= 2 && pattern.substr(plen-2, plen-1) == ".*") begin
+        string prefix = pattern.substr(0, plen-3);
+        // Matches the prefix itself or any descendant
+        if (path == prefix) return 1;
+        if (pathlen > prefix.len() && path.substr(0, prefix.len()) == prefix) begin
+          // Check that next char is "."
+          if (path[prefix.len()] == ".") return 1;
         end
+        return 0;
       end
-      return 0;
+
+      // Check for "*" suffix (prefix wildcard)
+      if (pattern[plen-1] == "*") begin
+        string prefix = pattern.substr(0, plen-2);
+        if (pathlen >= prefix.len() && path.substr(0, prefix.len()-1) == prefix)
+          return 1;
+        return 0;
+      end
+
+      // Exact match
+      return (pattern == path);
     endfunction
 
     static function void set(uvm_component cntxt, string inst_name, string field_name, T value);
-      string key = build_key(cntxt, inst_name, field_name);
-      m_config_db[key] = value;
-      // Track if this has wildcards for later matching
-      if (inst_name == "*" || inst_name.len() == 0 ||
-          (inst_name.len() > 0 && inst_name[inst_name.len()-1] == "*")) begin
-        // Check if already in wildcard list
-        bit found = 0;
-        foreach (m_wildcard_keys[i]) begin
-          if (m_wildcard_keys[i] == key) begin
-            found = 1;
-            break;
-          end
-        end
-        if (!found)
-          m_wildcard_keys.push_back(key);
+      string pattern = build_target_pattern(cntxt, inst_name);
+      string key = {pattern, ":", field_name};
+      // Add to keys list if not already there (check before setting)
+      if (!m_config_db.exists(key)) begin
+        m_all_keys.push_back(key);
       end
+      m_config_db[key] = value;
     endfunction
 
     static function bit get(uvm_component cntxt, string inst_name, string field_name, inout T value);
-      string key = build_key(cntxt, inst_name, field_name);
-      string lookup_path;
+      string req_path = build_requester_path(cntxt, inst_name);
+      string exact_key = {req_path, ":", field_name};
 
       // First try exact match
-      if (m_config_db.exists(key)) begin
-        value = m_config_db[key];
+      if (m_config_db.exists(exact_key)) begin
+        value = m_config_db[exact_key];
         return 1;
       end
 
-      // Build the full lookup path for wildcard matching
-      if (cntxt != null)
-        lookup_path = {cntxt.get_full_name(), ".", inst_name};
-      else
-        lookup_path = inst_name;
-
-      // Try wildcard matches - check all wildcard keys
-      foreach (m_wildcard_keys[i]) begin
-        string wkey = m_wildcard_keys[i];
-        // Extract the pattern from the key (format: context:inst_pattern:field_name)
-        // We need to check if this key's field_name matches and inst_pattern matches lookup_path
-        int colon1 = -1, colon2 = -1;
-        foreach (wkey[j]) begin
-          if (wkey[j] == ":") begin
-            if (colon1 < 0) colon1 = j;
-            else if (colon2 < 0) colon2 = j;
-          end
+      // Try pattern matches - scan all keys looking for matching patterns
+      foreach (m_all_keys[i]) begin
+        string key = m_all_keys[i];
+        // Key format is "pattern:field_name"
+        // Find the last colon to split pattern and field
+        int last_colon = -1;
+        foreach (key[j]) begin
+          if (key[j] == ":") last_colon = j;
         end
-        if (colon1 >= 0 && colon2 > colon1) begin
-          string key_context = wkey.substr(0, colon1-1);
-          string key_inst = wkey.substr(colon1+1, colon2-1);
-          string key_field = wkey.substr(colon2+1, wkey.len()-1);
-          // Check if field name matches and pattern matches
+        if (last_colon > 0) begin
+          string key_pattern = key.substr(0, last_colon-1);
+          string key_field = key.substr(last_colon+1, key.len()-1);
           if (key_field == field_name) begin
-            // Check context match (null context or "*" matches anything)
-            bit context_ok = (key_context == "" || key_context == "*");
-            if (!context_ok && cntxt != null) begin
-              context_ok = match_pattern(key_context, cntxt.get_full_name());
-            end
-            if (context_ok && match_pattern(key_inst, lookup_path)) begin
-              value = m_config_db[wkey];
+            if (pattern_matches_path(key_pattern, req_path)) begin
+              value = m_config_db[key];
               return 1;
             end
           end
@@ -1326,26 +1358,8 @@ package uvm_pkg;
     endfunction
 
     static function bit exists(uvm_component cntxt, string inst_name, string field_name);
-      string key = build_key(cntxt, inst_name, field_name);
-      if (m_config_db.exists(key))
-        return 1;
-      // For wildcard checking, we need to scan the wildcard keys
-      foreach (m_wildcard_keys[i]) begin
-        string wkey = m_wildcard_keys[i];
-        int colon1 = -1, colon2 = -1;
-        foreach (wkey[j]) begin
-          if (wkey[j] == ":") begin
-            if (colon1 < 0) colon1 = j;
-            else if (colon2 < 0) colon2 = j;
-          end
-        end
-        if (colon2 > colon1 && colon1 >= 0) begin
-          string key_field = wkey.substr(colon2+1, wkey.len()-1);
-          if (key_field == field_name)
-            return 1;
-        end
-      end
-      return 0;
+      T dummy;
+      return get(cntxt, inst_name, field_name, dummy);
     endfunction
 
     static function void wait_modified(uvm_component cntxt, string inst_name, string field_name);
