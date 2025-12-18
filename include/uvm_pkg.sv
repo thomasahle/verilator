@@ -1055,28 +1055,144 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
-  // uvm_config_db - configuration database (stub)
+  // uvm_config_db - configuration database
+  // Functional implementation using associative arrays for storage
   //----------------------------------------------------------------------
   class uvm_config_db #(type T = int);
+    // Storage for configuration values - keyed by "{context}:{inst_name}:{field_name}"
+    static T m_config_db[string];
+    // Track wildcard patterns separately for matching
+    static string m_wildcard_keys[$];
+
+    // Build a key from context and field info
+    static function string build_key(uvm_component cntxt, string inst_name, string field_name);
+      string context_path;
+      if (cntxt != null)
+        context_path = cntxt.get_full_name();
+      else
+        context_path = "";
+      return {context_path, ":", inst_name, ":", field_name};
+    endfunction
+
+    // Check if a pattern matches a path (simple wildcard matching)
+    static function bit match_pattern(string pattern, string path);
+      // Handle common wildcard patterns
+      if (pattern == "*" || pattern == "")
+        return 1;
+      // Check for "*" at end (e.g., "env*" matches "env.agent")
+      if (pattern[pattern.len()-1] == "*") begin
+        string prefix = pattern.substr(0, pattern.len()-2);
+        if (path.len() >= prefix.len() && path.substr(0, prefix.len()-1) == prefix)
+          return 1;
+      end
+      // Check for exact match
+      if (pattern == path)
+        return 1;
+      // Check if pattern is contained in path
+      foreach (path[i]) begin
+        if (i + pattern.len() <= path.len()) begin
+          if (path.substr(i, i + pattern.len() - 1) == pattern)
+            return 1;
+        end
+      end
+      return 0;
+    endfunction
 
     static function void set(uvm_component cntxt, string inst_name, string field_name, T value);
-      // Stub - configuration storage not implemented
-      // In real UVM this stores the value for later retrieval
+      string key = build_key(cntxt, inst_name, field_name);
+      m_config_db[key] = value;
+      // Track if this has wildcards for later matching
+      if (inst_name == "*" || inst_name.len() == 0 ||
+          (inst_name.len() > 0 && inst_name[inst_name.len()-1] == "*")) begin
+        // Check if already in wildcard list
+        bit found = 0;
+        foreach (m_wildcard_keys[i]) begin
+          if (m_wildcard_keys[i] == key) begin
+            found = 1;
+            break;
+          end
+        end
+        if (!found)
+          m_wildcard_keys.push_back(key);
+      end
     endfunction
 
     static function bit get(uvm_component cntxt, string inst_name, string field_name, inout T value);
-      // Stub - always returns 0 (not found)
-      // Derived testbenches should provide actual values
-      // Note: Using 'inout' instead of 'ref' to work around Verilator virtual interface type matching
+      string key = build_key(cntxt, inst_name, field_name);
+      string lookup_path;
+
+      // First try exact match
+      if (m_config_db.exists(key)) begin
+        value = m_config_db[key];
+        return 1;
+      end
+
+      // Build the full lookup path for wildcard matching
+      if (cntxt != null)
+        lookup_path = {cntxt.get_full_name(), ".", inst_name};
+      else
+        lookup_path = inst_name;
+
+      // Try wildcard matches - check all wildcard keys
+      foreach (m_wildcard_keys[i]) begin
+        string wkey = m_wildcard_keys[i];
+        // Extract the pattern from the key (format: context:inst_pattern:field_name)
+        // We need to check if this key's field_name matches and inst_pattern matches lookup_path
+        int colon1 = -1, colon2 = -1;
+        foreach (wkey[j]) begin
+          if (wkey[j] == ":") begin
+            if (colon1 < 0) colon1 = j;
+            else if (colon2 < 0) colon2 = j;
+          end
+        end
+        if (colon1 >= 0 && colon2 > colon1) begin
+          string key_context = wkey.substr(0, colon1-1);
+          string key_inst = wkey.substr(colon1+1, colon2-1);
+          string key_field = wkey.substr(colon2+1, wkey.len()-1);
+          // Check if field name matches and pattern matches
+          if (key_field == field_name) begin
+            // Check context match (null context or "*" matches anything)
+            bit context_ok = (key_context == "" || key_context == "*");
+            if (!context_ok && cntxt != null) begin
+              context_ok = match_pattern(key_context, cntxt.get_full_name());
+            end
+            if (context_ok && match_pattern(key_inst, lookup_path)) begin
+              value = m_config_db[wkey];
+              return 1;
+            end
+          end
+        end
+      end
+
+      // Not found
       return 0;
     endfunction
 
     static function bit exists(uvm_component cntxt, string inst_name, string field_name);
+      string key = build_key(cntxt, inst_name, field_name);
+      if (m_config_db.exists(key))
+        return 1;
+      // For wildcard checking, we need to scan the wildcard keys
+      foreach (m_wildcard_keys[i]) begin
+        string wkey = m_wildcard_keys[i];
+        int colon1 = -1, colon2 = -1;
+        foreach (wkey[j]) begin
+          if (wkey[j] == ":") begin
+            if (colon1 < 0) colon1 = j;
+            else if (colon2 < 0) colon2 = j;
+          end
+        end
+        if (colon2 > colon1 && colon1 >= 0) begin
+          string key_field = wkey.substr(colon2+1, wkey.len()-1);
+          if (key_field == field_name)
+            return 1;
+        end
+      end
       return 0;
     endfunction
 
     static function void wait_modified(uvm_component cntxt, string inst_name, string field_name);
-      // Stub - immediate return
+      // Stub - immediate return (no event-based waiting in simple implementation)
     endfunction
   endclass
 
