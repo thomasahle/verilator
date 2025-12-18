@@ -1024,6 +1024,27 @@ public:
     bool negate() const { return m_negate; }
     void negate(bool flag) { m_negate = flag; }
 };
+class AstCovTransition final : public AstNode {
+    // Transition coverage sequence (value1 => value2 => value3)
+    // Parents: AstCoverBin (in rangesp)
+    // @astgen op1 := stepsp : List[AstNode]  // List of transition steps (each step is value ranges)
+public:
+    AstCovTransition(FileLine* fl, AstNode* stepsp)
+        : ASTGEN_SUPER_CovTransition(fl) {
+        addStepsp(stepsp);
+    }
+    ASTGEN_MEMBERS_AstCovTransition;
+    void dump(std::ostream& str) const override;
+    void dumpJson(std::ostream& str) const override;
+    // Append another step to the transition sequence
+    void appendStep(AstNode* stepp) { addStepsp(stepp); }
+    // Get number of steps in the transition
+    int numSteps() const {
+        int count = 0;
+        for (AstNode* np = stepsp(); np; np = np->nextp()) ++count;
+        return count;
+    }
+};
 class AstCoverBin final : public AstNode {
     // Coverage bin definition inside a coverpoint
     // Parents: AstCoverpoint

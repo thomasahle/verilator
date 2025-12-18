@@ -3319,6 +3319,14 @@ void AstCovBinsof::dumpJson(std::ostream& str) const {
     dumpJsonBoolFunc(str, negate);
     dumpJsonGen(str);
 }
+void AstCovTransition::dump(std::ostream& str) const {
+    this->AstNode::dump(str);
+    str << " [" << numSteps() << " steps]";
+}
+void AstCovTransition::dumpJson(std::ostream& str) const {
+    dumpJsonNum(str, "numSteps", numSteps());
+    dumpJsonGen(str);
+}
 void AstCoverBin::dump(std::ostream& str) const {
     this->AstNode::dump(str);
     str << " [" << binType().ascii() << "]";
