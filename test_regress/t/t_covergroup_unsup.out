@@ -18,24 +18,6 @@
 %Warning-COVERIGN: t/t_covergroup_unsup.v:137:59: Ignoring unsupported: covergroup value range
   137 |       { bins bts2 = ( 2, 3 ), ( [5:6] ), ( [5 +/- 2] ), ( [ 5 +%- 20.0] ) ; }
       |                                                           ^
-%Warning-COVERIGN: t/t_covergroup_unsup.v:140:25: Ignoring unsupported: cover '[*'
-  140 |       { bins bts2 = ( 3 [*5] ) ; }
-      |                         ^~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:141:25: Ignoring unsupported: cover '[*'
-  141 |       { bins bts2 = ( 3 [*5:6] ) ; }
-      |                         ^~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:142:25: Ignoring unsupported: cover '[->'
-  142 |       { bins bts2 = ( 3 [->5] ) ; }
-      |                         ^~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:143:25: Ignoring unsupported: cover '[->'
-  143 |       { bins bts2 = ( 3 [->5:6] ) ; }
-      |                         ^~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:144:25: Ignoring unsupported: cover '[='
-  144 |       { bins bts2 = ( 3 [=5] ) ; }
-      |                         ^~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:145:25: Ignoring unsupported: cover '[='
-  145 |       { bins bts2 = ( 3 [=5:6] ) ; }
-      |                         ^~
 %Warning-COVERIGN: t/t_covergroup_unsup.v:159:23: Ignoring unsupported: coverage select expression with
   159 |          bins bin_e = with (a);
       |                       ^~~~
@@ -93,6 +75,30 @@
                                                  : ... note: In instance 't'
    95 |       signed id: coverpoint a iff (b);
       |                  ^~~~~~~~~~
+%Warning-COVERIGN: t/t_covergroup_unsup.v:140:25: Ignoring unsupported: cover '[*'
+                                                : ... note: In instance 't'
+  140 |       { bins bts2 = ( 3 [*5] ) ; }
+      |                         ^~
+%Warning-COVERIGN: t/t_covergroup_unsup.v:141:25: Ignoring unsupported: cover '[*'
+                                                : ... note: In instance 't'
+  141 |       { bins bts2 = ( 3 [*5:6] ) ; }
+      |                         ^~
+%Warning-COVERIGN: t/t_covergroup_unsup.v:142:25: Ignoring unsupported: cover '[->'
+                                                : ... note: In instance 't'
+  142 |       { bins bts2 = ( 3 [->5] ) ; }
+      |                         ^~~
+%Warning-COVERIGN: t/t_covergroup_unsup.v:143:25: Ignoring unsupported: cover '[->'
+                                                : ... note: In instance 't'
+  143 |       { bins bts2 = ( 3 [->5:6] ) ; }
+      |                         ^~~
+%Warning-COVERIGN: t/t_covergroup_unsup.v:144:25: Ignoring unsupported: cover '[='
+                                                : ... note: In instance 't'
+  144 |       { bins bts2 = ( 3 [=5] ) ; }
+      |                         ^~
+%Warning-COVERIGN: t/t_covergroup_unsup.v:145:25: Ignoring unsupported: cover '[='
+                                                : ... note: In instance 't'
+  145 |       { bins bts2 = ( 3 [=5:6] ) ; }
+      |                         ^~
 %Warning-COVERIGN: t/t_covergroup_unsup.v:61:36: Covergroup clocking event parsed but automatic sampling not yet implemented; call sample() manually
                                                : ... note: In instance 't'
    61 |    covergroup cg_clockingevent() @(posedge clk);
