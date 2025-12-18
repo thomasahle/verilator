@@ -678,6 +678,16 @@ package uvm_pkg;
       seq_item_export = this;
     endfunction
 
+    // Public method to send a request item (used by sequences via start_item/finish_item)
+    virtual function void send_request(REQ t);
+      m_req_fifo.push_back(t);
+    endfunction
+
+    // Get number of pending requests
+    virtual function int num_pending_reqs();
+      return m_req_fifo.size();
+    endfunction
+
     virtual task get_next_item(output REQ t);
       wait (m_req_fifo.size() > 0);
       t = m_req_fifo.pop_front();
