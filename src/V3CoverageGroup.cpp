@@ -804,6 +804,19 @@ class CoverageGroupVisitor final : public VNVisitor {
             initializeParentPtr(nodep);
         }
 
+        // Handle covergroup clocking event (automatic sampling)
+        if (AstSenItem* const clockEventp = nodep->coverClockEventp()) {
+            // For now, issue a warning that automatic sampling requires manual sample() calls
+            // TODO: Generate an always block in the containing module that calls sample()
+            clockEventp->v3warn(COVERIGN,
+                                "Covergroup clocking event parsed but automatic sampling "
+                                "not yet implemented; call sample() manually");
+            // Remove the clocking event to prevent issues in later passes (like V3Gate)
+            clockEventp->unlinkFrBack();
+            VL_DO_DANGLING(clockEventp->deleteTree(), clockEventp);
+            nodep->coverClockEventp(nullptr);
+        }
+
         m_classp = nullptr;
     }
 

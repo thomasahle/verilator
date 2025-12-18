@@ -2636,6 +2636,7 @@ public:
 // === AstNodeModule ===
 class AstClass final : public AstNodeModule {
     // @astgen op4 := extendsp : List[AstClassExtends]
+    // @astgen op3 := coverClockEventp : Optional[AstSenItem]  // Covergroup clocking event
     // MEMBERS
     // @astgen ptr := m_classOrPackagep : Optional[AstClassPackage]  // Package to be emitted with
     uint32_t m_declTokenNum;  // Declaration token number
