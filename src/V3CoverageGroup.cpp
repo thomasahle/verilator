@@ -341,6 +341,9 @@ class CoverageGroupVisitor final : public VNVisitor {
                                "Transition coverage (=>) is parsed but not yet "
                                "fully implemented; bin '" + binName + "' will not be tracked");
                 continue;
+            } else if (VN_IS(rangep, CovRepetition)) {
+                // Coverage repetition - already warned in V3Width, skip
+                continue;
             } else if (AstInsideRange* const irp = VN_CAST(rangep, InsideRange)) {
                 // InsideRange [lo:hi] - use its built-in method to create comparison
                 rangeCondp = irp->newAndFromInside(cloneWithTransforms(cpExprp),

@@ -6364,6 +6364,14 @@ class WidthVisitor final : public VNVisitor {
         // binsof() expression - intersect ranges need width context
         userIterateAndNext(nodep->intersectp(), WidthVP{SELF, BOTH}.p());
     }
+    void visit(AstCovRepetition* nodep) override {
+        // Coverage repetition - item and counts need width context
+        userIterateAndNext(nodep->itemp(), WidthVP{SELF, BOTH}.p());
+        userIterateAndNext(nodep->countp(), WidthVP{SELF, BOTH}.p());
+        userIterateAndNext(nodep->count2p(), WidthVP{SELF, BOTH}.p());
+        // Warn about unsupported repetition operators
+        nodep->v3warn(COVERIGN, "Ignoring unsupported: cover '" << nodep->repTypeString() << "'");
+    }
     void visit(AstCovTransition* nodep) override {
         // Transition sequence - each step's ranges need width context
         userIterateAndNext(nodep->stepsp(), WidthVP{SELF, BOTH}.p());

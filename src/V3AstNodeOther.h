@@ -1024,6 +1024,42 @@ public:
     bool negate() const { return m_negate; }
     void negate(bool flag) { m_negate = flag; }
 };
+// Repetition types for coverage
+enum class VCovRepetitionType : uint8_t {
+    CONSECUTIVE,  // [* N] or [* N:M] - value repeats consecutively
+    GOTO,  // [-> N] or [-> N:M] - non-consecutive with eventual match
+    NONCONSEC  // [= N] or [= N:M] - non-consecutive repetition
+};
+class AstCovRepetition final : public AstNode {
+    // Repetition in coverage transition bins ([*N], [->N], [=N])
+    // Parents: AstCoverBin (in rangesp) as part of trans_range_list
+    // @astgen op1 := itemp : AstNode  // The item being repeated
+    // @astgen op2 := countp : AstNodeExpr  // Repetition count (or low bound)
+    // @astgen op3 := count2p : Optional[AstNodeExpr]  // High bound for range (if present)
+    VCovRepetitionType m_type;  // Repetition type
+public:
+    AstCovRepetition(FileLine* fl, VCovRepetitionType type, AstNode* itemp, AstNodeExpr* countp,
+                     AstNodeExpr* count2p = nullptr)
+        : ASTGEN_SUPER_CovRepetition(fl)
+        , m_type{type} {
+        this->itemp(itemp);
+        this->countp(countp);
+        this->count2p(count2p);
+    }
+    ASTGEN_MEMBERS_AstCovRepetition;
+    void dump(std::ostream& str) const override;
+    void dumpJson(std::ostream& str) const override;
+    VCovRepetitionType repType() const { return m_type; }
+    bool isRange() const { return count2p() != nullptr; }
+    const char* repTypeString() const {
+        switch (m_type) {
+        case VCovRepetitionType::CONSECUTIVE: return "[*";
+        case VCovRepetitionType::GOTO: return "[->";
+        case VCovRepetitionType::NONCONSEC: return "[=";
+        }
+        return "??";  // LCOV_EXCL_LINE
+    }
+};
 class AstCovTransition final : public AstNode {
     // Transition coverage sequence (value1 => value2 => value3)
     // Parents: AstCoverBin (in rangesp)

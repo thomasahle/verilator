@@ -7078,17 +7078,17 @@ trans_set<nodep>:  // ==IEEE: trans_set
 trans_range_list<nodep>:  // ==IEEE: trans_range_list
                 trans_item                              { $$ = $1; }
         |       trans_item yP_BRASTAR cgexpr ']'
-                        { $$ = nullptr; BBCOVERIGN($<fl>2, "Ignoring unsupported: cover '[*'"); DEL($1, $3); }
+                        { $$ = new AstCovRepetition{$<fl>2, VCovRepetitionType::CONSECUTIVE, $1, $3}; }
         |       trans_item yP_BRASTAR cgexpr ':' cgexpr ']'
-                        { $$ = nullptr; BBCOVERIGN($<fl>2, "Ignoring unsupported: cover '[*'"); DEL($1, $3, $5); }
+                        { $$ = new AstCovRepetition{$<fl>2, VCovRepetitionType::CONSECUTIVE, $1, $3, $5}; }
         |       trans_item yP_BRAMINUSGT cgexpr ']'
-                        { $$ = nullptr; BBCOVERIGN($<fl>2, "Ignoring unsupported: cover '[->'"); DEL($1, $3); }
+                        { $$ = new AstCovRepetition{$<fl>2, VCovRepetitionType::GOTO, $1, $3}; }
         |       trans_item yP_BRAMINUSGT cgexpr ':' cgexpr ']'
-                        { $$ = nullptr; BBCOVERIGN($<fl>2, "Ignoring unsupported: cover '[->'"); DEL($1, $3, $5); }
+                        { $$ = new AstCovRepetition{$<fl>2, VCovRepetitionType::GOTO, $1, $3, $5}; }
         |       trans_item yP_BRAEQ cgexpr ']'
-                        { $$ = nullptr; BBCOVERIGN($<fl>2, "Ignoring unsupported: cover '[='"); DEL($1, $3); }
+                        { $$ = new AstCovRepetition{$<fl>2, VCovRepetitionType::NONCONSEC, $1, $3}; }
         |       trans_item yP_BRAEQ cgexpr ':' cgexpr ']'
-                        { $$ = nullptr; BBCOVERIGN($<fl>2, "Ignoring unsupported: cover '[='"); DEL($1, $3, $5); }
+                        { $$ = new AstCovRepetition{$<fl>2, VCovRepetitionType::NONCONSEC, $1, $3, $5}; }
         ;
 
 trans_item<nodep>:  // ==IEEE: range_list

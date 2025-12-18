@@ -3317,6 +3317,16 @@ void AstCovBinsof::dumpJson(std::ostream& str) const {
     dumpJsonBoolFunc(str, negate);
     dumpJsonGen(str);
 }
+void AstCovRepetition::dump(std::ostream& str) const {
+    this->AstNode::dump(str);
+    str << " " << repTypeString();
+    if (isRange()) str << " [range]";
+}
+void AstCovRepetition::dumpJson(std::ostream& str) const {
+    dumpJsonStr(str, "repType", repTypeString());
+    dumpJsonBoolFunc(str, isRange);
+    dumpJsonGen(str);
+}
 void AstCovTransition::dump(std::ostream& str) const {
     this->AstNode::dump(str);
     str << " [" << numSteps() << " steps]";
