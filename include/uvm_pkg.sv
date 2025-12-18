@@ -99,10 +99,17 @@ package uvm_pkg;
   typedef class uvm_object;
   typedef class uvm_component;
   typedef class uvm_sequence_item;
+  typedef class uvm_sequence_base;
+  typedef class uvm_sequencer_base;
   typedef class uvm_phase;
   typedef class uvm_objection;
   typedef class uvm_object_wrapper;
   typedef class uvm_factory;
+  typedef class uvm_comparer;
+  typedef class uvm_printer;
+  typedef class uvm_packer;
+  typedef class uvm_recorder;
+  typedef class uvm_analysis_imp_base;
 
   //----------------------------------------------------------------------
   // uvm_void - base class for all UVM classes
@@ -951,6 +958,127 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
+  // Analysis port base class for type-independent storage
+  // (moved before uvm_driver which uses these)
+  //----------------------------------------------------------------------
+  virtual class uvm_analysis_imp_base extends uvm_object;
+    function new(string name = "");
+      super.new(name);
+    endfunction
+
+    pure virtual function void write_object(uvm_object t);
+  endclass
+
+  //----------------------------------------------------------------------
+  // Analysis ports
+  //----------------------------------------------------------------------
+  class uvm_analysis_port #(type T = uvm_object) extends uvm_object;
+    protected uvm_component m_parent;
+    protected uvm_analysis_imp_base m_subscribers[$];
+
+    function new(string name = "", uvm_component parent = null);
+      super.new(name);
+      m_parent = parent;
+    endfunction
+
+    // Connect to any analysis imp (type-erased)
+    virtual function void connect(uvm_analysis_imp_base imp);
+      m_subscribers.push_back(imp);
+    endfunction
+
+    virtual function void write(T t);
+      foreach (m_subscribers[i])
+        m_subscribers[i].write_object(t);
+    endfunction
+  endclass
+
+  class uvm_analysis_imp #(type T = uvm_object, type IMP = uvm_component) extends uvm_analysis_imp_base;
+    protected IMP m_imp;
+
+    function new(string name = "", IMP imp = null);
+      super.new(name);
+      m_imp = imp;
+    endfunction
+
+    virtual function void write(T t);
+      // Call the write() method on the implementing class
+      if (m_imp != null)
+        m_imp.write(t);
+    endfunction
+
+    virtual function void write_object(uvm_object t);
+      T item;
+      if ($cast(item, t))
+        write(item);
+    endfunction
+  endclass
+
+  class uvm_analysis_export #(type T = uvm_object) extends uvm_object;
+    protected uvm_analysis_imp_base m_imp;
+
+    function new(string name = "", uvm_component parent = null);
+      super.new(name);
+    endfunction
+
+    virtual function void connect(uvm_analysis_imp_base imp);
+      m_imp = imp;
+    endfunction
+
+    virtual function void write(T t);
+      if (m_imp != null)
+        m_imp.write_object(t);
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // TLM ports (moved before uvm_driver which uses these)
+  //----------------------------------------------------------------------
+  class uvm_seq_item_pull_port #(type REQ = uvm_sequence_item, type RSP = REQ) extends uvm_object;
+    protected uvm_component m_parent;
+    protected uvm_sequencer #(REQ, RSP) m_sequencer;
+
+    function new(string name = "", uvm_component parent = null);
+      super.new(name);
+      m_parent = parent;
+    endfunction
+
+    virtual function void connect(uvm_sequencer #(REQ, RSP) sequencer);
+      m_sequencer = sequencer;
+    endfunction
+
+    virtual task get_next_item(output REQ t);
+      if (m_sequencer != null)
+        m_sequencer.get_next_item(t);
+    endtask
+
+    virtual task try_next_item(output REQ t);
+      if (m_sequencer != null)
+        m_sequencer.try_next_item(t);
+      else
+        t = null;
+    endtask
+
+    virtual function void item_done(RSP item = null);
+      if (m_sequencer != null)
+        m_sequencer.item_done(item);
+    endfunction
+
+    virtual task get(output REQ t);
+      get_next_item(t);
+    endtask
+
+    virtual task peek(output REQ t);
+      if (m_sequencer != null)
+        m_sequencer.peek(t);
+    endtask
+
+    virtual task put(RSP t);
+      if (m_sequencer != null)
+        m_sequencer.put(t);
+    endtask
+  endclass
+
+  //----------------------------------------------------------------------
   // uvm_driver - driver base class
   //----------------------------------------------------------------------
   class uvm_driver #(type REQ = uvm_sequence_item, type RSP = REQ) extends uvm_component;
@@ -1035,126 +1163,6 @@ package uvm_pkg;
     function new(string name = "", uvm_component parent = null);
       super.new(name, parent);
     endfunction
-  endclass
-
-  //----------------------------------------------------------------------
-  // Analysis port base class for type-independent storage
-  //----------------------------------------------------------------------
-  virtual class uvm_analysis_imp_base extends uvm_object;
-    function new(string name = "");
-      super.new(name);
-    endfunction
-
-    pure virtual function void write_object(uvm_object t);
-  endclass
-
-  //----------------------------------------------------------------------
-  // Analysis ports
-  //----------------------------------------------------------------------
-  class uvm_analysis_port #(type T = uvm_object) extends uvm_object;
-    protected uvm_component m_parent;
-    protected uvm_analysis_imp_base m_subscribers[$];
-
-    function new(string name = "", uvm_component parent = null);
-      super.new(name);
-      m_parent = parent;
-    endfunction
-
-    // Connect to any analysis imp (type-erased)
-    virtual function void connect(uvm_analysis_imp_base imp);
-      m_subscribers.push_back(imp);
-    endfunction
-
-    virtual function void write(T t);
-      foreach (m_subscribers[i])
-        m_subscribers[i].write_object(t);
-    endfunction
-  endclass
-
-  class uvm_analysis_imp #(type T = uvm_object, type IMP = uvm_component) extends uvm_analysis_imp_base;
-    protected IMP m_imp;
-
-    function new(string name = "", IMP imp = null);
-      super.new(name);
-      m_imp = imp;
-    endfunction
-
-    virtual function void write(T t);
-      // Call the write() method on the implementing class
-      if (m_imp != null)
-        m_imp.write(t);
-    endfunction
-
-    virtual function void write_object(uvm_object t);
-      T item;
-      if ($cast(item, t))
-        write(item);
-    endfunction
-  endclass
-
-  class uvm_analysis_export #(type T = uvm_object) extends uvm_object;
-    protected uvm_analysis_imp_base m_imp;
-
-    function new(string name = "", uvm_component parent = null);
-      super.new(name);
-    endfunction
-
-    virtual function void connect(uvm_analysis_imp_base imp);
-      m_imp = imp;
-    endfunction
-
-    virtual function void write(T t);
-      if (m_imp != null)
-        m_imp.write_object(t);
-    endfunction
-  endclass
-
-  //----------------------------------------------------------------------
-  // TLM ports
-  //----------------------------------------------------------------------
-  class uvm_seq_item_pull_port #(type REQ = uvm_sequence_item, type RSP = REQ) extends uvm_object;
-    protected uvm_component m_parent;
-    protected uvm_sequencer #(REQ, RSP) m_sequencer;
-
-    function new(string name = "", uvm_component parent = null);
-      super.new(name);
-      m_parent = parent;
-    endfunction
-
-    virtual function void connect(uvm_sequencer #(REQ, RSP) sequencer);
-      m_sequencer = sequencer;
-    endfunction
-
-    virtual task get_next_item(output REQ t);
-      if (m_sequencer != null)
-        m_sequencer.get_next_item(t);
-    endtask
-
-    virtual task try_next_item(output REQ t);
-      if (m_sequencer != null)
-        m_sequencer.try_next_item(t);
-      else
-        t = null;
-    endtask
-
-    virtual function void item_done(RSP item = null);
-      if (m_sequencer != null)
-        m_sequencer.item_done(item);
-    endfunction
-
-    virtual task get(output REQ t);
-      get_next_item(t);
-    endtask
-
-    virtual task peek(output REQ t);
-      if (m_sequencer != null)
-        m_sequencer.peek(t);
-    endtask
-
-    virtual task put(RSP t);
-      if (m_sequencer != null)
-        m_sequencer.put(t);
-    endtask
   endclass
 
   //----------------------------------------------------------------------
