@@ -1,11 +1,8 @@
-%Warning-COVERIGN: t/t_covergroup_unsup.v:61:34: Ignoring unsupported: coverage clocking event
-   61 |    covergroup cg_clockingevent() @(posedge clk);
-      |                                  ^
-                   ... For warning description see https://verilator.org/warn/COVERIGN?v=5.043
-                   ... Use "/* verilator lint_off COVERIGN */" and lint_on around source to disable this message.
 %Warning-COVERIGN: t/t_covergroup_unsup.v:65:25: Ignoring unsupported: coverage '@@' events
    65 |    covergroup cg_atat() @@ (begin funca or end funcb);
       |                         ^~
+                   ... For warning description see https://verilator.org/warn/COVERIGN?v=latest
+                   ... Use "/* verilator lint_off COVERIGN */" and lint_on around source to disable this message.
 %Warning-COVERIGN: t/t_covergroup_unsup.v:109:24: Ignoring unsupported: coverage cross 'function' declaration
   109 |          function void crossfunc; endfunction
       |                        ^~~~~~~~~
@@ -120,14 +117,11 @@
 %Warning-COVERIGN: t/t_covergroup_unsup.v:168:37: Ignoring unsupported: coverage select expression 'binsof'
   168 |          bins bin_multiple_fields = binsof(p.inner_packet.field);
       |                                     ^~~~~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:179:23: Ignoring unsupported: coverage clocking event
-  179 |       covergroup cov1 @m_z;
-      |                       ^
 %Warning-WIDTHTRUNC: t/t_covergroup_unsup.v:77:7: Logical operator COVERPOINT expects 1 bit on the iff condition, but iff condition's VARREF 'b' generates 32 bits.
                                                 : ... note: In instance 't'
    77 |       coverpoint a iff (b);
       |       ^~~~~~~~~~
-                     ... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=5.043
+                     ... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=latest
                      ... Use "/* verilator lint_off WIDTHTRUNC */" and lint_on around source to disable this message.
 %Warning-WIDTHTRUNC: t/t_covergroup_unsup.v:80:11: Logical operator COVERPOINT 'id' expects 1 bit on the iff condition, but iff condition's VARREF 'b' generates 32 bits.
                                                  : ... note: In instance 't'
@@ -153,11 +147,15 @@
                                                  : ... note: In instance 't'
    95 |       signed id: coverpoint a iff (b);
       |                  ^~~~~~~~~~
+%Warning-COVERIGN: t/t_covergroup_unsup.v:61:36: Covergroup clocking event parsed but automatic sampling not yet implemented; call sample() manually
+                                               : ... note: In instance 't'
+   61 |    covergroup cg_clockingevent() @(posedge clk);
+      |                                    ^~~~~~~
 %Error-UNSUPPORTED: t/t_covergroup_unsup.v:99:7: Cross coverage references unknown coverpoint 'a'
                                                : ... note: In instance 't'
    99 |       cross a, b iff (!rst);
       |       ^~~~~
-                    ... For error description see https://verilator.org/warn/UNSUPPORTED?v=5.043
+                    ... For error description see https://verilator.org/warn/UNSUPPORTED?v=latest
 %Error-UNSUPPORTED: t/t_covergroup_unsup.v:102:7: Cross coverage references unknown coverpoint 'a'
                                                 : ... note: In instance 't'
   102 |       cross a, b iff (!rst) {}
@@ -178,4 +176,8 @@
                                                 : ... note: In instance 't'
   150 |       cross a, b {
       |       ^~~~~
-%Error: Exiting due to 6 error(s), 48 warning(s)
+%Warning-COVERIGN: t/t_covergroup_unsup.v:179:24: Covergroup clocking event parsed but automatic sampling not yet implemented; call sample() manually
+                                                : ... note: In instance 't'
+  179 |       covergroup cov1 @m_z;
+      |                        ^~~
+%Error: Exiting due to

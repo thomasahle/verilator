@@ -6867,8 +6867,15 @@ covergroup_declaration<nodep>:  // ==IEEE: covergroup_declaration
                           // (so coverpoint expressions can reference them)
                           AstClass* cgClassp = new AstClass{$<fl>2, *$2, PARSEP->libname()};
                           cgClassp->isCovergroup(true);
+                          // Check if coverage_eventE is a clocking event or sample args
+                          AstSenItem* clockEventp = VN_CAST($4, SenItem);
+                          AstNode* sampleArgsp = clockEventp ? nullptr : $4;
+                          if (clockEventp) {
+                              // Store clocking event in covergroup
+                              cgClassp->coverClockEventp(clockEventp);
+                          }
                           // Add sample args as class members (cloned) so they're in scope
-                          for (AstNode* argp = $4; argp; argp = argp->nextp()) {
+                          for (AstNode* argp = sampleArgsp; argp; argp = argp->nextp()) {
                               if (AstVar* varp = VN_CAST(argp, Var)) {
                                   AstVar* memberp = varp->cloneTree(false);
                                   memberp->varType(VVarType::MEMBER);
@@ -6891,7 +6898,9 @@ covergroup_declaration<nodep>:  // ==IEEE: covergroup_declaration
                           newp->addStmtsp($3);
                           newp->addStmtsp($7);
                           cgClassp->addMembersp(newp);
-                          GRAMMARP->createCoverGroupMethods(cgClassp, $4);
+                          // Pass sample args (not clocking event) to createCoverGroupMethods
+                          AstNode* sampleArgsp = VN_IS($4, SenItem) ? nullptr : $4;
+                          GRAMMARP->createCoverGroupMethods(cgClassp, sampleArgsp);
 
                           $$ = cgClassp;
                           GRAMMARP->endLabel($<fl>9, $$, $9);
@@ -7192,7 +7201,7 @@ bins_expression<nodep>:  // ==IEEE: bins_expression
 coverage_eventE<nodep>:  // IEEE: [ coverage_event ]
                 /* empty */                             { $$ = nullptr; }
         |       clocking_event
-                        { $$ = nullptr; BBCOVERIGN($<fl>1, "Ignoring unsupported: coverage clocking event"); DEL($1); }
+                        { $$ = $1; }  // Return clocking event (AstSenItem)
         |       yWITH__ETC yFUNCTION idAny/*"sample"*/ '(' tf_port_listE ')'
                         { if (*$3 != "sample") {
                             $<fl>3->v3error("Coverage sampling function must be named 'sample'");
