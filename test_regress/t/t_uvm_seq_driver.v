@@ -1,206 +1,194 @@
-// DESCRIPTION: Verilator: Test UVM driver-sequencer handshake pattern
+// DESCRIPTION: Verilator: Test UVM sequence/driver flow with start_item/finish_item
 //
 // This file ONLY is placed under the Creative Commons Public Domain, for
 // any use, without warranty, 2025 by Wilson Snyder.
 // SPDX-License-Identifier: CC0-1.0
 
+// Test sequence/driver communication using start_item/finish_item flow
+
 `include "uvm_macros.svh"
-import uvm_pkg::*;
 
-//----------------------------------------------------------------------
-// Simple transaction class
-//----------------------------------------------------------------------
-class simple_tx extends uvm_sequence_item;
-  `uvm_object_utils(simple_tx)
+package test_pkg;
 
-  rand bit [7:0] data;
-  int id;
+  import uvm_pkg::*;
 
-  function new(string name = "simple_tx");
-    super.new(name);
-  endfunction
+  //----------------------------------------------------------------------
+  // Simple transaction class
+  //----------------------------------------------------------------------
+  class simple_item extends uvm_sequence_item;
+    `uvm_object_utils(simple_item)
 
-  virtual function string convert2string();
-    return $sformatf("id=%0d data=%h", id, data);
-  endfunction
-endclass
+    rand int unsigned data;
+    rand int unsigned addr;
+    int item_id;
 
-//----------------------------------------------------------------------
-// Simple sequence - creates and sends transactions
-//----------------------------------------------------------------------
-class simple_seq extends uvm_sequence #(simple_tx);
-  `uvm_object_utils(simple_seq)
+    function new(string name = "simple_item");
+      super.new(name);
+    endfunction
 
-  int num_items = 3;
+    virtual function string convert2string();
+      return $sformatf("item_id=%0d addr=0x%0h data=0x%0h", item_id, addr, data);
+    endfunction
+  endclass
 
-  function new(string name = "simple_seq");
-    super.new(name);
-  endfunction
+  //----------------------------------------------------------------------
+  // Simple sequence that sends items using start_item/finish_item
+  //----------------------------------------------------------------------
+  class simple_sequence extends uvm_sequence #(simple_item);
+    `uvm_object_utils(simple_sequence)
 
-  virtual task body();
-    `uvm_info("SEQ", $sformatf("Starting sequence, generating %0d items", num_items), UVM_LOW)
-    for (int i = 0; i < num_items; i++) begin
-      simple_tx tx;
-      tx = simple_tx::type_id::create($sformatf("tx%0d", i));
-      tx.id = i;
-      void'(tx.randomize());
+    int num_items = 3;
 
-      // Standard UVM sequence handshake
-      start_item(tx);
-      `uvm_info("SEQ", $sformatf("Sending item %0d: %s", i, tx.convert2string()), UVM_LOW)
-      finish_item(tx);
-    end
-    `uvm_info("SEQ", "Sequence complete", UVM_LOW)
-  endtask
-endclass
+    function new(string name = "simple_sequence");
+      super.new(name);
+    endfunction
 
-//----------------------------------------------------------------------
-// Simple driver - gets transactions from sequencer
-//----------------------------------------------------------------------
-class simple_driver extends uvm_driver #(simple_tx);
-  `uvm_component_utils(simple_driver)
-
-  int items_driven = 0;
-
-  function new(string name = "", uvm_component parent = null);
-    super.new(name, parent);
-  endfunction
-
-  virtual task run_phase(uvm_phase phase);
-    simple_tx tx;
-
-    `uvm_info("DRV", "Driver starting", UVM_LOW)
-
-    // Driver loop - get items and process them
-    forever begin
-      // Get next item from sequencer
-      seq_item_port.get_next_item(tx);
-
-      if (tx != null) begin
-        items_driven++;
-        `uvm_info("DRV", $sformatf("Driving item %0d: %s", items_driven, tx.convert2string()), UVM_LOW)
-
-        // Signal completion
-        seq_item_port.item_done();
+    virtual task body();
+      simple_item item;
+      $display("[SEQ] Starting sequence body");
+      for (int i = 0; i < num_items; i++) begin
+        item = simple_item::type_id::create("item");
+        item.item_id = i;
+        item.data = 100 + i;
+        item.addr = i * 4;
+        $display("[SEQ] Starting item %0d @ %0t", i, $time);
+        start_item(item);
+        $display("[SEQ] Item %0d granted @ %0t", i, $time);
+        finish_item(item);
+        $display("[SEQ] Item %0d completed @ %0t", i, $time);
       end
-    end
-  endtask
+      $display("[SEQ] Sequence body complete");
+    endtask
+  endclass
 
-  function int get_count();
-    return items_driven;
-  endfunction
-endclass
+  //----------------------------------------------------------------------
+  // Simple driver that processes items
+  //----------------------------------------------------------------------
+  class simple_driver extends uvm_driver #(simple_item);
+    `uvm_component_utils(simple_driver)
 
-//----------------------------------------------------------------------
-// Simple agent - contains driver and sequencer
-//----------------------------------------------------------------------
-class simple_agent extends uvm_agent;
-  `uvm_component_utils(simple_agent)
+    int items_processed = 0;
 
-  simple_driver drv;
-  uvm_sequencer #(simple_tx) seqr;
+    function new(string name = "", uvm_component parent = null);
+      super.new(name, parent);
+    endfunction
 
-  function new(string name = "", uvm_component parent = null);
-    super.new(name, parent);
-  endfunction
+    virtual task run_phase(uvm_phase phase);
+      simple_item item;
+      $display("[DRV] Driver run_phase starting @ %0t", $time);
 
-  virtual function void build_phase(uvm_phase phase);
-    super.build_phase(phase);
-    drv = simple_driver::type_id::create("drv", this);
-    seqr = new("seqr", this);
-  endfunction
+      forever begin
+        // Get next item from sequencer
+        seq_item_port.get_next_item(item);
+        $display("[DRV] Got item: %s @ %0t", item.convert2string(), $time);
 
-  virtual function void connect_phase(uvm_phase phase);
-    super.connect_phase(phase);
-    // Connect driver's seq_item_port to sequencer's seq_item_export
-    drv.seq_item_port.connect(seqr.seq_item_export);
-  endfunction
-endclass
+        // Simulate some processing time
+        #5;
 
-//----------------------------------------------------------------------
-// Test
-//----------------------------------------------------------------------
-class simple_test extends uvm_test;
-  `uvm_component_utils(simple_test)
+        // Signal item complete
+        seq_item_port.item_done();
+        items_processed++;
+        $display("[DRV] Item done, processed=%0d @ %0t", items_processed, $time);
+      end
+    endtask
+  endclass
 
-  simple_agent agent;
-  simple_seq seq;
+  //----------------------------------------------------------------------
+  // Simple agent with sequencer and driver
+  //----------------------------------------------------------------------
+  class simple_agent extends uvm_agent;
+    `uvm_component_utils(simple_agent)
 
-  function new(string name = "", uvm_component parent = null);
-    super.new(name, parent);
-  endfunction
+    uvm_sequencer #(simple_item) sequencer;
+    simple_driver driver;
 
-  virtual function void build_phase(uvm_phase phase);
-    super.build_phase(phase);
-    agent = simple_agent::type_id::create("agent", this);
-    seq = simple_seq::type_id::create("seq");
-  endfunction
+    function new(string name = "", uvm_component parent = null);
+      super.new(name, parent);
+    endfunction
 
-  virtual task run_phase(uvm_phase phase);
-    `uvm_info("TEST", "Starting driver-sequencer handshake test", UVM_LOW)
+    virtual function void build_phase(uvm_phase phase);
+      super.build_phase(phase);
+      sequencer = new("sequencer", this);
+      driver = simple_driver::type_id::create("driver", this);
+      $display("[AGT] Agent build_phase - created sequencer and driver");
+    endfunction
 
-    // Put some items in the sequencer's FIFO using public send_request() method
-    for (int i = 0; i < 3; i++) begin
-      simple_tx tx;
-      tx = simple_tx::type_id::create($sformatf("tx%0d", i));
-      tx.id = i;
-      void'(tx.randomize());
-      `uvm_info("TEST", $sformatf("Sending item %0d to sequencer: %s", i, tx.convert2string()), UVM_LOW)
-      agent.seqr.send_request(tx);
-    end
+    virtual function void connect_phase(uvm_phase phase);
+      super.connect_phase(phase);
+      driver.seq_item_port.connect(sequencer);
+      $display("[AGT] Agent connect_phase - connected driver to sequencer");
+    endfunction
+  endclass
 
-    // Let the driver process items (driver is in forever loop, so we just wait)
-    // Wait for driver to process all items
-    wait (agent.drv.get_count() >= 3);
+  //----------------------------------------------------------------------
+  // Test class
+  //----------------------------------------------------------------------
+  class seq_driver_test extends uvm_test;
+    `uvm_component_utils(seq_driver_test)
 
-    // Check results
-    `uvm_info("TEST", $sformatf("Driver processed %0d items", agent.drv.get_count()), UVM_LOW)
+    simple_agent agent;
+    int expected_items = 3;
 
-    if (agent.drv.get_count() == 3) begin
-      `uvm_info("TEST", "Driver-sequencer handshake working correctly!", UVM_LOW)
-    end else begin
-      `uvm_error("TEST", "Driver-sequencer handshake failed!")
-    end
+    function new(string name = "seq_driver_test", uvm_component parent = null);
+      super.new(name, parent);
+    endfunction
 
-    `uvm_info("TEST", "Test complete", UVM_LOW)
-  endtask
-endclass
+    virtual function void build_phase(uvm_phase phase);
+      super.build_phase(phase);
+      agent = simple_agent::type_id::create("agent", this);
+      $display("[TEST] build_phase - created agent");
+    endfunction
 
-//----------------------------------------------------------------------
-// Top module
-//----------------------------------------------------------------------
+    virtual task run_phase(uvm_phase phase);
+      simple_sequence seq;
+      super.run_phase(phase);
+      $display("[TEST] run_phase started @ %0t", $time);
+      phase.raise_objection(this, "Running test");
+
+      // Create and start the sequence
+      seq = simple_sequence::type_id::create("seq");
+      seq.num_items = expected_items;
+      $display("[TEST] Starting sequence @ %0t", $time);
+      seq.start(agent.sequencer);
+      $display("[TEST] Sequence completed @ %0t", $time);
+
+      // Small delay to allow driver to finish
+      #10;
+
+      phase.drop_objection(this, "Test complete");
+      $display("[TEST] run_phase ended @ %0t", $time);
+    endtask
+
+    virtual function void report_phase(uvm_phase phase);
+      super.report_phase(phase);
+      $display("[TEST] report_phase: driver processed %0d items", agent.driver.items_processed);
+
+      if (agent.driver.items_processed == expected_items) begin
+        $display("*-* All Finished *-*");
+      end else begin
+        $display("%%Error: Expected %0d items processed, got %0d",
+                 expected_items, agent.driver.items_processed);
+        $stop;
+      end
+    endfunction
+  endclass
+
+endpackage
+
 module t;
+  import uvm_pkg::*;
+  import test_pkg::*;
+
   initial begin
-    simple_test test;
-    uvm_phase phase;
+    // Register types with factory
+    simple_item::type_id::register();
+    simple_sequence::type_id::register();
+    simple_driver::type_id::register();
+    simple_agent::type_id::register();
+    seq_driver_test::type_id::register();
 
-    `uvm_info("TOP", "Starting UVM driver-sequencer handshake test", UVM_LOW)
-
-    // Create test
-    test = new("test", null);
-
-    // Build phase
-    phase = new("build");
-    test.build_phase(phase);
-    test.agent.build_phase(phase);
-    test.agent.drv.build_phase(phase);
-    test.agent.seqr.build_phase(phase);
-
-    // Connect phase
-    phase = new("connect");
-    test.connect_phase(phase);
-    test.agent.connect_phase(phase);
-
-    `uvm_info("TOP", "Build and connect phases complete", UVM_LOW)
-
-    // Run phase - start driver and test in parallel
-    phase = new("run");
-    fork
-      test.agent.drv.run_phase(phase);
-      test.run_phase(phase);
-    join_any
-
-    $display("*-* All Finished *-*");
-    $finish;
+    // Run the test
+    run_test("seq_driver_test");
   end
+
 endmodule
