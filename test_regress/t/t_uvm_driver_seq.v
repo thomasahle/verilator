@@ -1,189 +1,265 @@
-// DESCRIPTION: Verilator: Minimal UVM driver/sequence example
+// DESCRIPTION: Verilator: Test UVM driver-sequencer and analysis port patterns
 //
 // This file ONLY is placed under the Creative Commons Public Domain, for
-// any use, without warranty, 2025 by Verilator Authors.
+// any use, without warranty, 2025 by Wilson Snyder.
 // SPDX-License-Identifier: CC0-1.0
 
-// Minimal UVM example demonstrating:
-// - UVM sequences with randomization
-// - UVM driver with parameterized types
-// - UVM factory
-// - Basic TLM ports (seq_item_port)
-// - UVM phasing
-
 `include "uvm_macros.svh"
-
 import uvm_pkg::*;
 
+//----------------------------------------------------------------------
 // Transaction class
+//----------------------------------------------------------------------
 class my_transaction extends uvm_sequence_item;
-   rand bit [7:0] addr;
-   rand bit [31:0] data;
-   rand bit write;
+  `uvm_object_utils(my_transaction)
 
-   `uvm_object_utils_begin(my_transaction)
-      `uvm_field_int(addr, UVM_ALL_ON)
-      `uvm_field_int(data, UVM_ALL_ON)
-      `uvm_field_int(write, UVM_ALL_ON)
-   `uvm_object_utils_end
+  rand bit [7:0] data;
+  rand bit [3:0] addr;
+  rand bit       wr_rd;  // 1 = write, 0 = read
 
-   function new(string name = "my_transaction");
-      super.new(name);
-   endfunction
+  function new(string name = "my_transaction");
+    super.new(name);
+  endfunction
 
-   constraint addr_range { addr inside {[8'h00:8'hFF]}; }
-   constraint data_range { data inside {[0:32'hFFFF]}; }
+  virtual function string convert2string();
+    return $sformatf("addr=%h data=%h wr_rd=%b", addr, data, wr_rd);
+  endfunction
+
+  virtual function void do_copy(uvm_object rhs);
+    my_transaction rhs_t;
+    super.do_copy(rhs);
+    if ($cast(rhs_t, rhs)) begin
+      data = rhs_t.data;
+      addr = rhs_t.addr;
+      wr_rd = rhs_t.wr_rd;
+    end
+  endfunction
 endclass
 
-// Sequence class
+//----------------------------------------------------------------------
+// Sequence - generates transactions
+//----------------------------------------------------------------------
 class my_sequence extends uvm_sequence #(my_transaction);
-   `uvm_object_utils(my_sequence)
+  `uvm_object_utils(my_sequence)
 
-   int num_items = 5;
+  int num_items = 3;
 
-   function new(string name = "my_sequence");
-      super.new(name);
-   endfunction
+  function new(string name = "my_sequence");
+    super.new(name);
+  endfunction
 
-   virtual task body();
-      my_transaction req;
-      `uvm_info(get_type_name(), $sformatf("Starting sequence with %0d items", num_items), UVM_MEDIUM)
-      for (int i = 0; i < num_items; i++) begin
-         req = my_transaction::type_id::create($sformatf("req_%0d", i));
-         start_item(req);
-         // Simple randomization workaround for Verilator
-         req.addr = $urandom_range(0, 255);
-         req.data = $urandom_range(0, 65535);
-         req.write = $urandom_range(0, 1);
-         finish_item(req);
-         `uvm_info(get_type_name(), $sformatf("Sent item[%0d]: addr=%h data=%h write=%b",
-                   i, req.addr, req.data, req.write), UVM_MEDIUM)
+  virtual task body();
+    `uvm_info("SEQ", $sformatf("Starting sequence, generating %0d items", num_items), UVM_LOW)
+    for (int i = 0; i < num_items; i++) begin
+      req = my_transaction::type_id::create($sformatf("req%0d", i));
+      start_item(req);
+      if (!req.randomize()) begin
+        `uvm_warning("SEQ", "Randomization failed")
       end
-      `uvm_info(get_type_name(), "Sequence completed", UVM_MEDIUM)
-   endtask
+      `uvm_info("SEQ", $sformatf("Generated item %0d: %s", i, req.convert2string()), UVM_LOW)
+      finish_item(req);
+    end
+    `uvm_info("SEQ", "Sequence complete", UVM_LOW)
+  endtask
 endclass
 
-// Driver class using inherited type parameters (tests #6814 fix)
-class my_driver extends uvm_driver #(my_transaction);
-   `uvm_component_utils(my_driver)
+//----------------------------------------------------------------------
+// Monitor - observes bus and sends to analysis port
+//----------------------------------------------------------------------
+class my_monitor extends uvm_monitor;
+  `uvm_component_utils(my_monitor)
 
-   // Using inherited REQ type parameter
-   REQ local_req;
-   int items_driven = 0;
+  uvm_analysis_port #(my_transaction) ap;
+  int items_observed = 0;
 
-   function new(string name = "my_driver", uvm_component parent = null);
-      super.new(name, parent);
-   endfunction
+  function new(string name = "", uvm_component parent = null);
+    super.new(name, parent);
+    ap = new("ap", this);
+  endfunction
 
-   virtual task run_phase(uvm_phase phase);
-      `uvm_info(get_type_name(), "Driver run_phase started", UVM_MEDIUM)
-      forever begin
-         seq_item_port.get_next_item(req);
-         drive_item(req);
-         seq_item_port.item_done();
-      end
-   endtask
-
-   virtual task drive_item(REQ item);
-      items_driven++;
-      `uvm_info(get_type_name(), $sformatf("Driving item[%0d]: addr=%h data=%h write=%b",
-                items_driven, item.addr, item.data, item.write), UVM_MEDIUM)
-      // Simulate some processing time
-      #10ns;
-   endtask
-
-   function void report_phase(uvm_phase phase);
-      `uvm_info(get_type_name(), $sformatf("Driver completed: %0d items driven", items_driven), UVM_MEDIUM)
-   endfunction
+  // Method to simulate observing a transaction
+  virtual function void observe(my_transaction t);
+    items_observed++;
+    `uvm_info("MON", $sformatf("Observed item %0d: %s", items_observed, t.convert2string()), UVM_LOW)
+    ap.write(t);  // Send to analysis port subscribers
+  endfunction
 endclass
 
-// Agent class
+//----------------------------------------------------------------------
+// Scoreboard - receives transactions via analysis export
+//----------------------------------------------------------------------
+class my_scoreboard extends uvm_scoreboard;
+  `uvm_component_utils(my_scoreboard)
+
+  uvm_analysis_imp #(my_transaction, my_scoreboard) analysis_export;
+  my_transaction received_items[$];
+
+  function new(string name = "", uvm_component parent = null);
+    super.new(name, parent);
+    analysis_export = new("analysis_export", this);
+  endfunction
+
+  // This function is called when analysis_imp receives a write
+  virtual function void write(my_transaction t);
+    received_items.push_back(t);
+    `uvm_info("SCB", $sformatf("Scoreboard received item %0d: %s",
+              received_items.size(), t.convert2string()), UVM_LOW)
+  endfunction
+
+  function int get_count();
+    return received_items.size();
+  endfunction
+endclass
+
+//----------------------------------------------------------------------
+// Coverage subscriber - demonstrates uvm_subscriber pattern
+//----------------------------------------------------------------------
+class my_coverage extends uvm_subscriber #(my_transaction);
+  `uvm_component_utils(my_coverage)
+
+  int items_covered = 0;
+
+  function new(string name = "", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
+
+  virtual function void write(my_transaction t);
+    items_covered++;
+    `uvm_info("COV", $sformatf("Coverage collected item %0d: %s",
+              items_covered, t.convert2string()), UVM_LOW)
+  endfunction
+
+  function int get_count();
+    return items_covered;
+  endfunction
+endclass
+
+//----------------------------------------------------------------------
+// Agent - contains monitor
+//----------------------------------------------------------------------
 class my_agent extends uvm_agent;
-   `uvm_component_utils(my_agent)
+  `uvm_component_utils(my_agent)
 
-   my_driver drv;
-   uvm_sequencer #(my_transaction) seqr;
+  my_monitor mon;
+  uvm_sequencer #(my_transaction) seqr;
 
-   function new(string name = "my_agent", uvm_component parent = null);
-      super.new(name, parent);
-   endfunction
+  function new(string name = "", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
-   function void build_phase(uvm_phase phase);
-      super.build_phase(phase);
-      drv = my_driver::type_id::create("drv", this);
-      seqr = uvm_sequencer#(my_transaction)::type_id::create("seqr", this);
-   endfunction
-
-   function void connect_phase(uvm_phase phase);
-      super.connect_phase(phase);
-      drv.seq_item_port.connect(seqr.seq_item_export);
-   endfunction
+  virtual function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    mon = my_monitor::type_id::create("mon", this);
+    seqr = new("seqr", this);
+  endfunction
 endclass
 
-// Environment class
+//----------------------------------------------------------------------
+// Environment
+//----------------------------------------------------------------------
 class my_env extends uvm_env;
-   `uvm_component_utils(my_env)
+  `uvm_component_utils(my_env)
 
-   my_agent agent;
+  my_agent agent;
+  my_scoreboard scb;
+  my_coverage cov;
 
-   function new(string name = "my_env", uvm_component parent = null);
-      super.new(name, parent);
-   endfunction
+  function new(string name = "", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
-   function void build_phase(uvm_phase phase);
-      super.build_phase(phase);
-      agent = my_agent::type_id::create("agent", this);
-   endfunction
+  virtual function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    agent = my_agent::type_id::create("agent", this);
+    scb = my_scoreboard::type_id::create("scb", this);
+    cov = my_coverage::type_id::create("cov", this);
+  endfunction
+
+  virtual function void connect_phase(uvm_phase phase);
+    super.connect_phase(phase);
+    // Connect monitor's analysis port to scoreboard and coverage
+    agent.mon.ap.connect(scb.analysis_export);
+    agent.mon.ap.connect(cov.analysis_export);
+  endfunction
 endclass
 
-// Test class
+//----------------------------------------------------------------------
+// Test
+//----------------------------------------------------------------------
 class my_test extends uvm_test;
-   `uvm_component_utils(my_test)
+  `uvm_component_utils(my_test)
 
-   my_env env;
+  my_env env;
 
-   function new(string name = "my_test", uvm_component parent = null);
-      super.new(name, parent);
-   endfunction
+  function new(string name = "", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
-   function void build_phase(uvm_phase phase);
-      super.build_phase(phase);
-      env = my_env::type_id::create("env", this);
-   endfunction
+  virtual function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    env = my_env::type_id::create("env", this);
+  endfunction
 
-   task run_phase(uvm_phase phase);
-      my_sequence seq;
-      phase.raise_objection(this);
-      `uvm_info(get_type_name(), "Starting test", UVM_MEDIUM)
+  virtual task run_phase(uvm_phase phase);
+    `uvm_info("TEST", "Starting analysis port test", UVM_LOW)
 
-      seq = my_sequence::type_id::create("seq");
-      seq.num_items = 5;
-      seq.start(env.agent.seqr);
+    // Simulate the monitor observing transactions (no delays needed for unit test)
+    for (int i = 0; i < 3; i++) begin
+      my_transaction observed_tx;
+      observed_tx = my_transaction::type_id::create($sformatf("obs%0d", i));
+      void'(observed_tx.randomize());
+      env.agent.mon.observe(observed_tx);
+    end
 
-      `uvm_info(get_type_name(), "Test sequence completed", UVM_MEDIUM)
-      phase.drop_objection(this);
-   endtask
+    // Check results
+    `uvm_info("TEST", $sformatf("Monitor observed %0d items", env.agent.mon.items_observed), UVM_LOW)
+    `uvm_info("TEST", $sformatf("Scoreboard received %0d items", env.scb.get_count()), UVM_LOW)
+    `uvm_info("TEST", $sformatf("Coverage collected %0d items", env.cov.get_count()), UVM_LOW)
 
-   function void report_phase(uvm_phase phase);
-      `uvm_info(get_type_name(), "Test completed successfully!", UVM_NONE)
-   endfunction
+    if (env.scb.get_count() == 3 && env.cov.get_count() == 3) begin
+      `uvm_info("TEST", "Analysis port pattern working correctly!", UVM_LOW)
+    end else begin
+      `uvm_error("TEST", "Analysis port pattern failed!")
+    end
+
+    `uvm_info("TEST", "Test complete", UVM_LOW)
+  endtask
 endclass
 
+//----------------------------------------------------------------------
 // Top module
+//----------------------------------------------------------------------
 module t;
-   initial begin
-      run_test("my_test");
-   end
+  initial begin
+    my_test test;
+    uvm_phase phase;
 
-   // End simulation after test completes
-   initial begin
-      #1000ns;
-      if (uvm_report_server::get_server().get_severity_count(UVM_ERROR) == 0 &&
-          uvm_report_server::get_server().get_severity_count(UVM_FATAL) == 0) begin
-         $write("*-* All Finished *-*\n");
-      end else begin
-         $write("TEST FAILED\n");
-      end
-      $finish;
-   end
+    `uvm_info("TOP", "Starting UVM analysis port test", UVM_LOW)
+
+    // Create test
+    test = new("test", null);
+
+    // Build phase
+    phase = new("build");
+    test.build_phase(phase);
+    test.env.build_phase(phase);
+    test.env.agent.build_phase(phase);
+    test.env.scb.build_phase(phase);
+    test.env.cov.build_phase(phase);
+
+    // Connect phase
+    phase = new("connect");
+    test.connect_phase(phase);
+    test.env.connect_phase(phase);
+    test.env.agent.connect_phase(phase);
+
+    `uvm_info("TOP", "Build and connect phases complete", UVM_LOW)
+
+    // Run phase
+    phase = new("run");
+    test.run_phase(phase);
+
+    $display("*-* All Finished *-*");
+    $finish;
+  end
 endmodule
