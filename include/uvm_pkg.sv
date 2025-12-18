@@ -101,12 +101,91 @@ package uvm_pkg;
   typedef class uvm_sequence_item;
   typedef class uvm_phase;
   typedef class uvm_objection;
+  typedef class uvm_object_wrapper;
+  typedef class uvm_factory;
 
   //----------------------------------------------------------------------
   // uvm_void - base class for all UVM classes
   //----------------------------------------------------------------------
   virtual class uvm_void;
   endclass
+
+  //----------------------------------------------------------------------
+  // uvm_object_wrapper - base class for factory type wrappers
+  // Each registered type has a wrapper that can create instances
+  //----------------------------------------------------------------------
+  virtual class uvm_object_wrapper;
+    pure virtual function uvm_object create_object(string name = "");
+    pure virtual function uvm_component create_component(string name = "", uvm_component parent = null);
+    pure virtual function string get_type_name();
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_factory - singleton factory for creating objects by type name
+  //----------------------------------------------------------------------
+  class uvm_factory;
+    // Registry mapping type names to wrappers
+    protected static uvm_object_wrapper m_type_registry[string];
+    // Singleton instance
+    protected static uvm_factory m_inst;
+
+    // Get singleton instance
+    static function uvm_factory get();
+      if (m_inst == null)
+        m_inst = new();
+      return m_inst;
+    endfunction
+
+    // Register a type wrapper
+    static function void register(uvm_object_wrapper wrapper);
+      string type_name = wrapper.get_type_name();
+      m_type_registry[type_name] = wrapper;
+    endfunction
+
+    // Check if a type is registered
+    static function bit is_type_registered(string type_name);
+      return m_type_registry.exists(type_name);
+    endfunction
+
+    // Create an object by type name
+    static function uvm_object create_object_by_name(string type_name, string parent_inst_path = "",
+                                                      string name = "");
+      if (m_type_registry.exists(type_name))
+        return m_type_registry[type_name].create_object(name);
+      else begin
+        $display("[UVM_WARNING] Factory: Type '%s' not registered", type_name);
+        return null;
+      end
+    endfunction
+
+    // Create a component by type name
+    static function uvm_component create_component_by_name(string type_name, string parent_inst_path = "",
+                                                            string name = "", uvm_component parent = null);
+      if (m_type_registry.exists(type_name))
+        return m_type_registry[type_name].create_component(name, parent);
+      else begin
+        $display("[UVM_WARNING] Factory: Type '%s' not registered", type_name);
+        return null;
+      end
+    endfunction
+
+    // Print all registered types
+    static function void print_all_types();
+      $display("UVM Factory Registered Types:");
+      foreach (m_type_registry[name])
+        $display("  %s", name);
+    endfunction
+
+    // Get number of registered types
+    static function int get_num_types();
+      return m_type_registry.size();
+    endfunction
+  endclass
+
+  // Global factory instance accessor
+  function uvm_factory uvm_factory_get();
+    return uvm_factory::get();
+  endfunction
 
   //----------------------------------------------------------------------
   // uvm_object - base class for data objects
@@ -1349,47 +1428,192 @@ package uvm_pkg;
     end
   endfunction
 
-  // Run test function
-  // Note: In real UVM, this creates the test via factory and runs phases.
-  // For Verilator, tests should be instantiated explicitly and this function
-  // is provided for compatibility. It will wait forever (or until $finish).
+  // Run test function - creates test from factory and runs UVM phases
   task run_test(string test_name = "");
+    uvm_component test_inst;
+    uvm_phase build_ph, connect_ph, elab_ph, start_ph, run_ph, extract_ph, check_ph, report_ph, final_ph;
+
     // Ensure globals are initialized
     __uvm_pkg_init();
 
-    $display("[UVM_INFO] %s(%0d) @ %0t: run_test: Test name = '%s' [UVM]",
-             `__FILE__, `__LINE__, $time, test_name);
-    $display("[UVM_INFO] %s(%0d) @ %0t: run_test: Note - Verilator UVM stub requires explicit test instantiation [UVM]",
-             `__FILE__, `__LINE__, $time);
-    $display("[UVM_INFO] %s(%0d) @ %0t: run_test: Waiting for simulation to complete... [UVM]",
-             `__FILE__, `__LINE__, $time);
+    $display("[UVM_INFO] @ %0t: run_test: Starting test '%s' [UVM]", $time, test_name);
 
-    // In real UVM, this would:
-    // 1. Look up test_name in factory registry
-    // 2. Create the test component
-    // 3. Run all phases (build, connect, run, etc.)
-    // 4. Wait for objections to be dropped
-    // 5. Report results
-    //
-    // For Verilator, we wait forever. The test should:
-    // - Be instantiated elsewhere in the testbench
-    // - Call $finish when complete
+    // Create phase objects
+    build_ph = new("build");
+    connect_ph = new("connect");
+    elab_ph = new("end_of_elaboration");
+    start_ph = new("start_of_simulation");
+    run_ph = new("run");
+    extract_ph = new("extract");
+    check_ph = new("check");
+    report_ph = new("report");
+    final_ph = new("final");
 
-    // Wait forever - simulation ends when test calls $finish
-    forever begin
-      #1000;
+    // Try to create test from factory
+    if (test_name != "" && uvm_factory::is_type_registered(test_name)) begin
+      $display("[UVM_INFO] @ %0t: run_test: Creating test '%s' from factory [UVM]", $time, test_name);
+      test_inst = uvm_factory::create_component_by_name(test_name, "", test_name, uvm_top);
+    end else if (test_name != "") begin
+      $display("[UVM_WARNING] @ %0t: run_test: Test '%s' not found in factory [UVM]", $time, test_name);
+      $display("[UVM_INFO] @ %0t: run_test: Registered types: %0d [UVM]", $time, uvm_factory::get_num_types());
+      uvm_factory::print_all_types();
+      $display("[UVM_INFO] @ %0t: run_test: Hint - Call <test_class>::type_id::register() before run_test() [UVM]", $time);
+      // Fall through to waiting mode
+    end
+
+    if (test_inst != null) begin
+      // Run UVM phases
+      $display("[UVM_INFO] @ %0t: run_test: Starting build_phase [UVM]", $time);
+      __run_build_phase(test_inst, build_ph);
+
+      $display("[UVM_INFO] @ %0t: run_test: Starting connect_phase [UVM]", $time);
+      __run_connect_phase(test_inst, connect_ph);
+
+      $display("[UVM_INFO] @ %0t: run_test: Starting end_of_elaboration_phase [UVM]", $time);
+      __run_elab_phase(test_inst, elab_ph);
+
+      $display("[UVM_INFO] @ %0t: run_test: Starting start_of_simulation_phase [UVM]", $time);
+      __run_start_phase(test_inst, start_ph);
+
+      $display("[UVM_INFO] @ %0t: run_test: Starting run_phase [UVM]", $time);
+      __run_run_phase(test_inst, run_ph);
+
+      // Wait for all objections to be dropped
+      $display("[UVM_INFO] @ %0t: run_test: Waiting for objections to drop [UVM]", $time);
+      while (!run_ph.phase_done()) begin
+        #10;
+      end
+      // Additional drain time
+      #100;
+
+      $display("[UVM_INFO] @ %0t: run_test: Starting extract_phase [UVM]", $time);
+      __run_extract_phase(test_inst, extract_ph);
+
+      $display("[UVM_INFO] @ %0t: run_test: Starting check_phase [UVM]", $time);
+      __run_check_phase(test_inst, check_ph);
+
+      $display("[UVM_INFO] @ %0t: run_test: Starting report_phase [UVM]", $time);
+      __run_report_phase(test_inst, report_ph);
+
+      $display("[UVM_INFO] @ %0t: run_test: Starting final_phase [UVM]", $time);
+      __run_final_phase(test_inst, final_ph);
+
+      $display("[UVM_INFO] @ %0t: run_test: Test complete [UVM]", $time);
+      $finish;
+    end else begin
+      // No test created - wait for external finish
+      $display("[UVM_INFO] @ %0t: run_test: No test instantiated, waiting for simulation... [UVM]", $time);
+      forever begin
+        #1000;
+      end
     end
   endtask
 
-  // Factory function stubs
+  // Phase execution helpers - iteratively run phases on component hierarchy
+  // Uses a work queue to avoid recursion which Verilator doesn't fully support
+
+  function void __collect_components(uvm_component root, ref uvm_component list[$]);
+    // Collect all components in tree order (root first)
+    uvm_component queue[$];
+    uvm_component comp;
+    uvm_component children[$];
+
+    queue.push_back(root);
+    while (queue.size() > 0) begin
+      comp = queue.pop_front();
+      list.push_back(comp);
+      comp.get_children(children);
+      foreach (children[i])
+        queue.push_back(children[i]);
+      children.delete();
+    end
+  endfunction
+
+  function void __run_build_phase(uvm_component root, uvm_phase phase);
+    uvm_component comps[$];
+    __collect_components(root, comps);
+    // Build phase runs top-down
+    foreach (comps[i])
+      comps[i].build_phase(phase);
+  endfunction
+
+  function void __run_connect_phase(uvm_component root, uvm_phase phase);
+    uvm_component comps[$];
+    __collect_components(root, comps);
+    // Connect phase runs bottom-up
+    for (int i = comps.size()-1; i >= 0; i--)
+      comps[i].connect_phase(phase);
+  endfunction
+
+  function void __run_elab_phase(uvm_component root, uvm_phase phase);
+    uvm_component comps[$];
+    __collect_components(root, comps);
+    // Bottom-up
+    for (int i = comps.size()-1; i >= 0; i--)
+      comps[i].end_of_elaboration_phase(phase);
+  endfunction
+
+  function void __run_start_phase(uvm_component root, uvm_phase phase);
+    uvm_component comps[$];
+    __collect_components(root, comps);
+    // Bottom-up
+    for (int i = comps.size()-1; i >= 0; i--)
+      comps[i].start_of_simulation_phase(phase);
+  endfunction
+
+  task __run_run_phase(uvm_component root, uvm_phase phase);
+    uvm_component comps[$];
+    __collect_components(root, comps);
+    // Run phase launches all run_phase tasks in parallel
+    foreach (comps[i]) begin
+      automatic int idx = i;
+      fork
+        comps[idx].run_phase(phase);
+      join_none
+    end
+  endtask
+
+  function void __run_extract_phase(uvm_component root, uvm_phase phase);
+    uvm_component comps[$];
+    __collect_components(root, comps);
+    // Bottom-up
+    for (int i = comps.size()-1; i >= 0; i--)
+      comps[i].extract_phase(phase);
+  endfunction
+
+  function void __run_check_phase(uvm_component root, uvm_phase phase);
+    uvm_component comps[$];
+    __collect_components(root, comps);
+    // Bottom-up
+    for (int i = comps.size()-1; i >= 0; i--)
+      comps[i].check_phase(phase);
+  endfunction
+
+  function void __run_report_phase(uvm_component root, uvm_phase phase);
+    uvm_component comps[$];
+    __collect_components(root, comps);
+    // Bottom-up
+    for (int i = comps.size()-1; i >= 0; i--)
+      comps[i].report_phase(phase);
+  endfunction
+
+  function void __run_final_phase(uvm_component root, uvm_phase phase);
+    uvm_component comps[$];
+    __collect_components(root, comps);
+    // Bottom-up
+    for (int i = comps.size()-1; i >= 0; i--)
+      comps[i].final_phase(phase);
+  endfunction
+
+  // Factory function wrappers (use uvm_factory class)
   function uvm_object create_object_by_name(string type_name, string parent_inst_path = "",
                                              string name = "");
-    return null;  // Stub
+    return uvm_factory::create_object_by_name(type_name, parent_inst_path, name);
   endfunction
 
   function uvm_component create_component_by_name(string type_name, string parent_inst_path = "",
                                                    string name = "", uvm_component parent = null);
-    return null;  // Stub
+    return uvm_factory::create_component_by_name(type_name, parent_inst_path, name, parent);
   endfunction
 
   // Report functions
