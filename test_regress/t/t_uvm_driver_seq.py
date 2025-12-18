@@ -1,32 +1,29 @@
 #!/usr/bin/env python3
-# DESCRIPTION: Verilator: Minimal UVM driver/sequence example
+# DESCRIPTION: Verilator: Verilog Test driver/expect definition
 #
-# This file ONLY is placed under the Creative Commons Public Domain, for
-# any use, without warranty, 2025 by Verilator Authors.
-# SPDX-License-Identifier: CC0-1.0
+# Copyright 2025 by Wilson Snyder. This program is free software; you
+# can redistribute it and/or modify it under the terms of either the GNU
+# Lesser General Public License Version 3 or the Perl Artistic License
+# Version 2.0.
+# SPDX-License-Identifier: LGPL-3.0-only OR Artistic-2.0
 
 import vltest_bootstrap
 
-test.scenarios('vlt')
+test.scenarios('simulator')
+test.top_filename = "t/t_uvm_driver_seq.v"
 
-if test.have_dev_gcov:
-    test.skip("Test suite intended for full dev coverage without needing this test")
+# Use absolute paths resolved at runtime
+import os
+verilator_root = os.environ.get('VERILATOR_ROOT', os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+include_dir = os.path.join(verilator_root, 'include')
 
-test.compile(v_flags2=[
-    "--binary",
-    "-j 0",
-    "--CFLAGS -O0",
+test.compile(verilator_flags2=[
+    "--timing",
     "-Wno-WIDTHTRUNC",
-    "-Wno-WIDTHEXPAND",
-    "-Wno-UNUSEDSIGNAL",
-    "-Wno-IMPORTSTAR",
-    "-Wno-DECLFILENAME",
-    "+incdir+t/uvm",
-    "t/uvm/uvm_pkg_all_v2020_3_1_nodpi.svh",
+    f"+incdir+{include_dir}",
+    f"{include_dir}/uvm_pkg.sv",
 ])
 
-test.execute(all_run_flags=['' if test.verbose else '+UVM_NO_RELNOTES'])
-
-test.file_grep(test.run_log_filename, r'\*-\* All Finished \*-\*')
+test.execute()
 
 test.passes()

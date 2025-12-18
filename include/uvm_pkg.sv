@@ -767,7 +767,7 @@ package uvm_pkg;
   //----------------------------------------------------------------------
   // uvm_subscriber - subscriber for analysis ports
   //----------------------------------------------------------------------
-  class uvm_subscriber #(type T = uvm_sequence_item) extends uvm_component;
+  virtual class uvm_subscriber #(type T = uvm_sequence_item) extends uvm_component;
     uvm_analysis_imp #(T, uvm_subscriber #(T)) analysis_export;
 
     function new(string name = "", uvm_component parent = null);
@@ -830,8 +830,9 @@ package uvm_pkg;
     endfunction
 
     virtual function void write(T t);
-      // Stub - in real UVM this calls m_imp.write(t) on the implementing class
-      // For the stub, we just accept the write and do nothing
+      // Call the write() method on the implementing class
+      if (m_imp != null)
+        m_imp.write(t);
     endfunction
 
     virtual function void write_object(uvm_object t);
