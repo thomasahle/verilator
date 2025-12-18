@@ -361,40 +361,118 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
-  // uvm_phase - phase base class (stub)
+  // uvm_objection - objection mechanism with tracking
   //----------------------------------------------------------------------
-  class uvm_phase extends uvm_object;
-    function new(string name = "uvm_phase");
+  class uvm_objection extends uvm_object;
+    // Track objection counts per object (keyed by object name/id)
+    protected int m_objection_count[string];
+    // Total objection count
+    protected int m_total_count;
+    // Drain time settings per object
+    protected time m_drain_time[string];
+
+    function new(string name = "uvm_objection");
       super.new(name);
+      m_total_count = 0;
     endfunction
 
-    virtual function void raise_objection(uvm_object obj, string description = "", int count = 1);
-      // Stub
+    // Get key for an object (handles null)
+    protected function string get_obj_key(uvm_object obj);
+      if (obj == null)
+        return "__null__";
+      else
+        return obj.get_full_name();
     endfunction
 
-    virtual function void drop_objection(uvm_object obj, string description = "", int count = 1);
-      // Stub
+    virtual function void raise_objection(uvm_object obj = null, string description = "", int count = 1);
+      string key = get_obj_key(obj);
+      if (m_objection_count.exists(key))
+        m_objection_count[key] += count;
+      else
+        m_objection_count[key] = count;
+      m_total_count += count;
+    endfunction
+
+    virtual function void drop_objection(uvm_object obj = null, string description = "", int count = 1);
+      string key = get_obj_key(obj);
+      if (m_objection_count.exists(key)) begin
+        m_objection_count[key] -= count;
+        if (m_objection_count[key] <= 0)
+          m_objection_count.delete(key);
+      end
+      m_total_count -= count;
+      if (m_total_count < 0)
+        m_total_count = 0;
+    endfunction
+
+    virtual function void set_drain_time(uvm_object obj, time drain);
+      string key = get_obj_key(obj);
+      m_drain_time[key] = drain;
+    endfunction
+
+    // Get total objection count
+    virtual function int get_objection_count(uvm_object obj = null);
+      if (obj == null)
+        return m_total_count;
+      else begin
+        string key = get_obj_key(obj);
+        if (m_objection_count.exists(key))
+          return m_objection_count[key];
+        else
+          return 0;
+      end
+    endfunction
+
+    // Get total count across all objects
+    virtual function int get_objection_total();
+      return m_total_count;
+    endfunction
+
+    // Check if all objections have been dropped
+    virtual function bit all_dropped();
+      return (m_total_count == 0);
+    endfunction
+
+    // Clear all objections (for phase transitions)
+    virtual function void clear();
+      m_objection_count.delete();
+      m_total_count = 0;
     endfunction
   endclass
 
   //----------------------------------------------------------------------
-  // uvm_objection - objection mechanism (stub)
+  // uvm_phase - phase base class with objection tracking
   //----------------------------------------------------------------------
-  class uvm_objection extends uvm_object;
-    function new(string name = "uvm_objection");
+  class uvm_phase extends uvm_object;
+    // Each phase has its own objection tracker
+    protected uvm_objection m_phase_objection;
+
+    function new(string name = "uvm_phase");
       super.new(name);
+      m_phase_objection = new({name, "_objection"});
     endfunction
 
-    virtual function void raise_objection(uvm_object obj = null, string description = "", int count = 1);
-      // Stub
+    virtual function void raise_objection(uvm_object obj, string description = "", int count = 1);
+      m_phase_objection.raise_objection(obj, description, count);
     endfunction
 
-    virtual function void drop_objection(uvm_object obj = null, string description = "", int count = 1);
-      // Stub
+    virtual function void drop_objection(uvm_object obj, string description = "", int count = 1);
+      m_phase_objection.drop_objection(obj, description, count);
     endfunction
 
-    virtual function void set_drain_time(uvm_object obj, time drain);
-      // Stub
+    // Get the phase's objection object
+    virtual function uvm_objection get_objection();
+      return m_phase_objection;
+    endfunction
+
+    // Check if phase can end (all objections dropped)
+    virtual function bit phase_done();
+      return m_phase_objection.all_dropped();
+    endfunction
+
+    // Get current objection count
+    virtual function int get_objection_count(uvm_object obj = null);
+      return m_phase_objection.get_objection_count(obj);
     endfunction
   endclass
 
