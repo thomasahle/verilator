@@ -72,14 +72,32 @@
 
 // uvm_object_utils - register object with factory (stub for Verilator)
 // Provides a type_id class with create() method to mimic UVM factory
+// Also provides factory registration capability
 `define uvm_object_utils(TYPE) \
   typedef TYPE __verilator_uvm_type_``TYPE; \
   static function string __verilator_get_type_name(); return `"TYPE`"; endfunction \
   typedef class type_id; \
-  class type_id; \
+  class type_id extends uvm_object_wrapper; \
+    static type_id m_inst; \
     static function TYPE create(string name = `"TYPE`", uvm_component parent = null); \
       TYPE obj = new(name); \
       return obj; \
+    endfunction \
+    static function void register(); \
+      if (m_inst == null) begin \
+        m_inst = new(); \
+        uvm_factory::register(m_inst); \
+      end \
+    endfunction \
+    virtual function uvm_object create_object(string name = ""); \
+      TYPE obj = new(name); \
+      return obj; \
+    endfunction \
+    virtual function uvm_component create_component(string name = "", uvm_component parent = null); \
+      return null; \
+    endfunction \
+    virtual function string get_type_name(); \
+      return `"TYPE`"; \
     endfunction \
   endclass
 
@@ -103,14 +121,32 @@
 
 // uvm_component_utils - register component with factory (stub for Verilator)
 // Provides a type_id class with create() method to mimic UVM factory
+// Also provides factory registration capability
 `define uvm_component_utils(TYPE) \
   typedef TYPE __verilator_uvm_type_``TYPE; \
   static function string __verilator_get_type_name(); return `"TYPE`"; endfunction \
   typedef class type_id; \
-  class type_id; \
+  class type_id extends uvm_object_wrapper; \
+    static type_id m_inst; \
     static function TYPE create(string name = `"TYPE`", uvm_component parent = null); \
       TYPE obj = new(name, parent); \
       return obj; \
+    endfunction \
+    static function void register(); \
+      if (m_inst == null) begin \
+        m_inst = new(); \
+        uvm_factory::register(m_inst); \
+      end \
+    endfunction \
+    virtual function uvm_object create_object(string name = ""); \
+      return null; \
+    endfunction \
+    virtual function uvm_component create_component(string name = "", uvm_component parent = null); \
+      TYPE obj = new(name, parent); \
+      return obj; \
+    endfunction \
+    virtual function string get_type_name(); \
+      return `"TYPE`"; \
     endfunction \
   endclass
 
