@@ -147,7 +147,11 @@ package uvm_pkg;
     endfunction
 
     virtual function void print(uvm_printer printer = null);
-      $display("%s", convert2string());
+      if (printer == null) begin
+        $display("%s", sprint());
+      end else begin
+        $display("%s", sprint(printer));
+      end
     endfunction
 
     virtual function string convert2string();
@@ -155,7 +159,17 @@ package uvm_pkg;
     endfunction
 
     virtual function string sprint(uvm_printer printer = null);
-      return convert2string();
+      string result;
+      if (printer == null) begin
+        printer = new("default_printer");
+      end
+      printer.m_string = "";
+      result = $sformatf("--------------------------------------\n");
+      result = {result, $sformatf("Name: %s  Type: %s\n", get_name(), get_type_name())};
+      result = {result, "--------------------------------------\n"};
+      do_print(printer);
+      result = {result, printer.emit()};
+      return result;
     endfunction
 
     virtual function void do_copy(uvm_object rhs);
@@ -230,6 +244,7 @@ package uvm_pkg;
   class uvm_printer extends uvm_object;
     int unsigned knobs_depth = -1;
     string knobs_separator = ".";
+    string m_string = "";  // Accumulated output for sprint
 
     function new(string name = "uvm_printer");
       super.new(name);
@@ -238,16 +253,89 @@ package uvm_pkg;
     virtual function void print_field(string name, uvm_bitstream_t value, int size,
                                        uvm_radix_enum radix = UVM_NORADIX, byte scope_separator = ".",
                                        string type_name = "");
-      $display("  %s: %0h", name, value);
+      string line;
+      case (radix)
+        UVM_BIN:      line = $sformatf("  %-20s: 'b%0b\n", name, value);
+        UVM_DEC:      line = $sformatf("  %-20s: %0d\n", name, value);
+        UVM_UNSIGNED: line = $sformatf("  %-20s: %0d\n", name, value);
+        UVM_OCT:      line = $sformatf("  %-20s: 'o%0o\n", name, value);
+        UVM_HEX:      line = $sformatf("  %-20s: 'h%0h\n", name, value);
+        default:      line = $sformatf("  %-20s: 'h%0h\n", name, value);
+      endcase
+      m_string = {m_string, line};
+    endfunction
+
+    virtual function void print_field_int(string name, uvm_bitstream_t value, int size,
+                                           uvm_radix_enum radix = UVM_DEC, byte scope_separator = ".",
+                                           string type_name = "");
+      print_field(name, value, size, radix, scope_separator, type_name);
     endfunction
 
     virtual function void print_string(string name, string value, byte scope_separator = ".");
-      $display("  %s: %s", name, value);
+      string line;
+      line = $sformatf("  %-20s: \"%s\"\n", name, value);
+      m_string = {m_string, line};
     endfunction
 
     virtual function void print_object(string name, uvm_object value, byte scope_separator = ".");
+      string line;
       if (value != null)
-        $display("  %s: %s", name, value.get_name());
+        line = $sformatf("  %-20s: %s (%s)\n", name, value.get_name(), value.get_type_name());
+      else
+        line = $sformatf("  %-20s: null\n", name);
+      m_string = {m_string, line};
+    endfunction
+
+    virtual function void print_generic(string name, string type_name, int size, string value,
+                                         byte scope_separator = ".");
+      string line;
+      line = $sformatf("  %-20s: %s\n", name, value);
+      m_string = {m_string, line};
+    endfunction
+
+    virtual function void print_array_header(string name, int size, string arraytype = "array",
+                                              byte scope_separator = ".");
+      string line;
+      line = $sformatf("  %-20s: %s[%0d]\n", name, arraytype, size);
+      m_string = {m_string, line};
+    endfunction
+
+    virtual function void print_array_footer(int size = 0);
+      // No-op for simple printer
+    endfunction
+
+    // Get the accumulated string and reset
+    virtual function string emit();
+      string result = m_string;
+      m_string = "";
+      return result;
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_table_printer - table format printer
+  //----------------------------------------------------------------------
+  class uvm_table_printer extends uvm_printer;
+    function new(string name = "uvm_table_printer");
+      super.new(name);
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_tree_printer - tree format printer
+  //----------------------------------------------------------------------
+  class uvm_tree_printer extends uvm_printer;
+    function new(string name = "uvm_tree_printer");
+      super.new(name);
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_line_printer - line format printer
+  //----------------------------------------------------------------------
+  class uvm_line_printer extends uvm_printer;
+    function new(string name = "uvm_line_printer");
+      super.new(name);
     endfunction
   endclass
 
@@ -700,28 +788,40 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
+  // Analysis port base class for type-independent storage
+  //----------------------------------------------------------------------
+  virtual class uvm_analysis_imp_base extends uvm_object;
+    function new(string name = "");
+      super.new(name);
+    endfunction
+
+    pure virtual function void write_object(uvm_object t);
+  endclass
+
+  //----------------------------------------------------------------------
   // Analysis ports
   //----------------------------------------------------------------------
   class uvm_analysis_port #(type T = uvm_object) extends uvm_object;
     protected uvm_component m_parent;
-    protected uvm_analysis_imp #(T, uvm_component) m_subscribers[$];
+    protected uvm_analysis_imp_base m_subscribers[$];
 
     function new(string name = "", uvm_component parent = null);
       super.new(name);
       m_parent = parent;
     endfunction
 
-    virtual function void connect(uvm_analysis_imp #(T, uvm_component) imp);
+    // Connect to any analysis imp (type-erased)
+    virtual function void connect(uvm_analysis_imp_base imp);
       m_subscribers.push_back(imp);
     endfunction
 
     virtual function void write(T t);
       foreach (m_subscribers[i])
-        m_subscribers[i].write(t);
+        m_subscribers[i].write_object(t);
     endfunction
   endclass
 
-  class uvm_analysis_imp #(type T = uvm_object, type IMP = uvm_component) extends uvm_object;
+  class uvm_analysis_imp #(type T = uvm_object, type IMP = uvm_component) extends uvm_analysis_imp_base;
     protected IMP m_imp;
 
     function new(string name = "", IMP imp = null);
@@ -733,22 +833,28 @@ package uvm_pkg;
       // Stub - in real UVM this calls m_imp.write(t) on the implementing class
       // For the stub, we just accept the write and do nothing
     endfunction
+
+    virtual function void write_object(uvm_object t);
+      T item;
+      if ($cast(item, t))
+        write(item);
+    endfunction
   endclass
 
   class uvm_analysis_export #(type T = uvm_object) extends uvm_object;
-    protected uvm_analysis_imp #(T, uvm_component) m_imp;
+    protected uvm_analysis_imp_base m_imp;
 
     function new(string name = "", uvm_component parent = null);
       super.new(name);
     endfunction
 
-    virtual function void connect(uvm_analysis_imp #(T, uvm_component) imp);
+    virtual function void connect(uvm_analysis_imp_base imp);
       m_imp = imp;
     endfunction
 
     virtual function void write(T t);
       if (m_imp != null)
-        m_imp.write(t);
+        m_imp.write_object(t);
     endfunction
   endclass
 
@@ -947,9 +1053,10 @@ package uvm_pkg;
       // In real UVM this stores the value for later retrieval
     endfunction
 
-    static function bit get(uvm_component cntxt, string inst_name, string field_name, ref T value);
+    static function bit get(uvm_component cntxt, string inst_name, string field_name, inout T value);
       // Stub - always returns 0 (not found)
       // Derived testbenches should provide actual values
+      // Note: Using 'inout' instead of 'ref' to work around Verilator virtual interface type matching
       return 0;
     endfunction
 
@@ -970,12 +1077,50 @@ package uvm_pkg;
       // Stub
     endfunction
 
-    static function bit read_by_name(string scope, string name, ref T val, input uvm_object accessor = null);
+    static function bit read_by_name(string scope, string name, inout T val, input uvm_object accessor = null);
       return 0;
     endfunction
 
-    static function bit read_by_type(string scope, ref T val, input uvm_object accessor = null);
+    static function bit read_by_type(string scope, inout T val, input uvm_object accessor = null);
       return 0;
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_root - the implicit top of the UVM hierarchy
+  //----------------------------------------------------------------------
+  class uvm_root extends uvm_component;
+    protected static uvm_root m_inst;
+    protected uvm_component m_test_top;
+
+    function new(string name = "__top__");
+      super.new(name, null);
+    endfunction
+
+    static function uvm_root get();
+      if (m_inst == null) begin
+        m_inst = new("__top__");
+      end
+      return m_inst;
+    endfunction
+
+    virtual function void print_topology(uvm_printer printer = null);
+      print_topology_recursive(this, 0);
+    endfunction
+
+    protected function void print_topology_recursive(uvm_component comp, int level);
+      string indent;
+      uvm_component children[$];
+      for (int i = 0; i < level; i++) indent = {indent, "  "};
+      $display("%s%s (%s)", indent, comp.get_full_name() == "" ? "__top__" : comp.get_full_name(),
+               comp.get_type_name());
+      comp.get_children(children);
+      foreach (children[i])
+        print_topology_recursive(children[i], level + 1);
+    endfunction
+
+    virtual function string get_type_name();
+      return "uvm_root";
     endfunction
   endclass
 
@@ -983,14 +1128,27 @@ package uvm_pkg;
   // Global functions and variables
   //----------------------------------------------------------------------
 
-  // Global top component (simulation root)
-  uvm_component uvm_top;
+  // Global top component (simulation root) - use get() to access
+  uvm_root uvm_top;
 
   // Test done objection
   uvm_objection uvm_test_done;
 
+  // Initialize globals at package load time
+  function automatic void __uvm_pkg_init();
+    if (uvm_top == null) begin
+      uvm_top = uvm_root::get();
+    end
+    if (uvm_test_done == null) begin
+      uvm_test_done = new("uvm_test_done");
+    end
+  endfunction
+
   // Run test function
   task run_test(string test_name = "");
+    // Ensure globals are initialized
+    __uvm_pkg_init();
+
     $display("[UVM] run_test: Starting test '%s'", test_name);
     // Stub - in real UVM this:
     // 1. Creates the test component via factory
