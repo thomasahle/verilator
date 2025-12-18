@@ -1,28 +1,26 @@
 #!/usr/bin/env python3
-# DESCRIPTION: Verilator: Verilog Test driver/expect definition
+# DESCRIPTION: Verilator: Test UVM sequence/driver flow
 #
-# Copyright 2025 by Wilson Snyder. This program is free software; you
-# can redistribute it and/or modify it under the terms of either the GNU
-# Lesser General Public License Version 3 or the Perl Artistic License
-# Version 2.0.
-# SPDX-License-Identifier: LGPL-3.0-only OR Artistic-2.0
+# This file ONLY is placed under the Creative Commons Public Domain, for
+# any use, without warranty, 2025 by Wilson Snyder.
+# SPDX-License-Identifier: CC0-1.0
 
 import vltest_bootstrap
 
 test.scenarios('simulator')
-test.top_filename = "t/t_uvm_seq_driver.v"
 
-# Use absolute paths resolved at runtime
 import os
 verilator_root = os.environ.get('VERILATOR_ROOT', os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 include_dir = os.path.join(verilator_root, 'include')
 
-test.compile(verilator_flags2=[
-    "--timing",
-    "-Wno-WIDTHTRUNC",
-    f"+incdir+{include_dir}",
-    f"{include_dir}/uvm_pkg.sv",
-])
+test.compile(
+    verilator_flags2=[
+        '--binary',
+        '-Wno-PKGNODECL',
+        f'+incdir+{include_dir}',
+        f'{include_dir}/uvm_pkg.sv'
+    ]
+)
 
 test.execute()
 

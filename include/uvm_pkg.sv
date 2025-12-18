@@ -662,9 +662,13 @@ package uvm_pkg;
     protected int m_sequence_id = -1;
     protected int m_transaction_id = -1;
     protected bit m_use_sequence_info = 0;
+    protected uvm_sequencer_base m_sequencer;
+    protected uvm_sequence_base m_parent_sequence;
+    static protected int m_next_transaction_id = 0;
 
     function new(string name = "uvm_sequence_item");
       super.new(name);
+      m_transaction_id = m_next_transaction_id++;
     endfunction
 
     virtual function int get_sequence_id();
@@ -683,8 +687,24 @@ package uvm_pkg;
       m_transaction_id = id;
     endfunction
 
+    virtual function uvm_sequencer_base get_sequencer();
+      return m_sequencer;
+    endfunction
+
+    virtual function void set_sequencer(uvm_sequencer_base sequencer);
+      m_sequencer = sequencer;
+    endfunction
+
+    virtual function uvm_sequence_base get_parent_sequence();
+      return m_parent_sequence;
+    endfunction
+
     virtual function void set_item_context(uvm_sequence_base parent_seq, uvm_sequencer_base sequencer = null);
-      // Stub
+      m_parent_sequence = parent_seq;
+      if (sequencer != null)
+        m_sequencer = sequencer;
+      else if (parent_seq != null)
+        m_sequencer = parent_seq.get_sequencer();
     endfunction
   endclass
 
@@ -758,11 +778,31 @@ package uvm_pkg;
 
     // Item methods for sequence execution
     virtual task start_item(uvm_sequence_item item, int set_priority = -1, uvm_sequencer_base sequencer = null);
-      // Stub - in real UVM this does arbitration
+      uvm_sequencer_base sqr;
+      // Get the sequencer - use passed one or default to sequence's sequencer
+      sqr = (sequencer != null) ? sequencer : m_sequencer;
+      if (sqr == null) begin
+        $display("UVM_ERROR [SEQR] Null sequencer in start_item");
+        return;
+      end
+      // Set item context
+      item.set_item_context(this, sqr);
+      // Wait for grant from sequencer (arbitration)
+      sqr.wait_for_grant(this, set_priority, 0);
     endtask
 
     virtual task finish_item(uvm_sequence_item item, int set_priority = -1);
-      // Stub - in real UVM this sends to driver
+      uvm_sequencer_base sqr;
+      sqr = item.get_sequencer();
+      if (sqr == null) sqr = m_sequencer;
+      if (sqr == null) begin
+        $display("UVM_ERROR [SEQR] Null sequencer in finish_item");
+        return;
+      end
+      // Send the item to the sequencer
+      sqr.send_request(this, item, 0);
+      // Wait for driver to call item_done
+      sqr.wait_for_item_done(this, item.get_transaction_id());
     endtask
 
     virtual function void raise_objection(uvm_phase phase = null, string description = "", int count = 1);
@@ -790,25 +830,38 @@ package uvm_pkg;
   // uvm_sequencer_base - base sequencer
   //----------------------------------------------------------------------
   class uvm_sequencer_base extends uvm_component;
+    // Completion tracking - maps transaction_id to done status
+    protected bit m_item_done[int];
+    protected int m_current_transaction_id = -1;
+
     function new(string name = "", uvm_component parent = null);
       super.new(name, parent);
     endfunction
 
     virtual function void set_arbitration(uvm_sequencer_arb_mode val);
-      // Stub
+      // Stub - simplified arbitration
     endfunction
 
     virtual task wait_for_grant(uvm_sequence_base sequence_ptr, int item_priority = -1, bit lock_request = 0);
-      // Stub - immediate grant
+      // Simplified - grant immediately (no arbitration)
     endtask
 
     virtual function void send_request(uvm_sequence_base sequence_ptr, uvm_sequence_item t, bit rerandomize = 0);
-      // Stub
+      // Mark item as not done
+      m_item_done[t.get_transaction_id()] = 0;
     endfunction
 
     virtual task wait_for_item_done(uvm_sequence_base sequence_ptr, int transaction_id);
-      // Stub - immediate completion
+      // Wait until the item is marked done
+      wait (m_item_done.exists(transaction_id) && m_item_done[transaction_id] == 1);
+      // Clean up
+      m_item_done.delete(transaction_id);
     endtask
+
+    // Signal item completion (called by driver via seq_item_pull_port)
+    virtual function void item_done_base(int transaction_id);
+      m_item_done[transaction_id] = 1;
+    endfunction
   endclass
 
   //----------------------------------------------------------------------
@@ -826,6 +879,7 @@ package uvm_pkg;
   class uvm_sequencer #(type REQ = uvm_sequence_item, type RSP = REQ) extends uvm_sequencer_param_base #(REQ, RSP);
     protected REQ m_req_fifo[$];
     protected RSP m_rsp_fifo[$];
+    protected REQ m_last_req;  // Track current item for item_done
 
     // seq_item_export for driver connection (alias to this sequencer)
     uvm_sequencer #(REQ, RSP) seq_item_export;
@@ -835,9 +889,15 @@ package uvm_pkg;
       seq_item_export = this;
     endfunction
 
-    // Public method to send a request item (used by sequences via start_item/finish_item)
-    virtual function void send_request(REQ t);
-      m_req_fifo.push_back(t);
+    // Override base class send_request - queue the item
+    virtual function void send_request(uvm_sequence_base sequence_ptr, uvm_sequence_item t, bit rerandomize = 0);
+      REQ req;
+      super.send_request(sequence_ptr, t, rerandomize);
+      // verilator lint_off CASTCONST
+      if ($cast(req, t)) begin
+        m_req_fifo.push_back(req);
+      end
+      // verilator lint_on CASTCONST
     endfunction
 
     // Get number of pending requests
@@ -848,17 +908,26 @@ package uvm_pkg;
     virtual task get_next_item(output REQ t);
       wait (m_req_fifo.size() > 0);
       t = m_req_fifo.pop_front();
+      m_last_req = t;  // Track for item_done
     endtask
 
     virtual task try_next_item(output REQ t);
-      if (m_req_fifo.size() > 0)
+      if (m_req_fifo.size() > 0) begin
         t = m_req_fifo.pop_front();
-      else
+        m_last_req = t;
+      end else
         t = null;
     endtask
 
     virtual function void item_done(RSP item = null);
-      // Stub
+      // Signal completion of the last retrieved item
+      if (m_last_req != null) begin
+        item_done_base(m_last_req.get_transaction_id());
+        m_last_req = null;
+      end
+      // Optionally store response
+      if (item != null)
+        m_rsp_fifo.push_back(item);
     endfunction
 
     virtual task get(output REQ t);
@@ -872,6 +941,12 @@ package uvm_pkg;
 
     virtual task put(RSP t);
       m_rsp_fifo.push_back(t);
+    endtask
+
+    // Get response (for sequences that need responses)
+    virtual task get_response(output RSP t);
+      wait (m_rsp_fifo.size() > 0);
+      t = m_rsp_fifo.pop_front();
     endtask
   endclass
 
