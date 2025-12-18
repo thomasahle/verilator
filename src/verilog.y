@@ -3177,9 +3177,10 @@ list_of_defparam_assignments<nodep>:    //== IEEE: list_of_defparam_assignments
 
 defparam_assignment<nodep>:     // ==IEEE: defparam_assignment
         //                      // IEEE: hierarchical_parameter_identifier = constant_mintypmax_expression
-        //                      // Simple: cell.param = val
+        //                      // Simple: cell.param = val (no array indexing)
                 idAny '.' idAny '=' expr                { $$ = new AstDefParam{$4, *$1, *$3, $5}; }
         //                      // Hierarchical: cell.subcell[.more...].param = val (3+ components)
+        //                      // Supports array indexing: gen[i].inst.param = val
         //                      // Parse full path as AstDot tree, V3LinkDot will split off param name
         |       defparam_hier_path '=' expr
                         { $$ = new AstDefParam{$2, $1, "", $3}; }
@@ -3188,16 +3189,30 @@ defparam_assignment<nodep>:     // ==IEEE: defparam_assignment
         ;
 
 defparam_hier_path<nodeExprp>:  // Hierarchical path with at least 2 dots (3+ components)
-        //                      // Builds AstDot tree with AstParseRef leaves
+        //                      // Builds AstDot tree with AstParseRef/AstSelBit leaves
+        //                      // Supports array indexing on any path element
+        //                      // Base: id[opt_index].id[opt_index].id
                 idAny '.' idAny '.' idAny
                         { $$ = new AstDot{$4, false,
                                 new AstDot{$2, false,
                                     new AstParseRef{$<fl>1, *$1, nullptr, nullptr},
                                     new AstParseRef{$<fl>3, *$3, nullptr, nullptr}},
                                 new AstParseRef{$<fl>5, *$5, nullptr, nullptr}}; }
+        //                      // Array-indexed first element: id[expr].id.id
+        |       idAny '[' expr ']' '.' idAny '.' idAny
+                        { $$ = new AstDot{$7, false,
+                                new AstDot{$5, false,
+                                    new AstSelBit{$2, new AstParseRef{$<fl>1, *$1, nullptr, nullptr}, $3},
+                                    new AstParseRef{$<fl>6, *$6, nullptr, nullptr}},
+                                new AstParseRef{$<fl>8, *$8, nullptr, nullptr}}; }
+        //                      // Extend path with plain id
         |       defparam_hier_path '.' idAny
                         { $$ = new AstDot{$2, false, $1,
                                 new AstParseRef{$<fl>3, *$3, nullptr, nullptr}}; }
+        //                      // Extend path with array-indexed id
+        |       defparam_hier_path '.' idAny '[' expr ']'
+                        { $$ = new AstDot{$2, false, $1,
+                                new AstSelBit{$4, new AstParseRef{$<fl>3, *$3, nullptr, nullptr}, $5}}; }
         ;
 
 //************************************************
