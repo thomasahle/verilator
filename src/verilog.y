@@ -7090,11 +7090,10 @@ covergroup_range_list<nodep>:  // ==IEEE: covergroup_range_list
 
 
 cover_cross<nodep>:  // ==IEEE: cover_cross
-        //      // Cross coverage not yet implemented, so ignore the body
                 id/*cover_point_identifier*/ ':' yCROSS list_of_cross_items iffE cross_body
-                        { $$ = new AstCoverCross{$<fl>3, *$1, VN_AS($4, Text), $5, nullptr}; DEL($6); }
+                        { $$ = new AstCoverCross{$<fl>3, *$1, VN_AS($4, Text), $5, $6}; }
         |       yCROSS list_of_cross_items iffE cross_body
-                        { $$ = new AstCoverCross{$<fl>1, "", VN_AS($2, Text), $3, nullptr}; DEL($4); }
+                        { $$ = new AstCoverCross{$<fl>1, "", VN_AS($2, Text), $3, $4}; }
         ;
 
 list_of_cross_items<nodep>:  // ==IEEE: list_of_cross_items
@@ -7152,13 +7151,13 @@ select_expression<nodep>:  // ==IEEE: select_expression
 select_expression_r<nodep>:
         //                      // IEEE: select_condition expanded here
                 yBINSOF '(' bins_expression ')'
-                        { $$ = nullptr; BBCOVERIGN($1, "Ignoring unsupported: coverage select expression 'binsof'"); DEL($3); }
+                        { $$ = new AstCovBinsof{$1, $3, nullptr, false}; }
         |       '!' yBINSOF '(' bins_expression ')'
-                        { $$ = nullptr; BBCOVERIGN($1, "Ignoring unsupported: coverage select expression 'binsof'"); DEL($4); }
+                        { $$ = new AstCovBinsof{$2, $4, nullptr, true}; }
         |       yBINSOF '(' bins_expression ')' yINTERSECT '{' covergroup_range_list '}'
-                        { $$ = nullptr; BBCOVERIGN($5, "Ignoring unsupported: coverage select expression 'intersect'"); DEL($3, $7); }
-        |       '!' yBINSOF '(' bins_expression ')' yINTERSECT '{' covergroup_range_list '}'    { }
-                        { $$ = nullptr; BBCOVERIGN($5, "Ignoring unsupported: coverage select expression 'intersect'"); DEL($4, $8); }
+                        { $$ = new AstCovBinsof{$1, $3, $7, false}; }
+        |       '!' yBINSOF '(' bins_expression ')' yINTERSECT '{' covergroup_range_list '}'
+                        { $$ = new AstCovBinsof{$2, $4, $8, true}; }
         |       yWITH__PAREN '(' cgexpr ')'
                         { $$ = nullptr; BBCOVERIGN($1, "Ignoring unsupported: coverage select expression with"); DEL($3); }
         |       '!' yWITH__PAREN '(' cgexpr ')'
@@ -7186,7 +7185,7 @@ select_expression_r<nodep>:
         //UNSUP                 // Above are all removed, replace with:
         ;
 
-bins_expression<nodep>:  // ==IEEE: bins_expression
+bins_expression<nodeExprp>:  // ==IEEE: bins_expression
         //                      // "cover_point_identifier" and "variable_identifier" look identical
         // IEEE specifies:
         // bins_expression ::=
@@ -7195,7 +7194,7 @@ bins_expression<nodep>:  // ==IEEE: bins_expression
         // Verilator supports hierarchical reference in a place of variable identifier.
         // This is an extension based on other simulators.
                idDotted
-                        { $$ = nullptr; /*UNSUP*/ DEL($1); }
+                        { $$ = $1; }  // Return for binsof() processing
         ;
 
 coverage_eventE<nodep>:  // IEEE: [ coverage_event ]

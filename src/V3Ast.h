@@ -826,6 +826,9 @@ public:
     AstNode* unlinkFrBackWithNext(VNRelinker* linkerp = nullptr);
     void relink(VNRelinker* linkerp);  // Generally use linker->relink() instead
     void cloneRelinkNode() { cloneRelink(); }
+    // Break a sibling list into individual nodes, clearing their sibling links.
+    // Useful when constructors need to separate mixed-type parser lists.
+    static std::vector<AstNode*> breakSiblingList(AstNode* headp);
 
     // METHODS - Iterate on a tree
     AstNode* cloneTree(bool cloneNextLink,

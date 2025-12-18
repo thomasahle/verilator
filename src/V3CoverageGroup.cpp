@@ -489,6 +489,23 @@ class CoverageGroupVisitor final : public VNVisitor {
         UINFO(4, "Processing cross " << crossName << " of " << crossDesc.str()
                                      << " = " << totalCrossBins << " cross bins" << endl);
 
+        // Check for explicit cross bins with binsof() expressions
+        if (xp->binsp()) {
+            // Cross has explicit bins - check for binsof expressions
+            for (AstNode* binp = xp->binsp(); binp; binp = binp->nextp()) {
+                if (AstCoverBin* const cbinp = VN_CAST(binp, CoverBin)) {
+                    // Check if this bin uses binsof() (has AstCovBinsof in rangesp)
+                    for (AstNode* rangep = cbinp->rangesp(); rangep; rangep = rangep->nextp()) {
+                        if (AstCovBinsof* const binsofp = VN_CAST(rangep, CovBinsof)) {
+                            binsofp->v3warn(
+                                COVERIGN, "Cross bin selection with binsof() is parsed but "
+                                          "not yet fully implemented; generating all cross bins");
+                        }
+                    }
+                }
+            }
+        }
+
         // Generate N-way cross product bins using iterative approach
         // Use indices to iterate through all combinations
         std::vector<size_t> indices(cpNames.size(), 0);

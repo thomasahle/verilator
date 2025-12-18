@@ -1001,6 +1001,29 @@ public:
     bool isPredictOptimizable() const override { return false; }
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
 };
+class AstCovBinsof final : public AstNode {
+    // binsof() expression in cross coverage bin selection
+    // Parents: AstCoverBin (in cross coverage)
+    // @astgen op1 := intersectp : List[AstNode]  // Intersect ranges (optional)
+    string m_coverpointName;  // Coverpoint name (may include bin: "cp.binname")
+    bool m_negate;  // Negated (!binsof)
+    // Helper to extract name from idDotted expression and delete it
+    static string extractNameAndDelete(AstNodeExpr* refp);
+public:
+    AstCovBinsof(FileLine* fl, AstNodeExpr* refp, AstNode* intersectp, bool negate = false)
+        : ASTGEN_SUPER_CovBinsof(fl)
+        , m_coverpointName{extractNameAndDelete(refp)}
+        , m_negate{negate} {
+        addIntersectp(intersectp);
+    }
+    ASTGEN_MEMBERS_AstCovBinsof;
+    void dump(std::ostream& str) const override;
+    void dumpJson(std::ostream& str) const override;
+    string coverpointName() const { return m_coverpointName; }
+    void coverpointName(const string& name) { m_coverpointName = name; }
+    bool negate() const { return m_negate; }
+    void negate(bool flag) { m_negate = flag; }
+};
 class AstCoverBin final : public AstNode {
     // Coverage bin definition inside a coverpoint
     // Parents: AstCoverpoint
@@ -1043,13 +1066,26 @@ class AstCoverCross final : public AstNode {
     // @astgen op4 := optionsp : List[AstCgOptionAssign]  // Options
     string m_name;  // Cross name
 public:
+    // Constructor separates bins from options in cross_body
     AstCoverCross(FileLine* fl, const string& name, AstText* itemsp, AstNodeExpr* iffp,
-                  AstNode* binsp)
+                  AstNode* crossbodyp)
         : ASTGEN_SUPER_CoverCross(fl)
         , m_name{name} {
         addItemsp(itemsp);
         this->iffp(iffp);
-        addBinsp(static_cast<AstCoverBin*>(binsp));
+        // Separate bins from options in the cross body
+        // Parser creates linked list. We must break it apart first,
+        // since adding nodes to new parents modifies the list structure.
+        for (AstNode* nodep : AstNode::breakSiblingList(crossbodyp)) {
+            if (AstCoverBin* const binp = VN_CAST(nodep, CoverBin)) {
+                addBinsp(binp);
+            } else if (AstCgOptionAssign* const optp = VN_CAST(nodep, CgOptionAssign)) {
+                addOptionsp(optp);
+            } else {
+                // Function declarations are already warned about in grammar, just delete
+                VL_DO_DANGLING(nodep->deleteTree(), nodep);
+            }
+        }
     }
     ASTGEN_MEMBERS_AstCoverCross;
     void dump(std::ostream& str) const override;
