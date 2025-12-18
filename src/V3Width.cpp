@@ -6376,6 +6376,10 @@ class WidthVisitor final : public VNVisitor {
         userIterateAndNext(nodep->binsp(), nullptr);
         userIterateAndNext(nodep->optionsp(), nullptr);
     }
+    void visit(AstCovBinsof* nodep) override {
+        // binsof() expression - intersect ranges need width context
+        userIterateAndNext(nodep->intersectp(), WidthVP{SELF, BOTH}.p());
+    }
     void visit(AstCoverBin* nodep) override {
         // Coverage bin - ranges and iff condition need width context
         userIterateAndNext(nodep->rangesp(), WidthVP{SELF, BOTH}.p());

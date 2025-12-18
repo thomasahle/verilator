@@ -3280,6 +3280,45 @@ void AstCgOptionAssign::dumpJson(std::ostream& str) const {
     dumpJsonBoolFunc(str, typeOption);
     dumpJsonGen(str);
 }
+// Helper to extract name from node without modifying it
+static string extractNameHelper(AstNodeExpr* refp) {
+    if (AstParseRef* const parsep = VN_CAST(refp, ParseRef)) {
+        return parsep->name();
+    } else if (AstDot* const dotp = VN_CAST(refp, Dot)) {
+        // Concatenate parts: lhs.rhs
+        string result;
+        if (AstNodeExpr* const lhsp = VN_CAST(dotp->lhsp(), NodeExpr)) {
+            result = extractNameHelper(lhsp);
+        }
+        result += ".";
+        if (AstNodeExpr* const rhsp = VN_CAST(dotp->rhsp(), NodeExpr)) {
+            result += extractNameHelper(rhsp);
+        }
+        return result;
+    } else if (AstVarRef* const varrefp = VN_CAST(refp, VarRef)) {
+        return varrefp->name();
+    } else {
+        refp->v3warn(E_UNSUPPORTED, "Unsupported binsof() expression type");
+        return "";
+    }
+}
+// Extract coverpoint name from bins_expression (idDotted result) and delete
+// Returns name like "cp_a" or "cp.binname" for dotted references
+string AstCovBinsof::extractNameAndDelete(AstNodeExpr* refp) {
+    const string name = extractNameHelper(refp);
+    VL_DO_DANGLING(refp->deleteTree(), refp);
+    return name;
+}
+void AstCovBinsof::dump(std::ostream& str) const {
+    this->AstNode::dump(str);
+    str << " cp=" << coverpointName();
+    if (negate()) str << " [!]";
+}
+void AstCovBinsof::dumpJson(std::ostream& str) const {
+    dumpJsonStr(str, "coverpointName", coverpointName());
+    dumpJsonBoolFunc(str, negate);
+    dumpJsonGen(str);
+}
 void AstCoverBin::dump(std::ostream& str) const {
     this->AstNode::dump(str);
     str << " [" << binType().ascii() << "]";

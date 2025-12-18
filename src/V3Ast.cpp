@@ -768,6 +768,22 @@ void AstNode::relink(VNRelinker* linkerp) {
     debugTreeChange(this, "-relinkOut: ", __LINE__, true);
 }
 
+std::vector<AstNode*> AstNode::breakSiblingList(AstNode* headp) {
+    // Break a sibling list into individual unlinked nodes.
+    // Used when constructors need to separate mixed-type parser lists.
+    std::vector<AstNode*> nodes;
+    for (AstNode* nodep = headp; nodep;) {
+        AstNode* const nextp = nodep->m_nextp;
+        // Clear all sibling links - make this a standalone node
+        nodep->m_nextp = nullptr;
+        nodep->m_backp = nullptr;
+        nodep->m_headtailp = nodep;  // Singleton points to itself
+        nodes.push_back(nodep);
+        nodep = nextp;
+    }
+    return nodes;
+}
+
 void AstNode::relinkOneLink(AstNode*& pointpr,  // Ref to pointer that gets set to newp
                             AstNode* newp) {
     if (pointpr) {
