@@ -1,4 +1,4 @@
-// DESCRIPTION: Verilator: Test UVM config_db with virtual interfaces
+// DESCRIPTION: Verilator: Test uvm_config_db functionality
 //
 // This file ONLY is placed under the Creative Commons Public Domain, for
 // any use, without warranty, 2025 by Wilson Snyder.
@@ -7,46 +7,25 @@
 `include "uvm_macros.svh"
 import uvm_pkg::*;
 
-// Simple interface for testing
-interface simple_if;
-  logic clk;
-  logic [7:0] data;
-  logic valid;
+//----------------------------------------------------------------------
+// Config class
+//----------------------------------------------------------------------
+class my_config extends uvm_object;
+  `uvm_object_utils(my_config)
+  int value;
 
-  modport master_mp(output data, output valid, input clk);
-  modport slave_mp(input data, input valid, input clk);
-endinterface
-
-// Driver that uses virtual interface from config_db
-class my_driver extends uvm_driver #(uvm_sequence_item);
-  `uvm_component_utils(my_driver)
-
-  virtual simple_if vif;
-
-  function new(string name = "", uvm_component parent = null);
-    super.new(name, parent);
+  function new(string name = "my_config");
+    super.new(name);
+    value = 0;
   endfunction
-
-  virtual function void build_phase(uvm_phase phase);
-    super.build_phase(phase);
-    // Get virtual interface from config_db
-    if (!uvm_config_db #(virtual simple_if)::get(this, "", "vif", vif)) begin
-      `uvm_warning("NOVIF", "Virtual interface not found in config_db")
-    end else begin
-      `uvm_info("DRV", "Got virtual interface from config_db", UVM_LOW)
-    end
-  endfunction
-
-  virtual task run_phase(uvm_phase phase);
-    `uvm_info("DRV", "Driver running", UVM_LOW)
-  endtask
 endclass
 
-// Monitor that uses virtual interface
-class my_monitor extends uvm_monitor;
-  `uvm_component_utils(my_monitor)
-
-  virtual simple_if.slave_mp vif;
+//----------------------------------------------------------------------
+// Child component
+//----------------------------------------------------------------------
+class my_child extends uvm_component;
+  `uvm_component_utils(my_child)
+  my_config cfg;
 
   function new(string name = "", uvm_component parent = null);
     super.new(name, parent);
@@ -54,40 +33,22 @@ class my_monitor extends uvm_monitor;
 
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
-    // Get virtual interface modport from config_db
-    if (!uvm_config_db #(virtual simple_if.slave_mp)::get(this, "", "vif", vif)) begin
-      `uvm_warning("NOVIF", "Virtual interface modport not found in config_db")
+    `uvm_info("CHILD", "build_phase - trying to get config", UVM_LOW)
+    if (!uvm_config_db#(my_config)::get(this, "", "my_config", cfg)) begin
+      `uvm_error("CHILD", "Failed to get my_config from config_db")
     end else begin
-      `uvm_info("MON", "Got virtual interface modport from config_db", UVM_LOW)
+      `uvm_info("CHILD", $sformatf("Got config with value = %0d", cfg.value), UVM_LOW)
     end
   endfunction
 endclass
 
-// Agent containing driver and monitor
-class my_agent extends uvm_agent;
-  `uvm_component_utils(my_agent)
-
-  my_driver drv;
-  my_monitor mon;
-
-  function new(string name = "", uvm_component parent = null);
-    super.new(name, parent);
-  endfunction
-
-  virtual function void build_phase(uvm_phase phase);
-    super.build_phase(phase);
-    drv = my_driver::type_id::create("drv", this);
-    drv.build_phase(phase);
-    mon = my_monitor::type_id::create("mon", this);
-    mon.build_phase(phase);
-  endfunction
-endclass
-
-// Environment
-class my_env extends uvm_env;
-  `uvm_component_utils(my_env)
-
-  my_agent agent;
+//----------------------------------------------------------------------
+// Test class
+//----------------------------------------------------------------------
+class config_test extends uvm_test;
+  `uvm_component_utils(config_test)
+  my_child child;
+  my_config cfg;
 
   function new(string name = "", uvm_component parent = null);
     super.new(name, parent);
@@ -95,68 +56,32 @@ class my_env extends uvm_env;
 
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
-    agent = my_agent::type_id::create("agent", this);
-    agent.build_phase(phase);
+    `uvm_info("TEST", "build_phase - creating config", UVM_LOW)
+    cfg = new("my_config");
+    cfg.value = 42;
+    // Set config for all descendants using wildcard
+    uvm_config_db#(my_config)::set(this, "*", "my_config", cfg);
+    `uvm_info("TEST", $sformatf("Set config with value = %0d", cfg.value), UVM_LOW)
+    // Create child
+    child = my_child::type_id::create("child", this);
+  endfunction
+
+  virtual function void report_phase(uvm_phase phase);
+    super.report_phase(phase);
+    if (child.cfg != null && child.cfg.value == 42) begin
+      `uvm_info("TEST", "Config propagated correctly!", UVM_LOW)
+      $write("*-* All Finished *-*\n");
+    end else begin
+      `uvm_error("TEST", "Config did NOT propagate correctly")
+    end
   endfunction
 endclass
 
-// Test
-class my_test extends uvm_test;
-  `uvm_component_utils(my_test)
-
-  my_env env;
-
-  function new(string name = "", uvm_component parent = null);
-    super.new(name, parent);
-  endfunction
-
-  virtual function void build_phase(uvm_phase phase);
-    super.build_phase(phase);
-    env = my_env::type_id::create("env", this);
-    env.build_phase(phase);
-  endfunction
-
-  virtual task run_phase(uvm_phase phase);
-    `uvm_info("TEST", "Test running - virtual interface config_db test", UVM_LOW)
-    `uvm_info("TEST", "Test complete", UVM_LOW)
-  endtask
-endclass
-
+//----------------------------------------------------------------------
 // Top module
+//----------------------------------------------------------------------
 module t;
-  // Instantiate the interface
-  simple_if my_if();
-
-  // Generate clock (limited iterations)
   initial begin
-    my_if.clk = 0;
-    repeat(20) #5 my_if.clk = ~my_if.clk;
-  end
-
-  // Test
-  initial begin
-    my_test test;
-    uvm_phase phase;
-
-    // Store virtual interface in config_db (stub - just tests compilation)
-    uvm_config_db #(virtual simple_if)::set(null, "*", "vif", my_if);
-    uvm_config_db #(virtual simple_if.slave_mp)::set(null, "*", "vif", my_if.slave_mp);
-
-    `uvm_info("TOP", "Starting config_db virtual interface test", UVM_LOW)
-
-    // Create and run test
-    test = new("test", null);
-    phase = new("build");
-    test.build_phase(phase);
-
-    `uvm_info("TOP", "Build phase complete - virtual interface config_db compiles correctly", UVM_LOW)
-
-    // Run phase
-    phase = new("run");
-    test.run_phase(phase);
-
-    // Test passes - the key thing is that config_db with virtual interfaces compiles
-    $display("*-* All Finished *-*");
-    $finish;
+    run_test("config_test");
   end
 endmodule

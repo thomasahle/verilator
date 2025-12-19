@@ -1391,11 +1391,14 @@ package uvm_pkg;
       // Check for ".*" suffix (descendant wildcard)
       if (plen >= 2 && pattern.substr(plen-2, plen-1) == ".*") begin
         string prefix = pattern.substr(0, plen-3);
+        int prefix_len = prefix.len();
         // Matches the prefix itself or any descendant
         if (path == prefix) return 1;
-        if (pathlen > prefix.len() && path.substr(0, prefix.len()) == prefix) begin
-          // Check that next char is "."
-          if (path[prefix.len()] == ".") return 1;
+        // Check if path starts with prefix followed by "."
+        if (pathlen > prefix_len) begin
+          // substr is inclusive, so use prefix_len-1 as end index
+          if (path.substr(0, prefix_len-1) == prefix && path[prefix_len] == ".")
+            return 1;
         end
         return 0;
       end
