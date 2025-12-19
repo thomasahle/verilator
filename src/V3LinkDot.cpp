@@ -4131,8 +4131,9 @@ class LinkDotResolveVisitor final : public VNVisitor {
                 if (ok) {
                     AstRefDType* const refp = new AstRefDType{nodep->fileline(), nodep->name()};
                     // Don't check if typedef is to a <type T>::<reference> as might not be
-                    // resolved yet
-                    if (m_ds.m_dotPos == DP_NONE) checkDeclOrder(nodep, defp);
+                    // resolved yet. Also skip if typedef was found through a package (imported).
+                    if (m_ds.m_dotPos == DP_NONE && !foundp->classOrPackagep())
+                        checkDeclOrder(nodep, defp);
                     refp->typedefp(defp);
 
                     V3LinkDotIfaceCapture::captureTypedefContext(
@@ -4165,17 +4166,18 @@ class LinkDotResolveVisitor final : public VNVisitor {
                     replaceWithCheckBreak(nodep, refp);
                     VL_DO_DANGLING(pushDeletep(nodep), nodep);
                 }
-            } else if (AstClassRefDType* const defp = VN_CAST(foundp->nodep(), ClassRefDType)) {
+            } else if (AstNodeDType* const defp = VN_CAST(foundp->nodep(), NodeDType)) {
                 // Issue #6814: Handle inherited type parameters from parameterized base classes.
                 // When a derived class extends a parameterized base class like
                 // "my_driver extends uvm_driver#(my_tx)", the type parameter REQ is bound
-                // to my_tx (a ClassRefDType). When the derived class uses REQ as a type,
-                // we need to resolve it to that ClassRefDType.
+                // to a type. When the derived class uses REQ as a type, we need to resolve
+                // it to the bound type. This handles all NodeDType subclasses including
+                // ClassRefDType (for class types) and BasicDType (for int, bit, etc.).
                 ok = (m_ds.m_dotPos == DP_NONE || m_ds.m_dotPos == DP_SCOPE);
                 if (ok) {
                     UINFO(5, "Issue #6814: Resolved inherited type param "
                               << nodep->name() << " -> " << defp);
-                    AstClassRefDType* const clonep = defp->cloneTree(false);
+                    AstNodeDType* const clonep = defp->cloneTree(false);
                     replaceWithCheckBreak(nodep, clonep);
                     VL_DO_DANGLING(pushDeletep(nodep), nodep);
                 }
@@ -5579,8 +5581,10 @@ class LinkDotResolveVisitor final : public VNVisitor {
                 if (AstTypedef* const defp
                     = foundp ? VN_CAST(foundp->nodep(), Typedef) : nullptr) {
                     // Don't check if typedef is to a <type T>::<reference> as might not be
-                    // resolved yet
-                    if (!nodep->classOrPackagep() && !defp->isUnderClass())
+                    // resolved yet. Also skip if typedef was found through a package (imported)
+                    // since the typedef definition is in a different compilation unit.
+                    if (!nodep->classOrPackagep() && !foundp->classOrPackagep()
+                        && !defp->isUnderClass())
                         checkDeclOrder(nodep, defp);
                     nodep->typedefp(defp);
                     nodep->classOrPackagep(foundp->classOrPackagep());
