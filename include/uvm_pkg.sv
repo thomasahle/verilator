@@ -194,6 +194,15 @@ package uvm_pkg;
     return uvm_factory::get();
   endfunction
 
+  // Deferred registration helper for uvm_*_utils macros
+  // Called by static initializer to ensure registration happens before run_test()
+  // The type_id parameter forces the type_id class to be elaborated and its
+  // get() function called, which triggers registration
+  function bit __verilator_deferred_register(string type_name, uvm_object_wrapper type_id);
+    // Registration already happened in type_id::get() call
+    return 1;
+  endfunction
+
   //----------------------------------------------------------------------
   // uvm_object - base class for data objects
   //----------------------------------------------------------------------
@@ -1583,13 +1592,8 @@ package uvm_pkg;
       $display("[UVM_INFO] @ %0t: run_test: Starting run_phase [UVM]", $time);
       __run_run_phase(test_inst, run_ph);
 
-      // Wait for all objections to be dropped
-      $display("[UVM_INFO] @ %0t: run_test: Waiting for objections to drop [UVM]", $time);
-      while (!run_ph.phase_done()) begin
-        #10;
-      end
-      // Additional drain time
-      #100;
+      // With wait fork, all run_phase tasks have completed
+      $display("[UVM_INFO] @ %0t: run_test: All run_phase tasks completed [UVM]", $time);
 
       $display("[UVM_INFO] @ %0t: run_test: Starting extract_phase [UVM]", $time);
       __run_extract_phase(test_inst, extract_ph);
@@ -1696,12 +1700,17 @@ package uvm_pkg;
     uvm_component comps[$];
     __collect_components(root, comps);
     // Run phase launches all run_phase tasks in parallel
-    foreach (comps[i]) begin
-      automatic int idx = i;
-      fork
-        comps[idx].run_phase(phase);
-      join_none
-    end
+    // We fork all tasks, then wait for them to complete
+    fork begin
+      foreach (comps[i]) begin
+        automatic int idx = i;
+        fork
+          comps[idx].run_phase(phase);
+        join_none
+      end
+      // Wait for all forked tasks to complete
+      wait fork;
+    end join
   endtask
 
   function void __run_extract_phase(uvm_component root, uvm_phase phase);

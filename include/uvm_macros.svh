@@ -72,7 +72,7 @@
 
 // uvm_object_utils - register object with factory (stub for Verilator)
 // Provides a type_id class with create() method to mimic UVM factory
-// Also provides factory registration capability
+// Auto-registers with factory using deferred registration pattern
 `define uvm_object_utils(TYPE) \
   typedef TYPE __verilator_uvm_type_``TYPE; \
   static function string __verilator_get_type_name(); return `"TYPE`"; endfunction \
@@ -83,11 +83,16 @@
       TYPE obj = new(name); \
       return obj; \
     endfunction \
-    static function void register(); \
+    static function bit register(); \
       if (m_inst == null) begin \
         m_inst = new(); \
         uvm_factory::register(m_inst); \
       end \
+      return 1; \
+    endfunction \
+    static function type_id get(); \
+      if (m_inst == null) void'(register()); \
+      return m_inst; \
     endfunction \
     virtual function uvm_object create_object(string name = ""); \
       TYPE obj = new(name); \
@@ -99,6 +104,7 @@
     virtual function string get_type_name(); \
       return `"TYPE`"; \
     endfunction \
+    local static bit m_registered = __verilator_deferred_register(`"TYPE`", get()); \
   endclass
 
 // uvm_object_utils_begin/end - for field automation (stub)
@@ -121,7 +127,7 @@
 
 // uvm_component_utils - register component with factory (stub for Verilator)
 // Provides a type_id class with create() method to mimic UVM factory
-// Also provides factory registration capability
+// Auto-registers with factory using deferred registration pattern
 `define uvm_component_utils(TYPE) \
   typedef TYPE __verilator_uvm_type_``TYPE; \
   static function string __verilator_get_type_name(); return `"TYPE`"; endfunction \
@@ -132,11 +138,16 @@
       TYPE obj = new(name, parent); \
       return obj; \
     endfunction \
-    static function void register(); \
+    static function bit register(); \
       if (m_inst == null) begin \
         m_inst = new(); \
         uvm_factory::register(m_inst); \
       end \
+      return 1; \
+    endfunction \
+    static function type_id get(); \
+      if (m_inst == null) void'(register()); \
+      return m_inst; \
     endfunction \
     virtual function uvm_object create_object(string name = ""); \
       return null; \
@@ -148,6 +159,7 @@
     virtual function string get_type_name(); \
       return `"TYPE`"; \
     endfunction \
+    local static bit m_registered = __verilator_deferred_register(`"TYPE`", get()); \
   endclass
 
 // uvm_component_utils_begin/end - for field automation (stub)
