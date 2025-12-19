@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# DESCRIPTION: Verilator: Test inherited type parameters
+# DESCRIPTION: Verilator: Test inherited type parameters with defaults
 #
 # This file ONLY is placed under the Creative Commons Public Domain, for
 # any use, without warranty, 2025 by Wilson Snyder.
