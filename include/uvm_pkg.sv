@@ -1371,11 +1371,63 @@ package uvm_pkg;
         return {cntxt_path, ".", inst_name};
     endfunction
 
-    // Check if a pattern matches a path
+    // Check if a segment pattern matches a segment
     // "*" matches anything
-    // "foo.*" matches "foo", "foo.bar", "foo.bar.baz"
-    // "foo*" matches "foo", "foobar", "foo.bar"
+    // "foo*" matches "foo", "foobar"
+    // "*foo" matches "foo", "barfoo"
+    // "*foo*" matches anything containing "foo"
     // "foo" matches only "foo"
+    static function bit segment_matches(string pattern, string segment);
+      int plen, slen;
+      bit starts_with_star, ends_with_star;
+
+      if (pattern == "*") return 1;
+      if (pattern == segment) return 1;
+
+      plen = pattern.len();
+      slen = segment.len();
+      if (plen == 0) return (slen == 0);
+
+      starts_with_star = (pattern[0] == "*");
+      ends_with_star = (pattern[plen-1] == "*");
+
+      // *foo* pattern - contains match
+      if (starts_with_star && ends_with_star && plen > 2) begin
+        string middle = pattern.substr(1, plen-2);
+        int mlen = middle.len();
+        for (int i = 0; i <= slen - mlen; i++) begin
+          if (segment.substr(i, i + mlen - 1) == middle)
+            return 1;
+        end
+        return 0;
+      end
+
+      // *foo pattern - ends with match
+      if (starts_with_star && !ends_with_star) begin
+        string suffix = pattern.substr(1, plen-1);
+        int sufflen = suffix.len();
+        if (slen >= sufflen && segment.substr(slen - sufflen, slen - 1) == suffix)
+          return 1;
+        return 0;
+      end
+
+      // foo* pattern - starts with match
+      if (ends_with_star && !starts_with_star) begin
+        string prefix = pattern.substr(0, plen-2);
+        int preflen = prefix.len();
+        if (slen >= preflen && segment.substr(0, preflen - 1) == prefix)
+          return 1;
+        return 0;
+      end
+
+      return 0;
+    endfunction
+
+    // Check if a pattern matches a path
+    // Patterns can contain wildcards in individual path segments
+    // "foo.bar" matches only "foo.bar"
+    // "foo.*" matches "foo.bar", "foo.baz", etc.
+    // "foo.*env*" matches "foo.myenv", "foo.axi4_env_h", etc.
     static function bit pattern_matches_path(string pattern, string path);
       int plen, pathlen;
 
@@ -1388,31 +1440,62 @@ package uvm_pkg;
       plen = pattern.len();
       pathlen = path.len();
 
-      // Check for ".*" suffix (descendant wildcard)
+      // Check for ".*" suffix (descendant wildcard - matches any depth)
       if (plen >= 2 && pattern.substr(plen-2, plen-1) == ".*") begin
         string prefix = pattern.substr(0, plen-3);
         int prefix_len = prefix.len();
-        // Matches the prefix itself or any descendant
+        // Matches the prefix itself
         if (path == prefix) return 1;
-        // Check if path starts with prefix followed by "."
+        // Or any descendant (path starts with prefix.)
         if (pathlen > prefix_len) begin
-          // substr is inclusive, so use prefix_len-1 as end index
           if (path.substr(0, prefix_len-1) == prefix && path[prefix_len] == ".")
             return 1;
         end
         return 0;
       end
 
-      // Check for "*" suffix (prefix wildcard)
-      if (pattern[plen-1] == "*") begin
-        string prefix = pattern.substr(0, plen-2);
-        if (pathlen >= prefix.len() && path.substr(0, prefix.len()-1) == prefix)
-          return 1;
-        return 0;
-      end
+      // Split pattern and path by dots and match segment by segment
+      begin
+        string pat_segments[$];
+        string path_segments[$];
+        int pi, si;
+        string cur_seg;
 
-      // Exact match
-      return (pattern == path);
+        // Split pattern into segments
+        cur_seg = "";
+        for (int i = 0; i < plen; i++) begin
+          if (pattern[i] == ".") begin
+            pat_segments.push_back(cur_seg);
+            cur_seg = "";
+          end else begin
+            cur_seg = {cur_seg, pattern[i]};
+          end
+        end
+        pat_segments.push_back(cur_seg);
+
+        // Split path into segments
+        cur_seg = "";
+        for (int i = 0; i < pathlen; i++) begin
+          if (path[i] == ".") begin
+            path_segments.push_back(cur_seg);
+            cur_seg = "";
+          end else begin
+            cur_seg = {cur_seg, path[i]};
+          end
+        end
+        path_segments.push_back(cur_seg);
+
+        // Must have same number of segments for match
+        if (pat_segments.size() != path_segments.size())
+          return 0;
+
+        // Match each segment
+        for (int i = 0; i < pat_segments.size(); i++) begin
+          if (!segment_matches(pat_segments[i], path_segments[i]))
+            return 0;
+        end
+        return 1;
+      end
     endfunction
 
     static function void set(uvm_component cntxt, string inst_name, string field_name, T value);
@@ -1701,19 +1784,33 @@ package uvm_pkg;
 
   task __run_run_phase(uvm_component root, uvm_phase phase);
     uvm_component comps[$];
+    int poll_count;
     __collect_components(root, comps);
     // Run phase launches all run_phase tasks in parallel
-    // We fork all tasks, then wait for them to complete
-    fork begin
-      foreach (comps[i]) begin
-        automatic int idx = i;
-        fork
-          comps[idx].run_phase(phase);
-        join_none
-      end
-      // Wait for all forked tasks to complete
-      wait fork;
-    end join
+    // Fork all run_phase tasks first
+    foreach (comps[i]) begin
+      automatic int idx = i;
+      fork
+        comps[idx].run_phase(phase);
+      join_none
+    end
+    // Now wait for objections or completion
+    // Give components a chance to raise objections
+    #1;
+    // If no objections raised, wait a bit longer
+    if (phase.get_objection_count() == 0) begin
+      #99;  // Total of 100 time units grace period
+    end
+    // Poll for objections to be dropped (or timeout)
+    poll_count = 0;
+    while (phase.get_objection_count() > 0 && poll_count < 100000) begin
+      #10;
+      poll_count++;
+    end
+    // Objections dropped (or timeout) - phase is done
+    if (poll_count >= 100000) begin
+      $display("[UVM_WARNING] @ %0t: run_phase objection timeout [UVM]", $time);
+    end
   endtask
 
   function void __run_extract_phase(uvm_component root, uvm_phase phase);
