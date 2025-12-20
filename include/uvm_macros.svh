@@ -198,50 +198,103 @@
 // Sequence macros
 //----------------------------------------------------------------------
 
-// uvm_do - execute a sequence item (stub)
+// uvm_do - create, randomize and execute a sequence item
 `define uvm_do(SEQ_OR_ITEM) \
-  begin \
-    SEQ_OR_ITEM = new(); \
-    if (!SEQ_OR_ITEM.randomize()) \
-      `uvm_warning("RANDFL", "Randomization failed for sequence item"); \
-  end
+  `uvm_do_on_with(SEQ_OR_ITEM, m_sequencer, {})
 
-// uvm_do_with - execute with inline constraints (stub)
+// uvm_do_with - execute with inline constraints
 `define uvm_do_with(SEQ_OR_ITEM, CONSTRAINTS) \
+  `uvm_do_on_with(SEQ_OR_ITEM, m_sequencer, CONSTRAINTS)
+
+// uvm_do_on - execute on a specific sequencer
+`define uvm_do_on(SEQ_OR_ITEM, SEQR) \
+  `uvm_do_on_with(SEQ_OR_ITEM, SEQR, {})
+
+// uvm_do_on_with - full form: execute on sequencer with constraints
+`define uvm_do_on_with(SEQ_OR_ITEM, SEQR, CONSTRAINTS) \
   begin \
     SEQ_OR_ITEM = new(); \
+    start_item(SEQ_OR_ITEM, -1, SEQR); \
     if (!SEQ_OR_ITEM.randomize() with CONSTRAINTS) \
       `uvm_warning("RANDFL", "Randomization failed for sequence item"); \
+    finish_item(SEQ_OR_ITEM); \
   end
 
-// uvm_create - create a sequence item (stub)
+// uvm_do_on_pri - execute on a specific sequencer with priority
+`define uvm_do_on_pri(SEQ_OR_ITEM, SEQR, PRIORITY) \
+  `uvm_do_on_pri_with(SEQ_OR_ITEM, SEQR, PRIORITY, {})
+
+// uvm_do_on_pri_with - execute on sequencer with priority and constraints
+`define uvm_do_on_pri_with(SEQ_OR_ITEM, SEQR, PRIORITY, CONSTRAINTS) \
+  begin \
+    SEQ_OR_ITEM = new(); \
+    start_item(SEQ_OR_ITEM, PRIORITY, SEQR); \
+    if (!SEQ_OR_ITEM.randomize() with CONSTRAINTS) \
+      `uvm_warning("RANDFL", "Randomization failed for sequence item"); \
+    finish_item(SEQ_OR_ITEM, PRIORITY); \
+  end
+
+// uvm_create - create a sequence item
 `define uvm_create(SEQ_OR_ITEM) \
   SEQ_OR_ITEM = new()
 
-// uvm_send - send a pre-created item (stub - no-op)
-`define uvm_send(SEQ_OR_ITEM)
-
-// uvm_rand_send - randomize and send (stub)
-`define uvm_rand_send(SEQ_OR_ITEM) \
+// uvm_create_on - create on a specific sequencer
+`define uvm_create_on(SEQ_OR_ITEM, SEQR) \
   begin \
-    if (!SEQ_OR_ITEM.randomize()) \
-      `uvm_warning("RANDFL", "Randomization failed for sequence item"); \
+    SEQ_OR_ITEM = new(); \
+    SEQ_OR_ITEM.set_item_context(this, SEQR); \
   end
 
-// uvm_rand_send_with - randomize with constraints and send (stub)
+// uvm_send - send a pre-created item
+`define uvm_send(SEQ_OR_ITEM) \
+  begin \
+    start_item(SEQ_OR_ITEM); \
+    finish_item(SEQ_OR_ITEM); \
+  end
+
+// uvm_send_pri - send with priority
+`define uvm_send_pri(SEQ_OR_ITEM, PRIORITY) \
+  begin \
+    start_item(SEQ_OR_ITEM, PRIORITY); \
+    finish_item(SEQ_OR_ITEM, PRIORITY); \
+  end
+
+// uvm_rand_send - randomize and send
+`define uvm_rand_send(SEQ_OR_ITEM) \
+  `uvm_rand_send_with(SEQ_OR_ITEM, {})
+
+// uvm_rand_send_with - randomize with constraints and send
 `define uvm_rand_send_with(SEQ_OR_ITEM, CONSTRAINTS) \
   begin \
+    start_item(SEQ_OR_ITEM); \
     if (!SEQ_OR_ITEM.randomize() with CONSTRAINTS) \
       `uvm_warning("RANDFL", "Randomization failed for sequence item"); \
+    finish_item(SEQ_OR_ITEM); \
+  end
+
+// uvm_rand_send_pri_with - randomize with priority and constraints
+`define uvm_rand_send_pri_with(SEQ_OR_ITEM, PRIORITY, CONSTRAINTS) \
+  begin \
+    start_item(SEQ_OR_ITEM, PRIORITY); \
+    if (!SEQ_OR_ITEM.randomize() with CONSTRAINTS) \
+      `uvm_warning("RANDFL", "Randomization failed for sequence item"); \
+    finish_item(SEQ_OR_ITEM, PRIORITY); \
   end
 
 //----------------------------------------------------------------------
-// Declarative macros (stubs)
+// Declarative macros
 //----------------------------------------------------------------------
 
-// uvm_declare_p_sequencer - declare sequencer handle
+// uvm_declare_p_sequencer - declare sequencer handle and cast from m_sequencer
+// The p_sequencer is set in pre_start() when the sequence is started
 `define uvm_declare_p_sequencer(SEQUENCER) \
-  SEQUENCER p_sequencer;
+  SEQUENCER p_sequencer; \
+  virtual function void m_set_p_sequencer(); \
+    super.m_set_p_sequencer(); \
+    if (!$cast(p_sequencer, m_sequencer)) begin \
+      `uvm_fatal("SQRCST", {"Failed to cast m_sequencer to ", `"SEQUENCER`"}) \
+    end \
+  endfunction
 
 //----------------------------------------------------------------------
 // Analysis macros

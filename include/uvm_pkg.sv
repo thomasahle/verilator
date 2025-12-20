@@ -775,10 +775,17 @@ package uvm_pkg;
       // Override in derived classes
     endtask
 
+    // Set p_sequencer by casting m_sequencer - overridden by uvm_declare_p_sequencer macro
+    virtual function void m_set_p_sequencer();
+      // Base implementation does nothing - derived classes override this
+    endfunction
+
     virtual task start(uvm_sequencer_base sequencer, uvm_sequence_base parent_sequence = null,
                        int this_priority = -1, bit call_pre_post = 1);
       m_sequencer = sequencer;
       m_parent_sequence = parent_sequence;
+      // Set p_sequencer by casting m_sequencer (if uvm_declare_p_sequencer was used)
+      m_set_p_sequencer();
       if (call_pre_post) pre_start();
       if (call_pre_post) pre_body();
       body();
