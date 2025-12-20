@@ -10,9 +10,18 @@
 import vltest_bootstrap
 
 test.scenarios('simulator')
-test.top_filename = "t/t_constraint_countones.v"
+test.top_filename = "t/t_uvm_tlm_analysis_fifo.v"
 
-test.compile(verilator_flags2=["--timing"])
+import os
+verilator_root = os.environ.get('VERILATOR_ROOT', os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+include_dir = os.path.join(verilator_root, 'include')
+
+test.compile(verilator_flags2=[
+    "--timing",
+    "-Wno-WIDTHTRUNC",
+    f"+incdir+{include_dir}",
+    f"{include_dir}/uvm_pkg.sv",
+], timing_loop=True)
 
 test.execute()
 
