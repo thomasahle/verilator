@@ -25,9 +25,9 @@ class basic_test extends uvm_test;
   endfunction
 
   virtual task run_phase(uvm_phase phase);
+    phase.raise_objection(this, "Starting test");
     `uvm_info("TEST", "run_phase started", UVM_LOW)
     `uvm_info("TEST", "run_phase finished", UVM_LOW)
-    // Drop objection immediately (no work to do in this basic test)
     phase.drop_objection(this, "Ending test");
   endtask
 

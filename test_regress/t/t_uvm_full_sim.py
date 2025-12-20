@@ -20,9 +20,10 @@ include_dir = os.path.join(verilator_root, 'include')
 test.compile(verilator_flags2=[
     "--timing",
     "-Wno-WIDTHTRUNC",
+    "-Wno-IGNOREDRETURN",
     f"+incdir+{include_dir}",
     f"{include_dir}/uvm_pkg.sv",
-])
+], timing_loop=True)
 
 test.execute()
 
