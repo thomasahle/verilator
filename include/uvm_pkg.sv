@@ -1639,9 +1639,15 @@ package uvm_pkg;
   task run_test(string test_name = "");
     uvm_component test_inst;
     uvm_phase build_ph, connect_ph, elab_ph, start_ph, run_ph, extract_ph, check_ph, report_ph, final_ph;
+    string cmdline_test;
 
     // Ensure globals are initialized
     __uvm_pkg_init();
+
+    // Check for +UVM_TESTNAME on command line - this overrides the passed test_name
+    if ($value$plusargs("UVM_TESTNAME=%s", cmdline_test)) begin
+      test_name = cmdline_test;
+    end
 
     $display("[UVM_INFO] @ %0t: run_test: Starting test '%s' [UVM]", $time, test_name);
 
