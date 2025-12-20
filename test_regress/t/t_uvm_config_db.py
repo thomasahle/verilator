@@ -22,7 +22,7 @@ test.compile(verilator_flags2=[
     "-Wno-WIDTHTRUNC",
     f"+incdir+{include_dir}",
     f"{include_dir}/uvm_pkg.sv",
-])
+], timing_loop=True)
 
 test.execute()
 

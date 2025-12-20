@@ -869,12 +869,13 @@ package uvm_pkg;
       // Simplified - grant immediately (no arbitration)
     endtask
 
-    virtual function void send_request(uvm_sequence_base sequence_ptr, uvm_sequence_item t, bit rerandomize = 0);
+    virtual function void send_request(uvm_sequence_base sequence_ptr = null, uvm_sequence_item t = null, bit rerandomize = 0);
       // Mark item as not done
-      m_item_done[t.get_transaction_id()] = 0;
+      if (t != null)
+        m_item_done[t.get_transaction_id()] = 0;
     endfunction
 
-    virtual task wait_for_item_done(uvm_sequence_base sequence_ptr, int transaction_id);
+    virtual task wait_for_item_done(uvm_sequence_base sequence_ptr = null, int transaction_id = -1);
       // Wait until the item is marked done
       wait (m_item_done.exists(transaction_id) && m_item_done[transaction_id] == 1);
       // Clean up
@@ -913,8 +914,9 @@ package uvm_pkg;
     endfunction
 
     // Override base class send_request - queue the item
-    virtual function void send_request(uvm_sequence_base sequence_ptr, uvm_sequence_item t, bit rerandomize = 0);
+    virtual function void send_request(uvm_sequence_base sequence_ptr = null, uvm_sequence_item t = null, bit rerandomize = 0);
       REQ req;
+      if (t == null) return;
       super.send_request(sequence_ptr, t, rerandomize);
       // verilator lint_off CASTCONST
       if ($cast(req, t)) begin

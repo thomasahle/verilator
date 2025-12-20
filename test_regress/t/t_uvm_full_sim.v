@@ -100,6 +100,11 @@ class my_driver extends uvm_driver #(my_transaction);
     super.new(name, parent);
   endfunction
 
+  virtual function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    seq_item_port = new("seq_item_port", this);
+  endfunction
+
   virtual task run_phase(uvm_phase phase);
     my_transaction tx;
     `uvm_info("DRV", "Driver starting", UVM_LOW)
@@ -326,7 +331,7 @@ class my_test extends uvm_test;
       my_transaction tx;
       tx = my_transaction::type_id::create($sformatf("tx%0d", i));
       void'(tx.randomize());
-      env.agent.seqr.send_request(tx);
+      env.agent.seqr.send_request(null, tx);
     end
 
     // Wait for driver to process
