@@ -28,20 +28,18 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 8. **Run Test**: `run_test()` with `+UVM_TESTNAME` command line support
 9. **Hierarchy**: Parent/child relationships, `get_full_name()`, component lookup
 
-### ⚠️ Partial Support
+### ✅ Recently Fixed
 
-1. **Queue + Foreach Constraints**: Size constraints work, but element constraints are NOT applied
-   - The queue will be sized correctly based on size constraints
-   - Element constraints (foreach) run on an empty queue, so no element constraints are applied
-   - Elements will be filled with random values after resize
-   - Warning: CONSTRAINTIGN warns about this limitation
-   - Example:
+1. **Queue + Foreach Constraints** (Two-Phase Solving):
+   - **FIXED**: Element constraints on dynamically-sized queues now work correctly
+   - Two-phase solving: Phase 1 solves size constraints and resizes queues, Phase 2 re-registers elements and solves element constraints
+   - Example that now works:
      ```systemverilog
      rand bit [3:0] wstrb [$:256];
      constraint size_c { wstrb.size() == len; }
-     constraint elem_c { foreach(wstrb[i]) wstrb[i] != 0; }  // NOT APPLIED!
+     constraint elem_c { foreach(wstrb[i]) wstrb[i] != 0; }  // NOW WORKS!
      ```
-   - Result: Queue is resized to `len`, elements get random values (may include 0)
+   - Test: `t_constraint_queue_foreach_twophase.py`
 
 ### ✅ Also Working
 
@@ -67,29 +65,17 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_constraint_queue_simple | ✅ PASS |
 | t_constraint_queue_foreach | ✅ PASS (size works, element constraints not applied) |
 
-### ⚠️ axi4_avip Testbench Status
+### 🧪 axi4_avip Testbench Status
 
-The mbits-mirafra axi4_avip testbench now:
+The mbits-mirafra axi4_avip testbench:
 1. **Compiles successfully** with `--top-module tb_top`
 2. **Runs UVM phases** (build, connect, run) correctly
-3. **Fails at randomization** due to `foreach` constraints on queues with dynamic size:
+3. **Foreach constraints on queues**: Should now work with two-phase solving fix!
    ```systemverilog
-   // These constraints in axi4_master_tx cause the failure:
+   // These constraints in axi4_master_tx should now work:
    constraint wstrb_c3 {foreach(wstrb[i]) wstrb[i]!=0; }
    constraint wstrb_c4 {foreach(wstrb[i]) $countones(wstrb[i]) == 2**awsize;}
    ```
-
-**Workaround**: Move foreach constraints to `post_randomize()`:
-```systemverilog
-function void post_randomize();
-  foreach(wstrb[i]) begin
-    // Ensure wstrb is non-zero with correct number of bits
-    if (wstrb[i] == 0 || $countones(wstrb[i]) != 2**awsize) begin
-      wstrb[i] = (1 << (2**awsize)) - 1;  // Default valid strobe
-    end
-  end
-endfunction
-```
 
 **Build command**:
 ```bash
@@ -102,10 +88,23 @@ verilator --binary --timing --top-module tb_top \
 
 ### ✅ Recent Fixes
 
-1. **Inline constraints + queue size** (commit a22b7ed3a):
+1. **Inline constraints with obj.member style** (new):
+   - Fixed: `req.randomize() with { req.value == 5; }` pattern now works
+   - Works for non-parametric classes with inheritance
+   - Tests: `t_constraint_inline_member.v`, `t_constraint_inline_inherited.v`
+
+2. **Inline constraints + queue size** (commit a22b7ed3a):
    - Fixed: `randomize() with {...}` now correctly resizes queues
    - Bug was: `__Vresize_constrained_arrays()` not called for inline constraints
    - Test: `t_constraint_inline_queue_size.py`
+
+### ⚠️ Known Limitations
+
+1. **Parametric class inline constraints**:
+   - Pattern `req.randomize() with { req.member == x; }` where `req` is of type `REQ` (a template parameter) does not work
+   - This affects UVM sequences (`uvm_sequence#(REQ)`) where `req` is the templated request type
+   - Workaround: Use simple inline constraints like `req.randomize() with { member == x; }` (without the `req.` prefix)
+   - Root cause: Template instantiation creates different AstVar objects that aren't properly matched
 
 ### 📁 Key Files
 
