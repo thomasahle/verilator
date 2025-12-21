@@ -395,14 +395,49 @@ bool VlRandomizer::next(VlRNG& rngr) {
         }
     };
 
-    emitSetup();
-    emitHardConstraints();
+    // Debug: dump SMT2 to stderr if VERILATOR_SOLVER_DEBUG is set
+    static bool debugSolver = (std::getenv("VERILATOR_SOLVER_DEBUG") != nullptr);
+    std::stringstream debugBuf;
+    std::ostream& dbgOs = debugSolver ? debugBuf : os;
 
-    // Also add soft constraints in the first pass
-    for (const std::string& constraint : m_softConstraints) {
-        os << "(assert (= #b1 " << constraint << "))\n";
+    auto emitSetupToStream = [&](std::ostream& s) {
+        s << "(set-option :produce-models true)\n";
+        s << "(set-logic QF_ABV)\n";
+        s << "(define-fun __Vbv ((b Bool)) (_ BitVec 1) (ite b #b1 #b0))\n";
+        s << "(define-fun __Vbool ((v (_ BitVec 1))) Bool (= #b1 v))\n";
+        for (const auto& var : m_vars) {
+            if (var.second->dimension() > 0) {
+                auto arrVarsp = std::make_shared<const ArrayInfoMap>(m_arr_vars);
+                var.second->setArrayInfo(arrVarsp);
+            }
+            s << "(declare-fun " << var.first << " () ";
+            var.second->emitType(s);
+            s << ")\n";
+        }
+    };
+    auto emitHardConstraintsToStream = [&](std::ostream& s) {
+        for (const std::string& constraint : m_constraints) {
+            s << "(assert (= #b1 " << constraint << "))\n";
+        }
+    };
+
+    if (debugSolver) {
+        emitSetupToStream(debugBuf);
+        emitHardConstraintsToStream(debugBuf);
+        for (const std::string& constraint : m_softConstraints) {
+            debugBuf << "(assert (= #b1 " << constraint << "))\n";
+        }
+        debugBuf << "(check-sat)\n";
+        std::cerr << "=== SMT2 Debug ===\n" << debugBuf.str() << "==================\n";
+        os << debugBuf.str();
+    } else {
+        emitSetup();
+        emitHardConstraints();
+        for (const std::string& constraint : m_softConstraints) {
+            os << "(assert (= #b1 " << constraint << "))\n";
+        }
+        os << "(check-sat)\n";
     }
-    os << "(check-sat)\n";
 
     bool sat = parseSolution(os);
 

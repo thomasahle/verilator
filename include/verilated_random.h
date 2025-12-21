@@ -84,6 +84,7 @@ public:
     mutable std::shared_ptr<const ArrayInfoMap> m_arrVarsRefp;
     void setArrayInfo(const std::shared_ptr<const ArrayInfoMap>& arrVarsRefp) const {
         m_arrVarsRefp = arrVarsRefp;
+        count_cache.clear();  // Clear cache when array info changes (two-phase solving)
     }
     mutable std::map<std::string, int> count_cache;
     int countMatchingElements(const ArrayInfoMap& arr_vars, const std::string& base_name) const {
@@ -351,13 +352,17 @@ public:
     }
 
     // Register queue of non-struct types
-    template <typename T>
+    template <typename T, size_t N_MaxSize>
     typename std::enable_if<!VlContainsCustomStruct<T>::value, void>::type
-    write_var(VlQueue<T>& var, int width, const char* name, int dimension,
+    write_var(VlQueue<T, N_MaxSize>& var, int width, const char* name, int dimension,
               std::uint32_t randmodeIdx = std::numeric_limits<std::uint32_t>::max()) {
-        if (m_vars.find(name) != m_vars.end()) return;
-        m_vars[name] = std::make_shared<const VlRandomArrayVarTemplate<VlQueue<T>>>(
-            name, width, &var, dimension, randmodeIdx);
+        // Register variable only once in m_vars
+        if (m_vars.find(name) == m_vars.end()) {
+            m_vars[name] = std::make_shared<const VlRandomArrayVarTemplate<VlQueue<T, N_MaxSize>>>(
+                name, width, &var, dimension, randmodeIdx);
+        }
+        // Always re-record array elements (needed for two-phase solving with foreach constraints)
+        // After queue resize, this updates m_arr_vars with the new elements
         if (dimension > 0) {
             m_index = 0;
             record_arr_table(var, name, dimension, {}, {});
@@ -365,9 +370,9 @@ public:
     }
 
     // Register queue of structs
-    template <typename T>
+    template <typename T, size_t N_MaxSize>
     typename std::enable_if<VlContainsCustomStruct<T>::value, void>::type
-    write_var(VlQueue<T>& var, int width, const char* name, int dimension,
+    write_var(VlQueue<T, N_MaxSize>& var, int width, const char* name, int dimension,
               std::uint32_t randmodeIdx = std::numeric_limits<std::uint32_t>::max()) {
         if (dimension > 0) record_struct_arr(var, name, dimension, {}, {});
     }
@@ -446,8 +451,8 @@ public:
     }
 
     // Recursively record all elements in a queue
-    template <typename T>
-    void record_arr_table(VlQueue<T>& var, const std::string& name, int dimension,
+    template <typename T, size_t N_MaxSize>
+    void record_arr_table(VlQueue<T, N_MaxSize>& var, const std::string& name, int dimension,
                           std::vector<IData> indices, std::vector<size_t> idxWidths) {
         if ((dimension > 0) && (var.size() != 0)) {
             idxWidths.push_back(32);
@@ -520,8 +525,8 @@ public:
     }
 
     // Recursively process VlQueue of structs
-    template <typename T>
-    void record_struct_arr(VlQueue<T>& var, const std::string& name, int dimension,
+    template <typename T, size_t N_MaxSize>
+    void record_struct_arr(VlQueue<T, N_MaxSize>& var, const std::string& name, int dimension,
                            std::vector<IData> indices, std::vector<size_t> idxWidths) {
         if ((dimension > 0) && (var.size() != 0)) {
             idxWidths.push_back(32);
