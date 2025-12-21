@@ -65,26 +65,33 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_constraint_queue_simple | ✅ PASS |
 | t_constraint_queue_foreach | ✅ PASS (size works, element constraints not applied) |
 
+### 🧪 AXI4 Pattern Tests (PASSING)
+
+The AXI4 constraint patterns now work correctly:
+```systemverilog
+// t_constraint_axi4_pattern.v - ALL PASS
+rand bit [7:0] awlen;
+rand bit [2:0] awsize;
+rand bit [3:0] wstrb [$:256];
+
+constraint wstrb_size_c { wstrb.size() == awlen + 1; }           // ✅ Queue size
+constraint wstrb_nonzero_c { foreach(wstrb[i]) wstrb[i] != 0; }  // ✅ Foreach
+constraint wstrb_countones_c { foreach(wstrb[i]) $countones(wstrb[i]) == (1 << awsize); }  // ✅ $countones
+```
+
 ### 🧪 axi4_avip Testbench Status
 
-The mbits-mirafra axi4_avip testbench:
-1. **Compiles successfully** with `--top-module tb_top`
-2. **Runs UVM phases** (build, connect, run) correctly
-3. **Foreach constraints on queues**: Should now work with two-phase solving fix!
-   ```systemverilog
-   // These constraints in axi4_master_tx should now work:
-   constraint wstrb_c3 {foreach(wstrb[i]) wstrb[i]!=0; }
-   constraint wstrb_c4 {foreach(wstrb[i]) $countones(wstrb[i]) == 2**awsize;}
-   ```
+The mbits-mirafra axi4_avip testbench has compilation issues due to:
+1. **s_until_with assertions**: Unsupported in Verilator
+   - Workaround: Use `axi4_compile_verilator.f` with modified assertion files
+2. **Parametric UVM types**: `uvm_seq_item_pull_port #(REQ,RSP)` fails
+   - Error: "Parameter type pin value isn't a type"
+   - Root cause: REQ/RSP type parameters from `uvm_driver#(T)` not resolving in nested generics
 
-**Build command**:
-```bash
-cd ~/repos/mbits-mirafra/axi4_avip/sim
-verilator --binary --timing --top-module tb_top \
-  -f axi4_compile_full.f tb_top.sv \
-  -Wno-CONSTRAINTIGN -Wno-CASEINCOMPLETE -Wno-WIDTH \
-  -Wno-UNOPTFLAT -Wno-CASTCONST
-```
+**Workaround compile file** (in sim/):
+- `axi4_compile_verilator.f` - Uses modified assertion files without `s_until_with`
+- `master_assertions_verilator.sv`, `slave_assertions_verilator.sv` - Verilator-compatible assertions
+- `axi4_slave_agent_bfm_verilator.sv` - Fixed bind statement references
 
 ### ✅ Recent Fixes
 
@@ -105,6 +112,15 @@ verilator --binary --timing --top-module tb_top \
    - This affects UVM sequences (`uvm_sequence#(REQ)`) where `req` is the templated request type
    - Workaround: Use simple inline constraints like `req.randomize() with { member == x; }` (without the `req.` prefix)
    - Root cause: Template instantiation creates different AstVar objects that aren't properly matched
+
+2. **Nested parametric types from parent class**:
+   - `uvm_seq_item_pull_port #(REQ,RSP)` in a class extending `uvm_driver#(T)` fails
+   - Error: "Parameter type pin value isn't a type"
+   - The REQ/RSP type parameters inherited from the parent class don't resolve correctly in nested generic types
+
+3. **s_until_with in assertions**:
+   - SystemVerilog `s_until_with` property operator is unsupported
+   - Workaround: Remove or replace with simpler assertions
 
 ### 📁 Key Files
 
