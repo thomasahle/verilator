@@ -3274,6 +3274,14 @@ class RandomizeVisitor final : public VNVisitor {
             new AstVarRef{nodep->fileline(), VN_AS(randomizeFuncp->fvarp(), Var), VAccess::WRITE},
             new AstAnd{nodep->fileline(), basicRandomizeFuncCallp, solverCallp}});
 
+        // Call resize for constrained arrays (needed for queue size constraints)
+        if (AstTask* const resizeAllTaskp
+            = VN_AS(m_memberMap.findMember(classp, "__Vresize_constrained_arrays"), Task)) {
+            AstTaskRef* const resizeTaskRefp
+                = new AstTaskRef{nodep->fileline(), resizeAllTaskp, nullptr};
+            randomizeFuncp->addStmtsp(resizeTaskRefp->makeStmt());
+        }
+
         addPrePostCall(classp, randomizeFuncp, "post_randomize");
 
         // Replace the node with a call to that function
