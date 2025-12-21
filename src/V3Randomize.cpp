@@ -634,11 +634,45 @@ class RandomizeMarkVisitor final : public VNVisitor {
     void visit(AstMemberSel* nodep) override {
         if (!m_constraintExprGenp) return;
         iterateChildrenConst(nodep);
-        const bool randObject = nodep->fromp()->user1() || VN_IS(nodep->fromp(), LambdaArgRef);
+
+        // Check if this MemberSel is accessing the object being randomized in an inline constraint.
+        // For req.randomize() with { req.awsize == 2; }, we need to recognize that req.awsize
+        // inside the with clause refers to a random variable of the object being randomized.
+        bool isRandomizedObject = false;
+        AstMethodCall* randMethodCallp = nullptr;
+        if (m_withp) {
+            AstNode* backp = m_withp;
+            while (backp->backp()) {
+                if (AstMethodCall* const callp = VN_CAST(backp, MethodCall)) {
+                    randMethodCallp = callp;
+                    // Check if the MemberSel's fromp refers to the same object being randomized
+                    if (const AstVarRef* const memberFromp = VN_CAST(nodep->fromp(), VarRef)) {
+                        if (const AstVarRef* const callFromp = VN_CAST(callp->fromp(), VarRef)) {
+                            // Compare by pointer if possible, or by name for parametric classes
+                            // where the same variable may have different AstVar objects
+                            if (memberFromp->varp() == callFromp->varp()
+                                || memberFromp->varp()->name() == callFromp->varp()->name()) {
+                                isRandomizedObject = true;
+                            }
+                        }
+                    }
+                    break;
+                }
+                backp = backp->backp();
+            }
+        }
+
+        const bool randObject = nodep->fromp()->user1() || VN_IS(nodep->fromp(), LambdaArgRef)
+                                || isRandomizedObject;
         const bool randMember = nodep->varp()->rand().isRandomizable();
         const bool inStdWith = m_inStdWith && m_stdRandCallp;
         if (randObject && randMember && !inStdWith) {
             nodep->user1(true);
+            // Mark parent object for constraint expression visitor to properly convert
+            // MemberSel to VarRef (needed for inline constraints like req.randomize() with {...})
+            if (isRandomizedObject && VN_IS(nodep->fromp(), VarRef)) {
+                nodep->fromp()->user1(true);
+            }
         } else if (inStdWith && isVarInStdRandomizeArgs(nodep->varp())) {
             nodep->user1(true);
             // Mark parent object for constraint expression visitor
@@ -646,15 +680,12 @@ class RandomizeMarkVisitor final : public VNVisitor {
         }
 
         if (m_withp) {
-            AstNode* backp = m_withp;
-            while (backp->backp()) {
-                if (const AstMethodCall* const callp = VN_CAST(backp, MethodCall)) {
-                    AstClassRefDType* classdtype
-                        = VN_AS(callp->fromp()->dtypep()->skipRefp(), ClassRefDType);
+            if (randMethodCallp && randMethodCallp->fromp()
+                && randMethodCallp->fromp()->dtypep()) {
+                if (AstClassRefDType* const classdtype = VN_CAST(
+                        randMethodCallp->fromp()->dtypep()->skipRefp(), ClassRefDType)) {
                     nodep->user2p(classdtype->classp());
-                    break;
                 }
-                backp = backp->backp();
             }
         } else {
             nodep->user2p(m_modp);
@@ -675,7 +706,11 @@ class RandomizeMarkVisitor final : public VNVisitor {
     }
     void visit(AstWith* nodep) override {
         VL_RESTORER(m_withp);
+        VL_RESTORER(m_constraintExprGenp);
         m_withp = nodep;
+        // Set m_constraintExprGenp so that VarRefs and expressions inside the with clause
+        // are properly marked as random-dependent (needed for inline constraints)
+        m_constraintExprGenp = nodep;
         for (AstNode* pinp = m_stdRandCallp ? m_stdRandCallp->pinsp() : nullptr; pinp;
              pinp = pinp->nextp()) {
             AstWith* const withp = VN_CAST(pinp, With);
@@ -1161,6 +1196,28 @@ class ConstraintExprVisitor final : public VNVisitor {
     void visit(AstPowSS* nodep) override { handlePow(nodep); }
     void visit(AstPowSU* nodep) override { handlePow(nodep); }
     void visit(AstPowUS* nodep) override { handlePow(nodep); }
+    // Helper to handle shift operations - SMT bvshl/bvshr require same-width operands
+    void handleShift(AstNodeBiop* nodep) {
+        if (editFormat(nodep)) return;
+        FileLine* const fl = nodep->fileline();
+        AstNodeExpr* rhsp = nodep->rhsp();
+        const int lhsWidth = nodep->lhsp()->width();
+        const int rhsWidth = rhsp->width();
+        // Extend shift amount to match left operand width if needed
+        if (rhsWidth < lhsWidth) {
+            VNRelinker handle;
+            rhsp->unlinkFrBack(&handle);
+            AstExtend* const extendp = new AstExtend{fl, rhsp, lhsWidth};
+            extendp->dtypeSetBitSized(lhsWidth, VSigning::UNSIGNED);
+            extendp->user1(rhsp->user1());  // Transfer random dependency flag
+            handle.relink(extendp);
+            rhsp = extendp;
+        }
+        editSMT(nodep, nodep->lhsp(), rhsp);
+    }
+    void visit(AstShiftL* nodep) override { handleShift(nodep); }
+    void visit(AstShiftR* nodep) override { handleShift(nodep); }
+    void visit(AstShiftRS* nodep) override { handleShift(nodep); }
     void visit(AstNodeBiop* nodep) override {
         if (editFormat(nodep)) return;
         editSMT(nodep, nodep->lhsp(), nodep->rhsp());
@@ -2872,6 +2929,114 @@ class RandomizeVisitor final : public VNVisitor {
             = VN_AS(m_memberMap.findMember(nodep, "__Vresize_constrained_arrays"), Task)) {
             AstTaskRef* const resizeTaskRefp = new AstTaskRef{fl, resizeAllTaskp, nullptr};
             randomizep->addStmtsp(resizeTaskRefp->makeStmt());
+
+            // Two-phase solving for foreach constraints on dynamically-sized queues:
+            // After first solve + resize, re-register queue elements and solve again.
+            // This allows foreach constraints to iterate over the correctly-sized queue.
+
+            // Re-register all constrained queue variables (so elements are recorded)
+            nodep->foreach([&](AstVar* const varp) {
+                if (!varp->user4p()) return;  // Not a constrained queue
+                if (!VN_IS(varp->dtypep(), QueueDType)
+                    && !VN_IS(varp->dtypep(), DynArrayDType))
+                    return;
+
+                // Generate write_var call to re-record queue elements
+                AstCMethodHard* const methodp
+                    = new AstCMethodHard{fl,
+                                         new AstVarRef{fl, VN_AS(genp->user2p(), NodeModule), genp,
+                                                       VAccess::READWRITE},
+                                         VCMethod::RANDOMIZER_WRITE_VAR};
+                methodp->dtypeSetVoid();
+
+                // Add queue variable reference
+                AstVarRef* const varRefp
+                    = new AstVarRef{varp->fileline(), nodep, varp, VAccess::WRITE};
+                methodp->addPinsp(varRefp);
+
+                // Add width (element width)
+                AstNodeDType* tmpDtypep = varp->dtypep();
+                while (VN_IS(tmpDtypep, UnpackArrayDType) || VN_IS(tmpDtypep, DynArrayDType)
+                       || VN_IS(tmpDtypep, QueueDType) || VN_IS(tmpDtypep, AssocArrayDType))
+                    tmpDtypep = tmpDtypep->subDTypep();
+                const size_t width = tmpDtypep->width();
+                methodp->addPinsp(
+                    new AstConst{varp->dtypep()->fileline(), AstConst::Unsized64{}, width});
+
+                // Add variable name
+                AstNodeExpr* const varnamep
+                    = new AstCExpr{varp->fileline(), "\"" + varp->name() + "\"", varp->width()};
+                varnamep->dtypep(varp->dtypep());
+                methodp->addPinsp(varnamep);
+
+                // Add dimension
+                const std::pair<uint32_t, uint32_t> dims
+                    = varp->dtypep()->dimensions(/*includeBasic=*/true);
+                const uint32_t dimension = dims.second;
+                methodp->addPinsp(
+                    new AstConst{varp->dtypep()->fileline(), AstConst::Unsized64{}, dimension});
+
+                randomizep->addStmtsp(methodp->makeStmt());
+            });
+
+            // Clear constraints and re-setup (foreach now works on resized queues)
+            randomizep->addStmtsp(implementConstraintsClear(fl, genp));
+
+            // Fix size values from phase 1 - add hard constraints for each queue's size variable
+            nodep->foreach([&](AstVar* const varp) {
+                if (!varp->user4p()) return;  // Not a constrained queue
+                if (!VN_IS(varp->dtypep(), QueueDType)
+                    && !VN_IS(varp->dtypep(), DynArrayDType))
+                    return;
+
+                // Find the corresponding size variable
+                const std::string sizeVarName = "__V" + varp->name() + "_size";
+                AstVar* sizeVarp = nullptr;
+                nodep->foreach([&](AstVar* const memberVarp) {
+                    if (memberVarp->name() == sizeVarName) { sizeVarp = memberVarp; }
+                });
+                if (!sizeVarp) return;
+
+                // Generate: constraint.hard("(__Vbv (= __Vdata_size <current_value>))")
+                // Use VL_SFORMATF to convert the size value to hex at runtime
+                AstCMethodHard* const hardMethodp
+                    = new AstCMethodHard{fl,
+                                         new AstVarRef{fl, VN_AS(genp->user2p(), NodeModule), genp,
+                                                       VAccess::READWRITE},
+                                         VCMethod::RANDOMIZER_HARD};
+                hardMethodp->dtypeSetVoid();
+
+                // Create format string that produces "(__Vbv (= __Vdata_size #xNNNNNNNN))"
+                std::ostringstream formatOss;
+                formatOss << "\"(__Vbv (= " << sizeVarName << " #x%08x))\"";
+                AstCExpr* const formatExpr
+                    = new AstCExpr{fl, "VL_SFORMATF_N_NX(" + formatOss.str() + ", 0, 32, ",
+                                   sizeVarp->width()};
+                formatExpr->add(new AstVarRef{fl, nodep, sizeVarp, VAccess::READ});
+                formatExpr->add(")");
+                formatExpr->dtypeSetString();
+                hardMethodp->addPinsp(formatExpr);
+
+                randomizep->addStmtsp(hardMethodp->makeStmt());
+            });
+
+            AstTask* const setupAllTaskp2 = getCreateConstraintSetupFunc(nodep);
+            AstTaskRef* const setupTaskRefp2 = new AstTaskRef{fl, setupAllTaskp2, nullptr};
+            randomizep->addStmtsp(setupTaskRefp2->makeStmt());
+
+            // Re-solve with element constraints
+            AstNodeModule* const genModp2 = VN_AS(genp->user2p(), NodeModule);
+            AstCExpr* const solverCallp2 = new AstCExpr{fl};
+            solverCallp2->dtypeSetBit();
+            solverCallp2->add(new AstVarRef{fl, genModp2, genp, VAccess::READWRITE});
+            solverCallp2->add(".next(__Vm_rng)");
+
+            // Combine result with second solve
+            AstVarRef* const fvarRefReadp2 = fvarRefp->cloneTree(false);
+            fvarRefReadp2->access(VAccess::READ);
+            randomizep->addStmtsp(
+                new AstAssign{fl, fvarRefp->cloneTree(false),
+                              new AstAnd{fl, fvarRefReadp2, solverCallp2}});
         }
 
         AstVarRef* const fvarRefReadp = fvarRefp->cloneTree(false);
