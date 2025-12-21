@@ -58,8 +58,6 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 
 | Test | Status |
 |------|--------|
-| axi4_base_test | ✅ PASS (completes all phases) |
-| axi4_blocking_write_read_test | ⚠️ PARTIAL (size works, element constraints not applied) |
 | t_uvm_run_test | ✅ PASS |
 | t_uvm_config_db | ✅ PASS |
 | t_uvm_tlm_analysis_fifo | ✅ PASS |
@@ -68,6 +66,46 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_constraint_countones_fixed | ✅ PASS |
 | t_constraint_queue_simple | ✅ PASS |
 | t_constraint_queue_foreach | ✅ PASS (size works, element constraints not applied) |
+
+### ⚠️ axi4_avip Testbench Status
+
+The mbits-mirafra axi4_avip testbench now:
+1. **Compiles successfully** with `--top-module tb_top`
+2. **Runs UVM phases** (build, connect, run) correctly
+3. **Fails at randomization** due to `foreach` constraints on queues with dynamic size:
+   ```systemverilog
+   // These constraints in axi4_master_tx cause the failure:
+   constraint wstrb_c3 {foreach(wstrb[i]) wstrb[i]!=0; }
+   constraint wstrb_c4 {foreach(wstrb[i]) $countones(wstrb[i]) == 2**awsize;}
+   ```
+
+**Workaround**: Move foreach constraints to `post_randomize()`:
+```systemverilog
+function void post_randomize();
+  foreach(wstrb[i]) begin
+    // Ensure wstrb is non-zero with correct number of bits
+    if (wstrb[i] == 0 || $countones(wstrb[i]) != 2**awsize) begin
+      wstrb[i] = (1 << (2**awsize)) - 1;  // Default valid strobe
+    end
+  end
+endfunction
+```
+
+**Build command**:
+```bash
+cd ~/repos/mbits-mirafra/axi4_avip/sim
+verilator --binary --timing --top-module tb_top \
+  -f axi4_compile_full.f tb_top.sv \
+  -Wno-CONSTRAINTIGN -Wno-CASEINCOMPLETE -Wno-WIDTH \
+  -Wno-UNOPTFLAT -Wno-CASTCONST
+```
+
+### ✅ Recent Fixes
+
+1. **Inline constraints + queue size** (commit a22b7ed3a):
+   - Fixed: `randomize() with {...}` now correctly resizes queues
+   - Bug was: `__Vresize_constrained_arrays()` not called for inline constraints
+   - Test: `t_constraint_inline_queue_size.py`
 
 ### 📁 Key Files
 
