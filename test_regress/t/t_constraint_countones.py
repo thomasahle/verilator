@@ -12,7 +12,12 @@ import vltest_bootstrap
 test.scenarios('simulator')
 test.top_filename = "t/t_constraint_countones.v"
 
-test.compile(verilator_flags2=["--timing"])
+test.compile(verilator_flags2=[
+    "--binary",
+    "--timing",
+    "-Wno-WIDTHEXPAND",
+    "-Wno-WIDTHTRUNC",
+], timing_loop=True)
 
 test.execute()
 

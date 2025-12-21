@@ -30,11 +30,28 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 
 ### ❌ Known Limitations
 
-1. **Constraint Solver**: `$countones()` and some complex constraint expressions not supported
-   - Tests with complex AXI4 constraints fail (e.g., `axi4_blocking_write_read_test`)
-   - Simple tests work (e.g., `axi4_base_test`)
+1. **Queue + Foreach Constraints**: Size constraints combined with foreach element constraints on queues don't work
+   - Root cause: Element constraints are generated BEFORE queue size is solved
+   - Warning: CONSTRAINTIGN warns about this combination
+   - Workaround: Use fixed-size arrays or separate randomization calls
+   - Example that fails:
+     ```systemverilog
+     rand bit [3:0] wstrb [$:256];
+     constraint size_c { wstrb.size() == len; }
+     constraint elem_c { foreach(wstrb[i]) wstrb[i] != 0; }  // Fails!
+     ```
+   - Example that works:
+     ```systemverilog
+     rand bit [3:0] wstrb [4];  // Fixed size array
+     constraint elem_c { foreach(wstrb[i]) wstrb[i] != 0; }  // Works!
+     ```
 
-2. **Coverage**: `uvm_subscriber` and functional coverage not fully implemented
+2. **$countones in Constraints**: ✅ NOW WORKING
+   - Simple `$countones()` constraints work correctly
+   - `foreach` with `$countones()` on fixed arrays works
+   - Only fails when combined with queue size constraints (see #1)
+
+3. **Coverage**: `uvm_subscriber` and functional coverage not fully implemented
 
 ### 📝 Test Status
 
