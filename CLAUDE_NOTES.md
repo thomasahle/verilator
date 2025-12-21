@@ -81,17 +81,33 @@ constraint wstrb_countones_c { foreach(wstrb[i]) $countones(wstrb[i]) == (1 << a
 
 ### 🧪 axi4_avip Testbench Status
 
-The mbits-mirafra axi4_avip testbench has compilation issues due to:
+**✅ COMPILES AND LINKS SUCCESSFULLY** with workarounds.
+
+Build command:
+```bash
+cd /Users/ahle/repos/mbits-mirafra/axi4_avip
+verilator --timing -cc -Wno-fatal --exe --build \
+    -f sim/axi4_compile_verilator.f sim/tb_top.sv sim/main.cpp \
+    --top tb_top -CFLAGS "-O0" -j 8
+```
+
+Workarounds applied:
 1. **s_until_with assertions**: Unsupported in Verilator
    - Workaround: Use `axi4_compile_verilator.f` with modified assertion files
-2. **Parametric UVM types**: `uvm_seq_item_pull_port #(REQ,RSP)` fails
-   - Error: "Parameter type pin value isn't a type"
-   - Root cause: REQ/RSP type parameters from `uvm_driver#(T)` not resolving in nested generics
+2. **Parametric UVM types**: `uvm_seq_item_pull_port #(REQ,RSP)` in driver classes
+   - Workaround: Use explicit types instead of REQ/RSP (axi4_master_tx/axi4_slave_tx)
+   - Created: `axi4_master_driver_proxy_verilator.sv`, `axi4_slave_driver_proxy_verilator.sv`
+3. **Bind statement scope**: Fixed interface references in bind statements
 
-**Workaround compile file** (in sim/):
-- `axi4_compile_verilator.f` - Uses modified assertion files without `s_until_with`
-- `master_assertions_verilator.sv`, `slave_assertions_verilator.sv` - Verilator-compatible assertions
+**Workaround files** (in sim/):
+- `axi4_compile_verilator.f` - Main compile file for Verilator
+- `axi4_master_pkg_verilator.sv`, `axi4_slave_pkg_verilator.sv` - Package files with workaround includes
+- `axi4_master_driver_proxy_verilator.sv`, `axi4_slave_driver_proxy_verilator.sv` - Explicit types instead of REQ/RSP
+- `master_assertions_verilator.sv`, `slave_assertions_verilator.sv` - Without `s_until_with`
 - `axi4_slave_agent_bfm_verilator.sv` - Fixed bind statement references
+- `main.cpp` - Verilator main wrapper with timing support
+
+**Known issue**: Simulation runs but produces no output. May need UVM runtime fixes.
 
 ### ✅ Recent Fixes
 
@@ -113,10 +129,11 @@ The mbits-mirafra axi4_avip testbench has compilation issues due to:
    - Workaround: Use simple inline constraints like `req.randomize() with { member == x; }` (without the `req.` prefix)
    - Root cause: Template instantiation creates different AstVar objects that aren't properly matched
 
-2. **Nested parametric types from parent class**:
-   - `uvm_seq_item_pull_port #(REQ,RSP)` in a class extending `uvm_driver#(T)` fails
-   - Error: "Parameter type pin value isn't a type"
-   - The REQ/RSP type parameters inherited from the parent class don't resolve correctly in nested generic types
+2. **Nested parametric types - axi4_avip specific**:
+   - `uvm_seq_item_pull_port #(REQ,RSP)` works in simplified test cases (t_uvm_driver_ports, t_class_param_*)
+   - In axi4_avip context, explicitly using `#(axi4_master_tx, axi4_master_tx)` is required
+   - May be related to package structure or include order in the real testbench
+   - Tests: `t_class_param_nested.v`, `t_class_param_inherited.v`, `t_class_param_pkg.v`, `t_uvm_driver_ports.v` - ALL PASS
 
 3. **s_until_with in assertions**:
    - SystemVerilog `s_until_with` property operator is unsupported
