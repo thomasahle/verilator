@@ -28,30 +28,29 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 8. **Run Test**: `run_test()` with `+UVM_TESTNAME` command line support
 9. **Hierarchy**: Parent/child relationships, `get_full_name()`, component lookup
 
-### ❌ Known Limitations
+### ⚠️ Partial Support
 
-1. **Queue + Foreach Constraints**: Size constraints combined with foreach element constraints on queues don't work
-   - Root cause: Element constraints are generated BEFORE queue size is solved
-   - Warning: CONSTRAINTIGN warns about this combination
-   - Workaround: Use fixed-size arrays or separate randomization calls
-   - Example that fails:
+1. **Queue + Foreach Constraints**: Size constraints work, but element constraints are NOT applied
+   - The queue will be sized correctly based on size constraints
+   - Element constraints (foreach) run on an empty queue, so no element constraints are applied
+   - Elements will be filled with random values after resize
+   - Warning: CONSTRAINTIGN warns about this limitation
+   - Example:
      ```systemverilog
      rand bit [3:0] wstrb [$:256];
      constraint size_c { wstrb.size() == len; }
-     constraint elem_c { foreach(wstrb[i]) wstrb[i] != 0; }  // Fails!
+     constraint elem_c { foreach(wstrb[i]) wstrb[i] != 0; }  // NOT APPLIED!
      ```
-   - Example that works:
-     ```systemverilog
-     rand bit [3:0] wstrb [4];  // Fixed size array
-     constraint elem_c { foreach(wstrb[i]) wstrb[i] != 0; }  // Works!
-     ```
+   - Result: Queue is resized to `len`, elements get random values (may include 0)
 
-2. **$countones in Constraints**: ✅ NOW WORKING
+### ✅ Also Working
+
+1. **$countones in Constraints**: Works correctly
    - Simple `$countones()` constraints work correctly
    - `foreach` with `$countones()` on fixed arrays works
-   - Only fails when combined with queue size constraints (see #1)
+   - Only limited when combined with queue size constraints (see above)
 
-3. **Coverage**: `uvm_subscriber` is implemented. Covergroups are supported via `--coverage-user`.
+2. **Coverage**: `uvm_subscriber` is implemented. Covergroups are supported via `--coverage-user`.
 
 ### 📝 Test Status
 
@@ -60,14 +59,15 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | Test | Status |
 |------|--------|
 | axi4_base_test | ✅ PASS (completes all phases) |
-| axi4_blocking_write_read_test | ❌ FAIL (queue+foreach constraint) |
-| axi4_read_test | ⚠️ RUNS (may hang in driver handshake) |
+| axi4_blocking_write_read_test | ⚠️ PARTIAL (size works, element constraints not applied) |
 | t_uvm_run_test | ✅ PASS |
 | t_uvm_config_db | ✅ PASS |
 | t_uvm_tlm_analysis_fifo | ✅ PASS |
 | t_uvm_full_sim | ✅ PASS |
 | t_constraint_countones | ✅ PASS |
 | t_constraint_countones_fixed | ✅ PASS |
+| t_constraint_queue_simple | ✅ PASS |
+| t_constraint_queue_foreach | ✅ PASS (size works, element constraints not applied) |
 
 ### 📁 Key Files
 
