@@ -592,6 +592,21 @@ bool VlRandomizer::parseSolution(std::iostream& os, bool log) {
                             "indexed_name not found in m_arr_vars");
             }
         }
+        // Skip array variables that have no recorded elements (empty queues/dyn arrays)
+        // We can't properly set array values when the array has no elements recorded
+        // because datap(idx) would fail
+        if (varr.dimension() > 0) {
+            // Check if this array variable has any recorded elements
+            bool hasElements = false;
+            for (const auto& av : m_arr_vars) {
+                if (av.second->m_name.find(name + "[") == 0 ||
+                    av.second->m_name.find(name + "0") == 0) {
+                    hasElements = true;
+                    break;
+                }
+            }
+            if (!hasElements) continue;
+        }
         varr.set(idx, value);
     }
     return true;

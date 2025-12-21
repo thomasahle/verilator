@@ -170,10 +170,24 @@ public:
                 for (int i = 0; i < dimension(); ++i) s << ")";
             }
         } else {
-            VL_FATAL_MT(__FILE__, __LINE__, "randomize", "indexed_name not found in m_arr_vars");
+            // Empty dynamic array (queue/dyn array) - emit as Array with 32-bit index
+            // This allows the solver to work even when no elements are recorded yet
+            if (dimension() > 0) {
+                for (int i = 0; i < dimension(); ++i) {
+                    s << "(Array (_ BitVec 32) ";
+                }
+                s << "(_ BitVec " << width() << ")";
+                for (int i = 0; i < dimension(); ++i) s << ")";
+            } else {
+                s << "(_ BitVec " << width() << ")";
+            }
         }
     }
     int totalWidth() const override {
+        if (!m_arrVarsRefp) {
+            // Not set (empty dynamic array) - return 0
+            return 0;
+        }
         const int elementCounts = countMatchingElements(*m_arrVarsRefp, name());
         return width() * elementCounts;
     }
