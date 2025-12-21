@@ -51,17 +51,23 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
    - `foreach` with `$countones()` on fixed arrays works
    - Only fails when combined with queue size constraints (see #1)
 
-3. **Coverage**: `uvm_subscriber` and functional coverage not fully implemented
+3. **Coverage**: `uvm_subscriber` is implemented. Covergroups are supported via `--coverage-user`.
 
 ### 📝 Test Status
 
+**Verilator UVM Unit Tests**: 24 passed, 0 failed, 2 skipped
+
 | Test | Status |
 |------|--------|
-| axi4_base_test | ✅ PASS |
-| axi4_blocking_write_read_test | ❌ FAIL (constraint solver) |
-| t_uvm_sequence_basic | ✅ PASS |
+| axi4_base_test | ✅ PASS (completes all phases) |
+| axi4_blocking_write_read_test | ❌ FAIL (queue+foreach constraint) |
+| axi4_read_test | ⚠️ RUNS (may hang in driver handshake) |
+| t_uvm_run_test | ✅ PASS |
+| t_uvm_config_db | ✅ PASS |
 | t_uvm_tlm_analysis_fifo | ✅ PASS |
-| t_uvm_factory | ✅ PASS |
+| t_uvm_full_sim | ✅ PASS |
+| t_constraint_countones | ✅ PASS |
+| t_constraint_countones_fixed | ✅ PASS |
 
 ### 📁 Key Files
 
