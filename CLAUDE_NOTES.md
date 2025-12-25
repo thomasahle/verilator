@@ -135,43 +135,40 @@ verilator --timing -cc -Wno-fatal --exe --build \
 
 **Runtime status**:
 - ✅ Base test (`axi4_base_test`) runs and completes all UVM phases successfully
-- ✅ Write test (`axi4_write_test`) runs to completion with workaround applied (see Known Limitations)
+- ✅ Write test (`axi4_write_test`) runs to completion - no workarounds needed!
 - Coverage collection works (52.94% reported)
 - Scoreboard runs and reports
 
 **Recent fixes**:
 - Fixed main.cpp to call `eval()` at time 0 before checking `eventsPending()`
 - Fixed uvm_driver to create `seq_item_port` and `rsp_port` in `build_phase`
-- Identified and documented inline constraint workaround for parametric types
+- Fixed inline constraints with obj.member syntax for parametric classes
 
 ### ✅ Recent Fixes
 
-1. **Inline constraints with obj.member style** (new):
+1. **Parametric class inline constraints** (FIXED!):
+   - **FIXED**: `req.randomize() with { req.member == x; }` now works correctly
+   - Works for classes inheriting from parametric parents like `uvm_sequence#(REQ)`
+   - Both styles now work:
+     ```systemverilog
+     req.randomize() with { req.tx_type == WRITE; }  // ✅ NOW WORKS!
+     req.randomize() with { tx_type == WRITE; }      // ✅ Also works
+     ```
+   - Test: `t_constraint_inline_parametric_prefix.py`
+
+2. **Inline constraints with obj.member style**:
    - Fixed: `req.randomize() with { req.value == 5; }` pattern now works
    - Works for non-parametric classes with inheritance
    - Tests: `t_constraint_inline_member.v`, `t_constraint_inline_inherited.v`
 
-2. **Inline constraints + queue size** (commit a22b7ed3a):
+3. **Inline constraints + queue size** (commit a22b7ed3a):
    - Fixed: `randomize() with {...}` now correctly resizes queues
    - Bug was: `__Vresize_constrained_arrays()` not called for inline constraints
    - Test: `t_constraint_inline_queue_size.py`
 
 ### ⚠️ Known Limitations
 
-1. **Parametric class inline constraints** (CRITICAL for UVM sequences):
-   - **Bug**: `req.randomize() with { req.member == x; }` where `req` is inherited from parametric parent class
-   - **Symptom**: Constraints are silently ignored OR simulation crashes with SIGTRAP
-   - **Affects**: UVM sequences that inherit `uvm_sequence#(REQ)` - the `req` member is type `REQ`
-   - **Workaround**: Use `req.randomize() with { member == x; }` (omit the `req.` prefix inside constraint block)
-   - **Example**:
-     ```systemverilog
-     // BROKEN - req.member style with parametric parent
-     req.randomize() with { req.tx_type == WRITE; }  // Crashes or ignores constraint!
-
-     // WORKS - omit the prefix
-     req.randomize() with { tx_type == WRITE; }  // Constraints applied correctly
-     ```
-   - Root cause: Template instantiation creates different AstVar objects that aren't properly matched
+1. ~~**Parametric class inline constraints**~~: **FIXED!** (see Recent Fixes above)
 
 2. ~~**Nested parametric types - axi4_avip specific**~~: **FIXED!**
    - `uvm_seq_item_pull_port #(REQ,RSP)` now works correctly in axi4_avip
