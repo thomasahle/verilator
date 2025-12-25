@@ -81,31 +81,57 @@ constraint wstrb_countones_c { foreach(wstrb[i]) $countones(wstrb[i]) == (1 << a
 
 ### 🧪 axi4_avip Testbench Status
 
-**✅ COMPILES AND LINKS SUCCESSFULLY** with workarounds.
+**✅ COMPILES AND LINKS SUCCESSFULLY** - NO WORKAROUNDS NEEDED for parametric types!
 
-Build command:
+Build command (using original source files):
 ```bash
-cd /Users/ahle/repos/mbits-mirafra/axi4_avip
+cd /Users/ahle/repos/mbits-mirafra/axi4_avip/sim
 verilator --timing -cc -Wno-fatal --exe --build \
-    -f sim/axi4_compile_verilator.f sim/tb_top.sv sim/main.cpp \
-    --top tb_top -CFLAGS "-O0" -j 8
+  +incdir+../src/globals/ \
+  +incdir+../src/hvl_top/test/sequences/master_sequences/ \
+  +incdir+../src/hvl_top/master/ \
+  +incdir+../src/hdl_top/master_agent_bfm/ \
+  +incdir+../src/hvl_top/env/virtual_sequencer/ \
+  +incdir+../src/hvl_top/test/virtual_sequences/ \
+  +incdir+../src/hvl_top/env \
+  +incdir+../src/hvl_top/slave \
+  +incdir+../src/hvl_top/test/sequences/slave_sequences/ \
+  +incdir+../src/hvl_top/test \
+  +incdir+../src/hdl_top/slave_agent_bfm \
+  +incdir+../src/hdl_top/axi4_interface \
+  +incdir+/Users/ahle/repos/verilator/include \
+  /Users/ahle/repos/verilator/include/uvm_pkg.sv \
+  ../src/globals/axi4_globals_pkg.sv \
+  ../src/hvl_top/master/axi4_master_pkg.sv \
+  ../src/hvl_top/slave/axi4_slave_pkg.sv \
+  ../src/hvl_top/test/sequences/master_sequences/axi4_master_seq_pkg.sv \
+  ../src/hvl_top/test/sequences/slave_sequences/axi4_slave_seq_pkg.sv \
+  ../src/hvl_top/env/axi4_env_pkg.sv \
+  ../src/hvl_top/test/virtual_sequences/axi4_virtual_seq_pkg.sv \
+  ../src/hvl_top/test/axi4_test_pkg.sv \
+  ../src/hdl_top/axi4_interface/axi4_if.sv \
+  ../src/hdl_top/master_agent_bfm/axi4_master_driver_bfm.sv \
+  ../src/hdl_top/master_agent_bfm/axi4_master_monitor_bfm.sv \
+  ../src/hdl_top/master_agent_bfm/axi4_master_agent_bfm.sv \
+  ../src/hdl_top/slave_agent_bfm/axi4_slave_driver_bfm.sv \
+  ../src/hdl_top/slave_agent_bfm/axi4_slave_monitor_bfm.sv \
+  ../src/hdl_top/slave_agent_bfm/axi4_slave_agent_bfm.sv \
+  ../src/hdl_top/hdl_top.sv \
+  ../src/hvl_top/hvl_top.sv \
+  ../src/hdl_top/master_assertions.sv \
+  ../src/hdl_top/slave_assertions.sv \
+  tb_top.sv main.cpp \
+  --top tb_top -CFLAGS "-O0" -j 8
 ```
 
-Workarounds applied:
-1. **s_until_with assertions**: Unsupported in Verilator
-   - Workaround: Use `axi4_compile_verilator.f` with modified assertion files
-2. **Parametric UVM types**: `uvm_seq_item_pull_port #(REQ,RSP)` in driver classes
-   - Workaround: Use explicit types instead of REQ/RSP (axi4_master_tx/axi4_slave_tx)
-   - Created: `axi4_master_driver_proxy_verilator.sv`, `axi4_slave_driver_proxy_verilator.sv`
-3. **Bind statement scope**: Fixed interface references in bind statements
+**Key finding**: The original axi4_avip source code with `uvm_seq_item_pull_port #(REQ,RSP)` now compiles correctly!
+- REQ/RSP inherited type parameters work properly
+- No explicit type substitution needed
+- Build produces working executable (29MB)
 
-**Workaround files** (in sim/):
-- `axi4_compile_verilator.f` - Main compile file for Verilator
-- `axi4_master_pkg_verilator.sv`, `axi4_slave_pkg_verilator.sv` - Package files with workaround includes
-- `axi4_master_driver_proxy_verilator.sv`, `axi4_slave_driver_proxy_verilator.sv` - Explicit types instead of REQ/RSP
-- `master_assertions_verilator.sv`, `slave_assertions_verilator.sv` - Without `s_until_with`
-- `axi4_slave_agent_bfm_verilator.sv` - Fixed bind statement references
-- `main.cpp` - Verilator main wrapper with timing support
+**Remaining workaround** (if using s_until_with assertions):
+- SystemVerilog `s_until_with` property operator is unsupported in Verilator
+- The original assertion files can be used if s_until_with properties are removed/commented
 
 **Known issue**: Simulation runs but produces no output. May need UVM runtime fixes.
 
@@ -129,10 +155,9 @@ Workarounds applied:
    - Workaround: Use simple inline constraints like `req.randomize() with { member == x; }` (without the `req.` prefix)
    - Root cause: Template instantiation creates different AstVar objects that aren't properly matched
 
-2. **Nested parametric types - axi4_avip specific**:
-   - `uvm_seq_item_pull_port #(REQ,RSP)` works in simplified test cases (t_uvm_driver_ports, t_class_param_*)
-   - In axi4_avip context, explicitly using `#(axi4_master_tx, axi4_master_tx)` is required
-   - May be related to package structure or include order in the real testbench
+2. ~~**Nested parametric types - axi4_avip specific**~~: **FIXED!**
+   - `uvm_seq_item_pull_port #(REQ,RSP)` now works correctly in axi4_avip
+   - Original source code compiles without any workarounds
    - Tests: `t_class_param_nested.v`, `t_class_param_inherited.v`, `t_class_param_pkg.v`, `t_uvm_driver_ports.v` - ALL PASS
 
 3. **s_until_with in assertions**:
