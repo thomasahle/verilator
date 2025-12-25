@@ -135,11 +135,14 @@ verilator --timing -cc -Wno-fatal --exe --build \
 
 **Runtime status**:
 - ✅ Base test (`axi4_base_test`) runs and completes all UVM phases successfully
-- ⚠️ Tests with sequences time out - debugging in progress
+- ✅ Write test (`axi4_write_test`) runs to completion with workaround applied (see Known Limitations)
+- Coverage collection works (52.94% reported)
+- Scoreboard runs and reports
 
 **Recent fixes**:
 - Fixed main.cpp to call `eval()` at time 0 before checking `eventsPending()`
 - Fixed uvm_driver to create `seq_item_port` and `rsp_port` in `build_phase`
+- Identified and documented inline constraint workaround for parametric types
 
 ### ✅ Recent Fixes
 
@@ -155,10 +158,19 @@ verilator --timing -cc -Wno-fatal --exe --build \
 
 ### ⚠️ Known Limitations
 
-1. **Parametric class inline constraints**:
-   - Pattern `req.randomize() with { req.member == x; }` where `req` is of type `REQ` (a template parameter) does not work
-   - This affects UVM sequences (`uvm_sequence#(REQ)`) where `req` is the templated request type
-   - Workaround: Use simple inline constraints like `req.randomize() with { member == x; }` (without the `req.` prefix)
+1. **Parametric class inline constraints** (CRITICAL for UVM sequences):
+   - **Bug**: `req.randomize() with { req.member == x; }` where `req` is inherited from parametric parent class
+   - **Symptom**: Constraints are silently ignored OR simulation crashes with SIGTRAP
+   - **Affects**: UVM sequences that inherit `uvm_sequence#(REQ)` - the `req` member is type `REQ`
+   - **Workaround**: Use `req.randomize() with { member == x; }` (omit the `req.` prefix inside constraint block)
+   - **Example**:
+     ```systemverilog
+     // BROKEN - req.member style with parametric parent
+     req.randomize() with { req.tx_type == WRITE; }  // Crashes or ignores constraint!
+
+     // WORKS - omit the prefix
+     req.randomize() with { tx_type == WRITE; }  // Constraints applied correctly
+     ```
    - Root cause: Template instantiation creates different AstVar objects that aren't properly matched
 
 2. ~~**Nested parametric types - axi4_avip specific**~~: **FIXED!**
