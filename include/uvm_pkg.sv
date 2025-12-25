@@ -1799,29 +1799,33 @@ package uvm_pkg;
     __collect_components(root, comps);
     // Run phase launches all run_phase tasks in parallel
     // Fork all run_phase tasks first
-    foreach (comps[i]) begin
-      automatic int idx = i;
-      fork
-        comps[idx].run_phase(phase);
-      join_none
-    end
-    // Now wait for objections or completion
-    // Give components a chance to raise objections
-    #1;
-    // If no objections raised, wait a bit longer
-    if (phase.get_objection_count() == 0) begin
-      #99;  // Total of 100 time units grace period
-    end
-    // Poll for objections to be dropped (or timeout)
-    poll_count = 0;
-    while (phase.get_objection_count() > 0 && poll_count < 100000) begin
-      #10;
-      poll_count++;
-    end
-    // Objections dropped (or timeout) - phase is done
-    if (poll_count >= 100000) begin
-      $display("[UVM_WARNING] @ %0t: run_phase objection timeout [UVM]", $time);
-    end
+    fork begin
+      foreach (comps[i]) begin
+        automatic int idx = i;
+        fork
+          comps[idx].run_phase(phase);
+        join_none
+      end
+      // Now wait for objections or completion
+      // Give components a chance to raise objections
+      #1;
+      // If no objections raised, wait a bit longer
+      if (phase.get_objection_count() == 0) begin
+        #99;  // Total of 100 time units grace period
+      end
+      // Poll for objections to be dropped (or timeout)
+      poll_count = 0;
+      while (phase.get_objection_count() > 0 && poll_count < 100000) begin
+        #10;
+        poll_count++;
+      end
+      // Objections dropped (or timeout) - phase is done
+      if (poll_count >= 100000) begin
+        $display("[UVM_WARNING] @ %0t: run_phase objection timeout [UVM]", $time);
+      end
+    end join
+    // Kill any remaining run_phase tasks (like driver forever loops)
+    disable fork;
   endtask
 
   function void __run_extract_phase(uvm_component root, uvm_phase phase);
