@@ -1408,19 +1408,66 @@ class ConstraintExprVisitor final : public VNVisitor {
             }
         }
         // Handle MemberSel references created by captureRefByThis()
+        // For inline constraints like req.randomize() with { req.data == 42; },
+        // we need to convert req.data to a VarRef for data.
+        //
+        // The AST structure for req.data when req is from a parametric parent class is:
+        //   MEMBERSEL{data, fromp=MEMBERSEL{req, fromp=VarRef{__Vthis}}}
+        // We need to detect when the intermediate MEMBERSEL (req) references the
+        // randomized object, and if so, convert the outer MEMBERSEL to a VarRef.
+
+        // Check if fromp is a MemberSel that references the randomized object
+        // This handles patterns like "req.data" where req is from a parametric parent class
+        if (AstMemberSel* const fromMemberSelp = VN_CAST(nodep->fromp(), MemberSel)) {
+            if (VN_IS(fromMemberSelp->fromp(), VarRef)
+                && fromMemberSelp->fromp()->user1()  // The root VarRef is randomized object
+                && nodep->user2p()  // Module pointer is set
+                && nodep->varp()->rand().isRandomizable()) {  // Target member is randomizable
+                AstNodeModule* const memberMod = VN_AS(nodep->user2p(), NodeModule);
+                AstNodeModule* const varMod = VN_AS(nodep->varp()->user2p(), NodeModule);
+                const bool modulesMatch = (memberMod == varMod)
+                                          || (memberMod && varMod
+                                              && memberMod->name() == varMod->name());
+                if (modulesMatch) {
+                    UINFO(9, "Converting nested MemberSel to VarRef: " << nodep << "\n");
+                    // Convert to VarRef for the member variable
+                    AstVarRef* const varRefp
+                        = new AstVarRef{nodep->fileline(), nodep->varp(), VAccess::READ};
+                    varRefp->user1(nodep->varp()->rand().isRandomizable());
+                    varRefp->classOrPackagep(memberMod);
+                    nodep->replaceWith(varRefp);
+                    VL_DO_DANGLING(pushDeletep(nodep), nodep);
+                    visit(varRefp);
+                    return;
+                }
+            }
+        }
+
+        // Original handling for direct VarRef fromp (non-nested case)
         if (VN_IS(nodep->fromp(), VarRef)
-            && nodep->fromp()->user1()  // Depending on a randomized variable
+            && nodep->fromp()->user1()  // fromp references the randomized object
             && nodep->user2p()  // Pointer to containing module
-            && VN_AS(nodep->user2p(), NodeModule) == nodep->varp()->user2p()) {
-            // Convert to VarRef
-            AstVarRef* const varRefp
-                = new AstVarRef{nodep->fileline(), nodep->varp(), VAccess::READ};
-            varRefp->user1(nodep->varp()->rand().isRandomizable());
-            varRefp->classOrPackagep(VN_AS(nodep->user2p(), NodeModule));
-            nodep->replaceWith(varRefp);
-            VL_DO_DANGLING(pushDeletep(nodep), nodep);
-            visit(varRefp);
-        } else if (nodep->user1()) {
+            && nodep->varp()->rand().isRandomizable()) {  // Member is randomizable
+            // Check if modules match - for parametric classes, also compare by name
+            // since template instantiation may create different module objects
+            AstNodeModule* const memberMod = VN_AS(nodep->user2p(), NodeModule);
+            AstNodeModule* const varMod = VN_AS(nodep->varp()->user2p(), NodeModule);
+            const bool modulesMatch = (memberMod == varMod)
+                                      || (memberMod && varMod
+                                          && memberMod->name() == varMod->name());
+            if (modulesMatch) {
+                // Convert to VarRef
+                AstVarRef* const varRefp
+                    = new AstVarRef{nodep->fileline(), nodep->varp(), VAccess::READ};
+                varRefp->user1(nodep->varp()->rand().isRandomizable());
+                varRefp->classOrPackagep(memberMod);
+                nodep->replaceWith(varRefp);
+                VL_DO_DANGLING(pushDeletep(nodep), nodep);
+                visit(varRefp);
+                return;
+            }
+        }
+        if (nodep->user1()) {
             iterateChildren(nodep);
             nodep->replaceWith(nodep->fromp()->unlinkFrBack());
             VL_DO_DANGLING(nodep->deleteTree(), nodep);
