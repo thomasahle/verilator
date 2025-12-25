@@ -133,7 +133,13 @@ verilator --timing -cc -Wno-fatal --exe --build \
 - SystemVerilog `s_until_with` property operator is unsupported in Verilator
 - The original assertion files can be used if s_until_with properties are removed/commented
 
-**Known issue**: Simulation runs but produces no output. May need UVM runtime fixes.
+**Runtime status**:
+- ✅ Base test (`axi4_base_test`) runs and completes all UVM phases successfully
+- ⚠️ Tests with sequences time out - debugging in progress
+
+**Recent fixes**:
+- Fixed main.cpp to call `eval()` at time 0 before checking `eventsPending()`
+- Fixed uvm_driver to create `seq_item_port` and `rsp_port` in `build_phase`
 
 ### ✅ Recent Fixes
 
