@@ -1105,16 +1105,12 @@ package uvm_pkg;
 
     function new(string name = "", uvm_component parent = null);
       super.new(name, parent);
-      // Ports are NOT created here - derived class must create them in build_phase
-      // This is a Verilator workaround: parameterized class methods cannot
-      // instantiate other parameterized classes without causing segfaults
     endfunction
 
-    // NOTE: Derived classes MUST override build_phase and create seq_item_port/rsp_port
-    // with concrete types to avoid Verilator parameterized class bug
     virtual function void build_phase(uvm_phase phase);
       super.build_phase(phase);
-      // Ports must be created by derived class with concrete types
+      seq_item_port = new("seq_item_port", this);
+      rsp_port = new("rsp_port", this);
     endfunction
   endclass
 
