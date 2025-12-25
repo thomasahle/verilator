@@ -52,7 +52,9 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 24 passed, 0 failed, 2 skipped
+**Verilator UVM Unit Tests**: 24 passed, 0 failed, 3 skipped
+**Verilator Constraint Tests**: 54 passed, 0 failed
+**Verilator Class Param Tests**: 40 passed, 0 failed
 
 | Test | Status |
 |------|--------|
@@ -136,6 +138,7 @@ verilator --timing -cc -Wno-fatal --exe --build \
 **Runtime status**:
 - ✅ Base test (`axi4_base_test`) runs and completes all UVM phases successfully
 - ✅ Write test (`axi4_write_test`) runs to completion - no workarounds needed!
+- ⚠️ Read test (`axi4_read_test`) crashes with null pointer - testbench bug (coverage samples write fields on read transactions)
 - Coverage collection works (52.94% reported)
 - Scoreboard runs and reports
 

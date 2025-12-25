@@ -11,7 +11,13 @@ import vltest_bootstrap
 
 test.scenarios('simulator')
 
-test.compile()
+test.compile(
+    verilator_flags2=[
+        '--timing',
+        '+incdir+' + test.obj_dir + '/../../../include',
+        test.obj_dir + '/../../../include/uvm_pkg.sv',
+    ],
+)
 
 test.execute()
 
