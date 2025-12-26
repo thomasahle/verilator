@@ -52,7 +52,7 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 24 passed, 0 failed, 3 skipped
+**Verilator UVM Unit Tests**: 25 passed, 0 failed, 2 skipped
 **Verilator Constraint Tests**: 54 passed, 0 failed
 **Verilator Class Param Tests**: 40 passed, 0 failed
 
@@ -62,6 +62,7 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_uvm_config_db | ✅ PASS |
 | t_uvm_tlm_analysis_fifo | ✅ PASS |
 | t_uvm_full_sim | ✅ PASS |
+| t_uvm_sequence | ✅ PASS (forever loops in drivers work correctly) |
 | t_constraint_countones | ✅ PASS |
 | t_constraint_countones_fixed | ✅ PASS |
 | t_constraint_queue_simple | ✅ PASS |
@@ -168,6 +169,12 @@ verilator --timing -cc -Wno-fatal --exe --build \
    - Fixed: `randomize() with {...}` now correctly resizes queues
    - Bug was: `__Vresize_constrained_arrays()` not called for inline constraints
    - Test: `t_constraint_inline_queue_size.py`
+
+4. **UVM sequencer get_next_item timing** (commit 287b9a1b7):
+   - Fixed: Driver forever loops now work correctly without explicit delays
+   - Changed from `wait (m_req_fifo.size() > 0)` to polling loop with `#1` delay
+   - The wait statement didn't advance time, causing infinite loops
+   - Test: `t_uvm_sequence.py` - PASSES
 
 ### ⚠️ Known Limitations
 
