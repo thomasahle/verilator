@@ -147,6 +147,7 @@ verilator --timing -cc -Wno-fatal --exe --build \
 - Fixed main.cpp to call `eval()` at time 0 before checking `eventsPending()`
 - Fixed uvm_driver to create `seq_item_port` and `rsp_port` in `build_phase`
 - Fixed inline constraints with obj.member syntax for parametric classes
+- Fixed get_next_item to use polling loop instead of wait (allows forever loops without delays)
 
 ### ✅ Recent Fixes
 
