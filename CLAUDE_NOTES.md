@@ -202,6 +202,26 @@ verilator --timing -cc -Wno-fatal --exe --build \
    - SystemVerilog `s_until_with` property operator is unsupported
    - Workaround: Remove or replace with simpler assertions
 
+4. **UVM Register Abstraction Layer (RAL)**:
+   - Classes like `uvm_reg_adapter`, `uvm_reg_block`, `uvm_reg_bus_op` are NOT implemented
+   - APB AVIP uses RAL and cannot compile without these classes
+   - Adding RAL would be a significant feature addition
+
+5. **defparam with generate arrays**:
+   - `defparam instance[i].param = value;` syntax unsupported in Verilator
+   - APB AVIP uses this pattern (workaround: remove redundant defparam)
+
+### 🧪 Other AVIP Status
+
+| AVIP | Status | Notes |
+|------|--------|-------|
+| axi4_avip | ✅ Compiles & Runs | Write test passes |
+| apb_avip | ❌ Needs RAL | Uses uvm_reg_adapter |
+| ahb_avip | 🔍 Untested | Likely similar to AXI4 |
+| axi4Lite_avip | 🔍 Untested | Likely works |
+| uart_avip | 🔍 Untested | - |
+| spi_avip | 🔍 Untested | - |
+
 ### 📁 Key Files
 
 - `/Users/ahle/repos/verilator/include/uvm_pkg.sv` - UVM package implementation
