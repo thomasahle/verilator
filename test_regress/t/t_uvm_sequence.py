@@ -12,11 +12,6 @@ test.scenarios('simulator')
 if not test.have_solver:
     test.skip("Requires solver")
 
-# Skip test - sequence mechanism works but run_phase termination has timing issues
-# that cause $finish to never be reached. The actual UVM functionality works
-# correctly as verified by axi4_avip testing.
-test.skip("UVM run_phase termination not yet fully working")
-
 test.compile(
     v_flags2=['+incdir+../include', '../include/uvm_pkg.sv'],
     verilator_flags2=['--timing', '-Wno-PKGNODECL', '-Wno-IMPLICITSTATIC',
@@ -24,6 +19,7 @@ test.compile(
                       '-Wno-CASTCONST', '-Wno-SYMRSVDWORD', '-Wno-WIDTHEXPAND',
                       '-Wno-WIDTHTRUNC', '-Wno-REALCVT', '-Wno-ZERODLY',
                       '-Wno-ENUMVALUE', '-Wno-UNOPTFLAT'],
+    timing_loop=True,
 )
 
 test.execute()

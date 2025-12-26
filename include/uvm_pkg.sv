@@ -931,7 +931,9 @@ package uvm_pkg;
     endfunction
 
     virtual task get_next_item(output REQ t);
-      wait (m_req_fifo.size() > 0);
+      while (m_req_fifo.size() == 0) begin
+        #1;  // Yield to allow sequences to run
+      end
       t = m_req_fifo.pop_front();
       m_last_req = t;  // Track for item_done
     endtask
