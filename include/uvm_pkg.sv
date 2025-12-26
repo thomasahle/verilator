@@ -110,6 +110,8 @@ package uvm_pkg;
   typedef class uvm_packer;
   typedef class uvm_recorder;
   typedef class uvm_analysis_imp_base;
+  typedef class uvm_event;
+  typedef class uvm_barrier;
 
   //----------------------------------------------------------------------
   // uvm_void - base class for all UVM classes
@@ -532,6 +534,190 @@ package uvm_pkg;
     virtual function void clear();
       m_objection_count.delete();
       m_total_count = 0;
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_event - event synchronization class
+  // Provides event-based synchronization between processes
+  //----------------------------------------------------------------------
+  class uvm_event #(type T = uvm_object) extends uvm_object;
+    protected bit m_triggered;
+    protected time m_trigger_time;
+    protected T m_data;
+    protected event m_event;
+    protected int m_num_waiters;
+
+    function new(string name = "uvm_event");
+      super.new(name);
+      m_triggered = 0;
+      m_trigger_time = 0;
+      m_data = null;
+      m_num_waiters = 0;
+    endfunction
+
+    // Trigger the event, optionally passing data
+    virtual function void trigger(T data = null);
+      m_triggered = 1;
+      m_trigger_time = $time;
+      m_data = data;
+      -> m_event;
+    endfunction
+
+    // Check if event is triggered (on)
+    virtual function bit is_on();
+      return m_triggered;
+    endfunction
+
+    // Check if event is not triggered (off)
+    virtual function bit is_off();
+      return !m_triggered;
+    endfunction
+
+    // Reset the event to untriggered state
+    virtual function void reset(bit wakeup = 0);
+      m_triggered = 0;
+      m_data = null;
+      if (wakeup) -> m_event;  // Wake up waiters even on reset
+    endfunction
+
+    // Get the time when event was triggered
+    virtual function time get_trigger_time();
+      return m_trigger_time;
+    endfunction
+
+    // Get the data passed with trigger
+    virtual function T get_trigger_data();
+      return m_data;
+    endfunction
+
+    // Get number of processes waiting
+    virtual function int get_num_waiters();
+      return m_num_waiters;
+    endfunction
+
+    // Wait for the event to be triggered
+    virtual task wait_trigger();
+      m_num_waiters++;
+      if (!m_triggered)
+        @(m_event);
+      m_num_waiters--;
+    endtask
+
+    // Wait for event if already on, or wait for next trigger
+    virtual task wait_on(bit delta = 0);
+      if (m_triggered) begin
+        if (delta) #0;  // Wait a delta cycle if requested
+        return;
+      end
+      m_num_waiters++;
+      @(m_event);
+      m_num_waiters--;
+    endtask
+
+    // Wait for event to be off
+    virtual task wait_off(bit delta = 0);
+      if (!m_triggered) begin
+        if (delta) #0;
+        return;
+      end
+      m_num_waiters++;
+      wait (!m_triggered);
+      m_num_waiters--;
+    endtask
+
+    // Wait for trigger and get the data
+    virtual task wait_trigger_data(output T data);
+      wait_trigger();
+      data = m_data;
+    endtask
+
+    // Wait and clear in one operation (for one-shot events)
+    virtual task wait_ptrigger();
+      m_num_waiters++;
+      @(m_event);
+      m_num_waiters--;
+    endtask
+
+    // Add callback (stub - not implemented)
+    virtual function void add_callback(uvm_object cb, bit append = 1);
+      // Callbacks not implemented in simple version
+    endfunction
+
+    // Delete callback (stub - not implemented)
+    virtual function void delete_callback(uvm_object cb);
+      // Callbacks not implemented in simple version
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_barrier - barrier synchronization class
+  // Allows multiple processes to synchronize at a barrier point
+  //----------------------------------------------------------------------
+  class uvm_barrier extends uvm_object;
+    protected int m_threshold;
+    protected int m_num_waiters;
+    protected bit m_auto_reset;
+    protected event m_barrier_event;
+
+    function new(string name = "uvm_barrier", int threshold = 0);
+      super.new(name);
+      m_threshold = threshold;
+      m_num_waiters = 0;
+      m_auto_reset = 1;
+    endfunction
+
+    // Set the threshold (number of processes to wait for)
+    virtual function void set_threshold(int threshold);
+      m_threshold = threshold;
+    endfunction
+
+    // Get current threshold
+    virtual function int get_threshold();
+      return m_threshold;
+    endfunction
+
+    // Set auto-reset mode
+    virtual function void set_auto_reset(bit value = 1);
+      m_auto_reset = value;
+    endfunction
+
+    // Get auto-reset mode
+    virtual function bit get_auto_reset();
+      return m_auto_reset;
+    endfunction
+
+    // Get number of processes waiting at barrier
+    virtual function int get_num_waiters();
+      return m_num_waiters;
+    endfunction
+
+    // Wait at the barrier
+    virtual task wait_for();
+      m_num_waiters++;
+      if (m_num_waiters >= m_threshold) begin
+        // Threshold reached, release all waiters
+        -> m_barrier_event;
+        if (m_auto_reset)
+          m_num_waiters = 0;
+      end else begin
+        @(m_barrier_event);
+      end
+      // Decrement after wakeup (but not if auto-reset already did it)
+      if (!m_auto_reset || m_num_waiters > 0)
+        m_num_waiters--;
+    endtask
+
+    // Reset the barrier
+    virtual function void reset(bit wakeup = 1);
+      if (wakeup && m_num_waiters > 0)
+        -> m_barrier_event;
+      m_num_waiters = 0;
+    endfunction
+
+    // Cancel barrier (alias for reset with wakeup)
+    virtual function void cancel();
+      reset(1);
     endfunction
   endclass
 
