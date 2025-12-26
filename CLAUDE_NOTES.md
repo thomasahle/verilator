@@ -50,9 +50,15 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 
 2. **Coverage**: `uvm_subscriber` is implemented. Covergroups are supported via `--coverage-user`.
 
+3. **Synchronization Primitives**:
+   - `uvm_event` - event synchronization with data passing
+   - `uvm_barrier` - barrier synchronization for multiple processes
+   - SystemVerilog `semaphore` and `mailbox` work correctly
+   - `process::self()`, `status()`, `await()` work correctly
+
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 28 passed, 0 failed, 2 skipped
+**Verilator UVM Unit Tests**: 29 passed, 0 failed, 2 skipped
 **Verilator Constraint Tests**: 54 passed, 0 failed
 **Verilator Class Param Tests**: 40 passed, 0 failed
 
@@ -66,6 +72,9 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_uvm_virtual_sequence | ✅ PASS (multi-channel parallel sequences) |
 | t_uvm_fork_join_none | ✅ PASS (background sequences with wait fork) |
 | t_uvm_scoreboard | ✅ PASS (multiple TLM FIFOs, reference checking) |
+| t_uvm_event | ✅ PASS (uvm_event, uvm_barrier synchronization) |
+| t_process_await | ✅ PASS (process::self, await) |
+| t_semaphore_mailbox | ✅ PASS (semaphore, mailbox primitives) |
 | t_constraint_countones | ✅ PASS |
 | t_constraint_countones_fixed | ✅ PASS |
 | t_constraint_queue_simple | ✅ PASS |
