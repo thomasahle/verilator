@@ -98,9 +98,22 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
     - Shows full component names and type names
     - Test: `t_uvm_print_topology`
 
+12. **Sequence Library**:
+    - `uvm_sequence_library` - collection of sequences to run in various modes
+    - Selection modes: `UVM_SEQ_LIB_RAND`, `UVM_SEQ_LIB_RANDC`, `UVM_SEQ_LIB_ITEM`, `UVM_SEQ_LIB_USER`
+    - Configurable min/max execution counts
+    - Test: `t_uvm_sequence_library`
+
+13. **Heartbeat Watchdog**:
+    - `uvm_heartbeat` - watchdog for detecting deadlocks/hangs
+    - Modes: `UVM_NO_HB_MODE`, `UVM_ALL_ACTIVE`, `UVM_ONE_ACTIVE`, `UVM_ANY_ACTIVE`
+    - Configurable timeout window
+    - Automatic fatal on timeout
+    - Test: `t_uvm_heartbeat`
+
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 37 passed, 0 failed, 2 skipped
+**Verilator UVM Unit Tests**: 39 passed, 0 failed, 2 skipped
 **Verilator Constraint Tests**: 54 passed, 0 failed
 **Verilator Class Param Tests**: 40 passed, 0 failed
 
@@ -125,6 +138,8 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_uvm_report_server | ✅ PASS (severity counts, quit count, summarize) |
 | t_uvm_analysis_port_chain | ✅ PASS (hierarchical port connections) |
 | t_uvm_print_topology | ✅ PASS (recursive component tree printing) |
+| t_uvm_sequence_library | ✅ PASS (sequence collection, random selection) |
+| t_uvm_heartbeat | ✅ PASS (watchdog, activity monitoring) |
 | t_constraint_countones | ✅ PASS |
 | t_constraint_countones_fixed | ✅ PASS |
 | t_constraint_queue_simple | ✅ PASS |
