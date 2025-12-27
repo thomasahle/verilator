@@ -2177,6 +2177,124 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
+  // TLM blocking ports and imps
+  //----------------------------------------------------------------------
+
+  // Base class for blocking put imp (type-erased)
+  virtual class uvm_blocking_put_imp_base extends uvm_object;
+    function new(string name = "");
+      super.new(name);
+    endfunction
+    pure virtual task put_object(uvm_object t);
+  endclass
+
+  // Blocking put port
+  class uvm_blocking_put_port #(type T = uvm_object) extends uvm_object;
+    protected uvm_component m_parent;
+    protected uvm_blocking_put_imp_base m_imp;
+
+    function new(string name = "", uvm_component parent = null);
+      super.new(name);
+      m_parent = parent;
+    endfunction
+
+    virtual function void connect(uvm_blocking_put_imp_base imp);
+      m_imp = imp;
+    endfunction
+
+    virtual task put(T t);
+      if (m_imp != null)
+        m_imp.put_object(t);
+    endtask
+  endclass
+
+  // Blocking put imp
+  class uvm_blocking_put_imp #(type T = uvm_object, type IMP = uvm_component) extends uvm_blocking_put_imp_base;
+    protected IMP m_imp;
+
+    function new(string name = "", IMP imp = null);
+      super.new(name);
+      m_imp = imp;
+    endfunction
+
+    virtual task put_object(uvm_object t);
+      T item;
+      if ($cast(item, t) && m_imp != null)
+        m_imp.put(item);
+    endtask
+  endclass
+
+  // Base class for blocking get imp (type-erased)
+  virtual class uvm_blocking_get_imp_base extends uvm_object;
+    function new(string name = "");
+      super.new(name);
+    endfunction
+    pure virtual task get_object(output uvm_object t);
+  endclass
+
+  // Blocking get port
+  class uvm_blocking_get_port #(type T = uvm_object) extends uvm_object;
+    protected uvm_component m_parent;
+    protected uvm_blocking_get_imp_base m_imp;
+
+    function new(string name = "", uvm_component parent = null);
+      super.new(name);
+      m_parent = parent;
+    endfunction
+
+    virtual function void connect(uvm_blocking_get_imp_base imp);
+      m_imp = imp;
+    endfunction
+
+    virtual task get(output T t);
+      uvm_object obj;
+      if (m_imp != null) begin
+        m_imp.get_object(obj);
+        if (!$cast(t, obj))
+          t = null;
+      end
+    endtask
+  endclass
+
+  // Blocking get imp
+  class uvm_blocking_get_imp #(type T = uvm_object, type IMP = uvm_component) extends uvm_blocking_get_imp_base;
+    protected IMP m_imp;
+
+    function new(string name = "", IMP imp = null);
+      super.new(name);
+      m_imp = imp;
+    endfunction
+
+    virtual task get_object(output uvm_object t);
+      T item;
+      if (m_imp != null) begin
+        m_imp.get(item);
+        t = item;
+      end
+    endtask
+  endclass
+
+  // Blocking put/get port (combined)
+  class uvm_blocking_put_get_port #(type T = uvm_object) extends uvm_object;
+    uvm_blocking_put_port #(T) put_port;
+    uvm_blocking_get_port #(T) get_port;
+
+    function new(string name = "", uvm_component parent = null);
+      super.new(name);
+      put_port = new({name, ".put"}, parent);
+      get_port = new({name, ".get"}, parent);
+    endfunction
+
+    virtual task put(T t);
+      put_port.put(t);
+    endtask
+
+    virtual task get(output T t);
+      get_port.get(t);
+    endtask
+  endclass
+
+  //----------------------------------------------------------------------
   // TLM ports (moved before uvm_driver which uses these)
   //----------------------------------------------------------------------
   class uvm_seq_item_pull_port #(type REQ = uvm_sequence_item, type RSP = REQ) extends uvm_object;
@@ -2445,6 +2563,251 @@ package uvm_pkg;
 
     virtual function int size();
       return m_fifo.size();
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_tlm_req_rsp_channel - Bidirectional TLM channel
+  // Provides FIFOs for request and response transactions
+  //----------------------------------------------------------------------
+  class uvm_tlm_req_rsp_channel #(type REQ = uvm_object, type RSP = REQ) extends uvm_component;
+    uvm_tlm_fifo #(REQ) m_req_fifo;
+    uvm_tlm_fifo #(RSP) m_rsp_fifo;
+
+    function new(string name = "", uvm_component parent = null, int req_size = 1, int rsp_size = 1);
+      super.new(name, parent);
+      m_req_fifo = new("req_fifo", this, req_size);
+      m_rsp_fifo = new("rsp_fifo", this, rsp_size);
+    endfunction
+
+    // Request interface
+    virtual task put_request(REQ req);
+      m_req_fifo.put(req);
+    endtask
+
+    virtual function bit try_put_request(REQ req);
+      return m_req_fifo.try_put(req);
+    endfunction
+
+    virtual task get_request(output REQ req);
+      m_req_fifo.get(req);
+    endtask
+
+    virtual function bit try_get_request(output REQ req);
+      return m_req_fifo.try_get(req);
+    endfunction
+
+    virtual task peek_request(output REQ req);
+      m_req_fifo.peek(req);
+    endtask
+
+    virtual function bit try_peek_request(output REQ req);
+      return m_req_fifo.try_peek(req);
+    endfunction
+
+    // Response interface
+    virtual task put_response(RSP rsp);
+      m_rsp_fifo.put(rsp);
+    endtask
+
+    virtual function bit try_put_response(RSP rsp);
+      return m_rsp_fifo.try_put(rsp);
+    endfunction
+
+    virtual task get_response(output RSP rsp);
+      m_rsp_fifo.get(rsp);
+    endtask
+
+    virtual function bit try_get_response(output RSP rsp);
+      return m_rsp_fifo.try_get(rsp);
+    endfunction
+
+    virtual task peek_response(output RSP rsp);
+      m_rsp_fifo.peek(rsp);
+    endtask
+
+    virtual function bit try_peek_response(output RSP rsp);
+      return m_rsp_fifo.try_peek(rsp);
+    endfunction
+
+    // Status
+    virtual function bit request_is_empty();
+      return m_req_fifo.is_empty();
+    endfunction
+
+    virtual function bit response_is_empty();
+      return m_rsp_fifo.is_empty();
+    endfunction
+
+    virtual function int request_used();
+      return m_req_fifo.used();
+    endfunction
+
+    virtual function int response_used();
+      return m_rsp_fifo.used();
+    endfunction
+
+    virtual function void flush();
+      m_req_fifo.flush();
+      m_rsp_fifo.flush();
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_in_order_comparator - Compares two streams of transactions
+  // Receives expected on before_export and actual on after_export
+  //----------------------------------------------------------------------
+  class uvm_in_order_comparator #(type T = uvm_object) extends uvm_component;
+    uvm_tlm_analysis_fifo #(T) m_before_fifo;
+    uvm_tlm_analysis_fifo #(T) m_after_fifo;
+    uvm_analysis_imp #(T, uvm_in_order_comparator #(T)) before_export;
+    uvm_analysis_imp #(T, uvm_in_order_comparator #(T)) after_export;
+    protected int m_matches;
+    protected int m_mismatches;
+    protected bit m_before_called;
+    protected T m_last_before;
+
+    function new(string name = "", uvm_component parent = null);
+      super.new(name, parent);
+      m_before_fifo = new("before_fifo", this);
+      m_after_fifo = new("after_fifo", this);
+      before_export = new("before_export", this);
+      after_export = new("after_export", this);
+      m_matches = 0;
+      m_mismatches = 0;
+      m_before_called = 0;
+    endfunction
+
+    virtual function void write(T t);
+      // This is called for both before and after
+      // We use a flag to track which one was called
+      if (m_before_called) begin
+        // This is an after transaction
+        m_after_fifo.write(t);
+        m_before_called = 0;
+        do_compare();
+      end else begin
+        // This is a before transaction
+        m_before_fifo.write(t);
+        m_before_called = 1;
+      end
+    endfunction
+
+    virtual function void write_before(T t);
+      m_before_fifo.write(t);
+      do_compare();
+    endfunction
+
+    virtual function void write_after(T t);
+      m_after_fifo.write(t);
+      do_compare();
+    endfunction
+
+    virtual function void do_compare();
+      T before_item, after_item;
+      while (!m_before_fifo.is_empty() && !m_after_fifo.is_empty()) begin
+        if (m_before_fifo.try_get(before_item) && m_after_fifo.try_get(after_item)) begin
+          if (compare(before_item, after_item)) begin
+            m_matches++;
+          end else begin
+            m_mismatches++;
+            $display("[UVM_ERROR] %s: Mismatch detected", get_full_name());
+          end
+        end
+      end
+    endfunction
+
+    virtual function bit compare(T before_item, T after_item);
+      // Default: use object compare method
+      return before_item.compare(after_item);
+    endfunction
+
+    virtual function int get_matches();
+      return m_matches;
+    endfunction
+
+    virtual function int get_mismatches();
+      return m_mismatches;
+    endfunction
+
+    virtual function void flush();
+      m_before_fifo.flush();
+      m_after_fifo.flush();
+    endfunction
+
+    virtual function void report_phase(uvm_phase phase);
+      super.report_phase(phase);
+      $display("[UVM_INFO] %s: Comparator report - Matches: %0d, Mismatches: %0d",
+               get_full_name(), m_matches, m_mismatches);
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_algorithmic_comparator - Comparator with transform function
+  // Applies a transformation to the before item before comparing
+  //----------------------------------------------------------------------
+  class uvm_algorithmic_comparator #(type BEFORE = uvm_object, type AFTER = BEFORE,
+                                      type TRANSFORMER = uvm_object) extends uvm_component;
+    uvm_tlm_analysis_fifo #(BEFORE) m_before_fifo;
+    uvm_tlm_analysis_fifo #(AFTER) m_after_fifo;
+    protected TRANSFORMER m_transformer;
+    protected int m_matches;
+    protected int m_mismatches;
+
+    function new(string name = "", uvm_component parent = null, TRANSFORMER transformer = null);
+      super.new(name, parent);
+      m_before_fifo = new("before_fifo", this);
+      m_after_fifo = new("after_fifo", this);
+      m_transformer = transformer;
+      m_matches = 0;
+      m_mismatches = 0;
+    endfunction
+
+    virtual function void write_before(BEFORE t);
+      m_before_fifo.write(t);
+      do_compare();
+    endfunction
+
+    virtual function void write_after(AFTER t);
+      m_after_fifo.write(t);
+      do_compare();
+    endfunction
+
+    protected function void do_compare();
+      BEFORE before_item;
+      AFTER after_item, transformed;
+      while (!m_before_fifo.is_empty() && !m_after_fifo.is_empty()) begin
+        if (m_before_fifo.try_get(before_item) && m_after_fifo.try_get(after_item)) begin
+          transformed = transform(before_item);
+          if (compare(transformed, after_item)) begin
+            m_matches++;
+          end else begin
+            m_mismatches++;
+            $display("[UVM_ERROR] %s: Mismatch detected after transform", get_full_name());
+          end
+        end
+      end
+    endfunction
+
+    virtual function AFTER transform(BEFORE b);
+      AFTER a;
+      // Default: try to cast
+      if ($cast(a, b))
+        return a;
+      return null;
+    endfunction
+
+    virtual function bit compare(AFTER a, AFTER b);
+      if (a == null || b == null) return 0;
+      return a.compare(b);
+    endfunction
+
+    virtual function int get_matches();
+      return m_matches;
+    endfunction
+
+    virtual function int get_mismatches();
+      return m_mismatches;
     endfunction
   endclass
 
