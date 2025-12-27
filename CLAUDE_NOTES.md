@@ -62,9 +62,14 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
    - `uvm_access_e` (UVM_READ, UVM_WRITE, etc.)
    - `uvm_status_e` (UVM_IS_OK, UVM_NOT_OK, etc.)
 
+5. **UVM Utility Classes**:
+   - `uvm_pool` - parameterized pool for sharing objects
+   - `uvm_queue` - parameterized queue container
+   - `uvm_object_string_pool` - string-keyed object pool
+
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 32 passed, 0 failed, 2 skipped
+**Verilator UVM Unit Tests**: 33 passed, 0 failed, 2 skipped
 **Verilator Constraint Tests**: 54 passed, 0 failed
 **Verilator Class Param Tests**: 40 passed, 0 failed
 
@@ -82,6 +87,7 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_process_await | ✅ PASS (process::self, await) |
 | t_semaphore_mailbox | ✅ PASS (semaphore, mailbox primitives) |
 | t_uvm_reg_adapter | ✅ PASS (RAL adapter, reg2bus/bus2reg) |
+| t_uvm_pool_queue | ✅ PASS (uvm_pool, uvm_queue containers) |
 | t_constraint_countones | ✅ PASS |
 | t_constraint_countones_fixed | ✅ PASS |
 | t_constraint_queue_simple | ✅ PASS |
@@ -225,9 +231,9 @@ verilator --timing -cc -Wno-fatal --exe --build \
 | axi4_avip | ✅ Compiles & Runs | Write test passes |
 | apb_avip | ⚠️ Partial | RAL works; BFM interface issues |
 | ahb_avip | ❌ Needs SVA | Uses `##` sequence operators |
+| uart_avip | ❌ Needs SVA | Uses `##` in assertions |
+| spi_avip | ❌ Needs SVA | Uses `sequence` declarations |
 | axi4Lite_avip | 🔍 Untested | Complex env variable setup |
-| uart_avip | 🔍 Untested | - |
-| spi_avip | 🔍 Untested | - |
 
 ### 📁 Key Files
 
