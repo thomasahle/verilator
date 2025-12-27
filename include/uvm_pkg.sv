@@ -2295,6 +2295,181 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
+  // Nonblocking TLM ports and imps
+  //----------------------------------------------------------------------
+
+  // Base class for nonblocking put imp (type-erased)
+  virtual class uvm_nonblocking_put_imp_base extends uvm_object;
+    function new(string name = "");
+      super.new(name);
+    endfunction
+    pure virtual function bit try_put_object(uvm_object t);
+    pure virtual function bit can_put();
+  endclass
+
+  // Nonblocking put port
+  class uvm_nonblocking_put_port #(type T = uvm_object) extends uvm_object;
+    protected uvm_component m_parent;
+    protected uvm_nonblocking_put_imp_base m_imp;
+
+    function new(string name = "", uvm_component parent = null);
+      super.new(name);
+      m_parent = parent;
+    endfunction
+
+    virtual function void connect(uvm_nonblocking_put_imp_base imp);
+      m_imp = imp;
+    endfunction
+
+    virtual function bit try_put(T t);
+      if (m_imp != null)
+        return m_imp.try_put_object(t);
+      return 0;
+    endfunction
+
+    virtual function bit can_put();
+      if (m_imp != null)
+        return m_imp.can_put();
+      return 0;
+    endfunction
+  endclass
+
+  // Nonblocking put imp
+  class uvm_nonblocking_put_imp #(type T = uvm_object, type IMP = uvm_component) extends uvm_nonblocking_put_imp_base;
+    protected IMP m_imp;
+
+    function new(string name = "", IMP imp = null);
+      super.new(name);
+      m_imp = imp;
+    endfunction
+
+    virtual function bit try_put_object(uvm_object t);
+      T item;
+      if ($cast(item, t) && m_imp != null)
+        return m_imp.try_put(item);
+      return 0;
+    endfunction
+
+    virtual function bit can_put();
+      if (m_imp != null)
+        return m_imp.can_put();
+      return 0;
+    endfunction
+  endclass
+
+  // Base class for nonblocking get imp (type-erased)
+  virtual class uvm_nonblocking_get_imp_base extends uvm_object;
+    function new(string name = "");
+      super.new(name);
+    endfunction
+    pure virtual function bit try_get_object(output uvm_object t);
+    pure virtual function bit can_get();
+  endclass
+
+  // Nonblocking get port
+  class uvm_nonblocking_get_port #(type T = uvm_object) extends uvm_object;
+    protected uvm_component m_parent;
+    protected uvm_nonblocking_get_imp_base m_imp;
+
+    function new(string name = "", uvm_component parent = null);
+      super.new(name);
+      m_parent = parent;
+    endfunction
+
+    virtual function void connect(uvm_nonblocking_get_imp_base imp);
+      m_imp = imp;
+    endfunction
+
+    virtual function bit try_get(output T t);
+      uvm_object obj;
+      if (m_imp != null && m_imp.try_get_object(obj)) begin
+        if ($cast(t, obj))
+          return 1;
+      end
+      return 0;
+    endfunction
+
+    virtual function bit can_get();
+      if (m_imp != null)
+        return m_imp.can_get();
+      return 0;
+    endfunction
+  endclass
+
+  // Nonblocking get imp
+  class uvm_nonblocking_get_imp #(type T = uvm_object, type IMP = uvm_component) extends uvm_nonblocking_get_imp_base;
+    protected IMP m_imp;
+
+    function new(string name = "", IMP imp = null);
+      super.new(name);
+      m_imp = imp;
+    endfunction
+
+    virtual function bit try_get_object(output uvm_object t);
+      T item;
+      if (m_imp != null && m_imp.try_get(item)) begin
+        t = item;
+        return 1;
+      end
+      return 0;
+    endfunction
+
+    virtual function bit can_get();
+      if (m_imp != null)
+        return m_imp.can_get();
+      return 0;
+    endfunction
+  endclass
+
+  // Combined put port (blocking + nonblocking)
+  class uvm_put_port #(type T = uvm_object) extends uvm_object;
+    uvm_blocking_put_port #(T) blocking;
+    uvm_nonblocking_put_port #(T) nonblocking;
+
+    function new(string name = "", uvm_component parent = null);
+      super.new(name);
+      blocking = new({name, ".blocking"}, parent);
+      nonblocking = new({name, ".nonblocking"}, parent);
+    endfunction
+
+    virtual task put(T t);
+      blocking.put(t);
+    endtask
+
+    virtual function bit try_put(T t);
+      return nonblocking.try_put(t);
+    endfunction
+
+    virtual function bit can_put();
+      return nonblocking.can_put();
+    endfunction
+  endclass
+
+  // Combined get port (blocking + nonblocking)
+  class uvm_get_port #(type T = uvm_object) extends uvm_object;
+    uvm_blocking_get_port #(T) blocking;
+    uvm_nonblocking_get_port #(T) nonblocking;
+
+    function new(string name = "", uvm_component parent = null);
+      super.new(name);
+      blocking = new({name, ".blocking"}, parent);
+      nonblocking = new({name, ".nonblocking"}, parent);
+    endfunction
+
+    virtual task get(output T t);
+      blocking.get(t);
+    endtask
+
+    virtual function bit try_get(output T t);
+      return nonblocking.try_get(t);
+    endfunction
+
+    virtual function bit can_get();
+      return nonblocking.can_get();
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
   // TLM ports (moved before uvm_driver which uses these)
   //----------------------------------------------------------------------
   class uvm_seq_item_pull_port #(type REQ = uvm_sequence_item, type RSP = REQ) extends uvm_object;
