@@ -72,9 +72,14 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
    - `uvm_callback` - virtual base class for user callbacks
    - `uvm_callbacks#(T,CB)` - parametric callback registry per component type
 
+7. **UVM Resources**:
+   - `uvm_resource#(T)` - generic resource with value storage
+   - `uvm_resource_db#(T)` - resource database with wildcard scope matching
+   - `uvm_is_match()` - wildcard pattern matching (supports `*` and `?`)
+
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 34 passed, 0 failed, 2 skipped
+**Verilator UVM Unit Tests**: 35 passed, 0 failed, 2 skipped
 **Verilator Constraint Tests**: 54 passed, 0 failed
 **Verilator Class Param Tests**: 40 passed, 0 failed
 
@@ -94,6 +99,7 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_uvm_reg_adapter | ✅ PASS (RAL adapter, reg2bus/bus2reg) |
 | t_uvm_pool_queue | ✅ PASS (uvm_pool, uvm_queue containers) |
 | t_uvm_cmdline_callback | ✅ PASS (cmdline processor, callbacks) |
+| t_uvm_resource_db | ✅ PASS (resource, resource_db) |
 | t_constraint_countones | ✅ PASS |
 | t_constraint_countones_fixed | ✅ PASS |
 | t_constraint_queue_simple | ✅ PASS |
