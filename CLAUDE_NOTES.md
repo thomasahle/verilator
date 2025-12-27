@@ -56,9 +56,15 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
    - SystemVerilog `semaphore` and `mailbox` work correctly
    - `process::self()`, `status()`, `await()` work correctly
 
+4. **UVM Register Abstraction Layer (RAL)** (basic support):
+   - `uvm_reg_adapter` base class with reg2bus/bus2reg
+   - `uvm_reg_bus_op` struct for register operations
+   - `uvm_access_e` (UVM_READ, UVM_WRITE, etc.)
+   - `uvm_status_e` (UVM_IS_OK, UVM_NOT_OK, etc.)
+
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 29 passed, 0 failed, 2 skipped
+**Verilator UVM Unit Tests**: 32 passed, 0 failed, 2 skipped
 **Verilator Constraint Tests**: 54 passed, 0 failed
 **Verilator Class Param Tests**: 40 passed, 0 failed
 
@@ -75,6 +81,7 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_uvm_event | ✅ PASS (uvm_event, uvm_barrier synchronization) |
 | t_process_await | ✅ PASS (process::self, await) |
 | t_semaphore_mailbox | ✅ PASS (semaphore, mailbox primitives) |
+| t_uvm_reg_adapter | ✅ PASS (RAL adapter, reg2bus/bus2reg) |
 | t_constraint_countones | ✅ PASS |
 | t_constraint_countones_fixed | ✅ PASS |
 | t_constraint_queue_simple | ✅ PASS |
@@ -216,9 +223,9 @@ verilator --timing -cc -Wno-fatal --exe --build \
 | AVIP | Status | Notes |
 |------|--------|-------|
 | axi4_avip | ✅ Compiles & Runs | Write test passes |
-| apb_avip | ❌ Needs RAL | Uses uvm_reg_adapter |
-| ahb_avip | 🔍 Untested | Likely similar to AXI4 |
-| axi4Lite_avip | 🔍 Untested | Likely works |
+| apb_avip | ⚠️ Partial | RAL works; BFM interface issues |
+| ahb_avip | ❌ Needs SVA | Uses `##` sequence operators |
+| axi4Lite_avip | 🔍 Untested | Complex env variable setup |
 | uart_avip | 🔍 Untested | - |
 | spi_avip | 🔍 Untested | - |
 
