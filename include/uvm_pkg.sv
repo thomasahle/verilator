@@ -924,6 +924,186 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
+  // uvm_cmdline_processor - command line argument processing
+  // Singleton class for accessing command line plusargs
+  //----------------------------------------------------------------------
+  class uvm_cmdline_processor extends uvm_object;
+    static local uvm_cmdline_processor m_inst;
+
+    // Get singleton instance
+    static function uvm_cmdline_processor get_inst();
+      if (m_inst == null)
+        m_inst = new("cmdline");
+      return m_inst;
+    endfunction
+
+    function new(string name = "uvm_cmdline_processor");
+      super.new(name);
+    endfunction
+
+    // Get a single plusarg value
+    // Returns 1 if found, 0 if not found
+    virtual function bit get_arg_value(string match, ref string value);
+      string arg;
+      if ($value$plusargs({match, "=%s"}, arg)) begin
+        value = arg;
+        return 1;
+      end
+      return 0;
+    endfunction
+
+    // Get multiple plusarg values matching a pattern
+    // Returns number of matches found
+    virtual function int get_arg_values(string match, ref string values[$]);
+      string arg;
+      values.delete();
+      if ($value$plusargs({match, "=%s"}, arg)) begin
+        values.push_back(arg);
+        return 1;
+      end
+      return 0;
+    endfunction
+
+    // Check if a plusarg exists (with or without value)
+    virtual function bit get_arg_matches(string match);
+      string dummy;
+      return $test$plusargs(match) || $value$plusargs({match, "=%s"}, dummy);
+    endfunction
+
+    // Get UVM verbosity setting from +UVM_VERBOSITY
+    virtual function uvm_verbosity get_verbosity();
+      string verb_str;
+      if (get_arg_value("UVM_VERBOSITY", verb_str)) begin
+        case (verb_str)
+          "UVM_NONE":   return UVM_NONE;
+          "UVM_LOW":    return UVM_LOW;
+          "UVM_MEDIUM": return UVM_MEDIUM;
+          "UVM_HIGH":   return UVM_HIGH;
+          "UVM_FULL":   return UVM_FULL;
+          "UVM_DEBUG":  return UVM_DEBUG;
+          default:      return UVM_MEDIUM;
+        endcase
+      end
+      return UVM_MEDIUM;  // Default
+    endfunction
+
+    // Get test name from +UVM_TESTNAME
+    virtual function bit get_test_name(ref string name);
+      return get_arg_value("UVM_TESTNAME", name);
+    endfunction
+
+    // Get timeout from +UVM_TIMEOUT
+    virtual function bit get_timeout(ref int timeout);
+      string val;
+      if (get_arg_value("UVM_TIMEOUT", val)) begin
+        timeout = val.atoi();
+        return 1;
+      end
+      return 0;
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_callback - base class for callbacks
+  // Allows extending component behavior without modifying source
+  //----------------------------------------------------------------------
+  virtual class uvm_callback extends uvm_object;
+    bit callback_mode = 1;  // Enable/disable this callback
+
+    function new(string name = "uvm_callback");
+      super.new(name);
+    endfunction
+
+    // Enable this callback
+    function void enable();
+      callback_mode = 1;
+    endfunction
+
+    // Disable this callback
+    function void set_enabled(bit en);
+      callback_mode = en;
+    endfunction
+
+    // Check if enabled
+    function bit is_enabled();
+      return callback_mode;
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_callbacks - registry for callbacks
+  // Parametric class to manage callbacks for a specific component type
+  //----------------------------------------------------------------------
+  class uvm_callbacks #(type T = uvm_component, type CB = uvm_callback) extends uvm_object;
+    static local CB m_callbacks[$];
+    static local CB m_type_callbacks[string][$];
+
+    function new(string name = "uvm_callbacks");
+      super.new(name);
+    endfunction
+
+    // Add a callback to the global list
+    static function void add(T obj, CB cb, bit append = 1);
+      if (obj == null) begin
+        // Global callback
+        if (append)
+          m_callbacks.push_back(cb);
+        else
+          m_callbacks.push_front(cb);
+      end else begin
+        // Per-instance callback
+        string key = obj.get_full_name();
+        if (append)
+          m_type_callbacks[key].push_back(cb);
+        else
+          m_type_callbacks[key].push_front(cb);
+      end
+    endfunction
+
+    // Delete a callback
+    static function void delete(T obj, CB cb);
+      if (obj == null) begin
+        foreach (m_callbacks[i]) begin
+          if (m_callbacks[i] == cb) begin
+            m_callbacks.delete(i);
+            return;
+          end
+        end
+      end else begin
+        string key = obj.get_full_name();
+        if (m_type_callbacks.exists(key)) begin
+          foreach (m_type_callbacks[key][i]) begin
+            if (m_type_callbacks[key][i] == cb) begin
+              m_type_callbacks[key].delete(i);
+              return;
+            end
+          end
+        end
+      end
+    endfunction
+
+    // Get all callbacks for an object (global + instance-specific)
+    static function void get(T obj, ref CB cbs[$]);
+      cbs.delete();
+      // Add global callbacks first
+      foreach (m_callbacks[i]) begin
+        if (m_callbacks[i].is_enabled())
+          cbs.push_back(m_callbacks[i]);
+      end
+      // Add instance-specific callbacks
+      if (obj != null) begin
+        string key = obj.get_full_name();
+        if (m_type_callbacks.exists(key)) begin
+          foreach (m_type_callbacks[key][i]) begin
+            if (m_type_callbacks[key][i].is_enabled())
+              cbs.push_back(m_type_callbacks[key][i]);
+          end
+        end
+      end
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
   // uvm_phase - phase base class with objection tracking
   //----------------------------------------------------------------------
   class uvm_phase extends uvm_object;
