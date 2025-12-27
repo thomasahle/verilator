@@ -76,6 +76,7 @@
 `define uvm_object_utils(TYPE) \
   typedef TYPE __verilator_uvm_type_``TYPE; \
   static function string __verilator_get_type_name(); return `"TYPE`"; endfunction \
+  static function uvm_object_wrapper get_type(); return type_id::get(); endfunction \
   typedef class type_id; \
   class type_id extends uvm_object_wrapper; \
     static type_id m_inst; \
@@ -93,6 +94,9 @@
     static function type_id get(); \
       if (m_inst == null) void'(register()); \
       return m_inst; \
+    endfunction \
+    static function type_id get_type(); \
+      return get(); \
     endfunction \
     virtual function uvm_object create_object(string name = ""); \
       TYPE obj = new(name); \
@@ -131,6 +135,7 @@
 `define uvm_component_utils(TYPE) \
   typedef TYPE __verilator_uvm_type_``TYPE; \
   static function string __verilator_get_type_name(); return `"TYPE`"; endfunction \
+  static function uvm_object_wrapper get_type(); return type_id::get(); endfunction \
   typedef class type_id; \
   class type_id extends uvm_object_wrapper; \
     static type_id m_inst; \
@@ -148,6 +153,9 @@
     static function type_id get(); \
       if (m_inst == null) void'(register()); \
       return m_inst; \
+    endfunction \
+    static function type_id get_type(); \
+      return get(); \
     endfunction \
     virtual function uvm_object create_object(string name = ""); \
       return null; \
