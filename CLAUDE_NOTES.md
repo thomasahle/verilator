@@ -111,9 +111,28 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
     - Automatic fatal on timeout
     - Test: `t_uvm_heartbeat`
 
+14. **TLM Comparators**:
+    - `uvm_in_order_comparator` - compares expected vs actual transaction streams
+    - `uvm_algorithmic_comparator` - comparator with transform function
+    - Automatic match/mismatch counting
+    - Integration with `report_phase` for summary
+    - Test: `t_uvm_in_order_comparator`
+
+15. **Blocking TLM Ports**:
+    - `uvm_blocking_put_port` / `uvm_blocking_put_imp` - blocking put interface
+    - `uvm_blocking_get_port` / `uvm_blocking_get_imp` - blocking get interface
+    - `uvm_blocking_put_get_port` - combined put/get interface
+    - Test: `t_uvm_blocking_tlm_ports`
+
+16. **Request/Response Channel**:
+    - `uvm_tlm_req_rsp_channel` - bidirectional TLM channel
+    - Separate request and response FIFOs
+    - Configurable FIFO depths
+    - Test: `t_uvm_tlm_req_rsp_channel`
+
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 39 passed, 0 failed, 2 skipped
+**Verilator UVM Unit Tests**: 42 passed, 0 failed, 2 skipped
 **Verilator Constraint Tests**: 54 passed, 0 failed
 **Verilator Class Param Tests**: 40 passed, 0 failed
 
@@ -140,6 +159,9 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_uvm_print_topology | ✅ PASS (recursive component tree printing) |
 | t_uvm_sequence_library | ✅ PASS (sequence collection, random selection) |
 | t_uvm_heartbeat | ✅ PASS (watchdog, activity monitoring) |
+| t_uvm_in_order_comparator | ✅ PASS (expected vs actual comparison) |
+| t_uvm_blocking_tlm_ports | ✅ PASS (blocking put/get interfaces) |
+| t_uvm_tlm_req_rsp_channel | ✅ PASS (bidirectional req/rsp) |
 | t_constraint_countones | ✅ PASS |
 | t_constraint_countones_fixed | ✅ PASS |
 | t_constraint_queue_simple | ✅ PASS |
