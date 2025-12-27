@@ -77,9 +77,14 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
    - `uvm_resource_db#(T)` - resource database with wildcard scope matching
    - `uvm_is_match()` - wildcard pattern matching (supports `*` and `?`)
 
+8. **UVM Factory Overrides**:
+   - `get_type()` - static method to get type wrapper for factory override
+   - `set_inst_override_by_type()` - override type for specific instance path
+   - `set_type_override_by_type()` - override all instances of a type
+
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 35 passed, 0 failed, 2 skipped
+**Verilator UVM Unit Tests**: 36 passed, 0 failed, 2 skipped
 **Verilator Constraint Tests**: 54 passed, 0 failed
 **Verilator Class Param Tests**: 40 passed, 0 failed
 
@@ -100,6 +105,7 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_uvm_pool_queue | ✅ PASS (uvm_pool, uvm_queue containers) |
 | t_uvm_cmdline_callback | ✅ PASS (cmdline processor, callbacks) |
 | t_uvm_resource_db | ✅ PASS (resource, resource_db) |
+| t_uvm_factory_override | ✅ PASS (get_type, set_inst_override_by_type) |
 | t_constraint_countones | ✅ PASS |
 | t_constraint_countones_fixed | ✅ PASS |
 | t_constraint_queue_simple | ✅ PASS |
