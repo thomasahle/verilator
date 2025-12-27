@@ -1104,6 +1104,134 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
+  // uvm_is_match - simple wildcard pattern matching
+  //----------------------------------------------------------------------
+  function automatic bit uvm_is_match(string pattern, string str);
+    // Simple wildcard matching supporting '*' and '?'
+    int pi = 0;  // pattern index
+    int si = 0;  // string index
+    int star_pi = -1;  // position of last '*' in pattern
+    int star_si = -1;  // position in string when '*' was encountered
+
+    while (si < str.len()) begin
+      if (pi < pattern.len() && (pattern[pi] == str[si] || pattern[pi] == "?")) begin
+        pi++;
+        si++;
+      end else if (pi < pattern.len() && pattern[pi] == "*") begin
+        star_pi = pi;
+        star_si = si;
+        pi++;
+      end else if (star_pi >= 0) begin
+        pi = star_pi + 1;
+        star_si++;
+        si = star_si;
+      end else begin
+        return 0;
+      end
+    end
+
+    // Check remaining pattern characters (should all be '*')
+    while (pi < pattern.len() && pattern[pi] == "*")
+      pi++;
+
+    return pi == pattern.len();
+  endfunction
+
+  //----------------------------------------------------------------------
+  // uvm_resource - generic resource with value
+  //----------------------------------------------------------------------
+  class uvm_resource #(type T = int) extends uvm_object;
+    local T m_val;
+    local bit m_is_set = 0;
+
+    function new(string name = "uvm_resource");
+      super.new(name);
+    endfunction
+
+    virtual function void set(T val);
+      m_val = val;
+      m_is_set = 1;
+    endfunction
+
+    virtual function T get();
+      return m_val;
+    endfunction
+
+    virtual function T read();
+      return m_val;
+    endfunction
+
+    virtual function void write(T val);
+      m_val = val;
+      m_is_set = 1;
+    endfunction
+
+    virtual function bit is_set();
+      return m_is_set;
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_resource_db - simplified resource database (alternative to config_db)
+  //----------------------------------------------------------------------
+  class uvm_resource_db #(type T = int);
+    // Storage for resources by scope and name
+    static local T m_resources[string][string];
+    static local bit m_set[string][string];
+
+    // Set a resource value
+    static function void set(string scope, string name, T val, input uvm_object accessor = null);
+      m_resources[scope][name] = val;
+      m_set[scope][name] = 1;
+    endfunction
+
+    // Get a resource value - returns 1 if found
+    static function bit get_by_name(string scope, string name, ref T val, input uvm_object accessor = null);
+      // Try exact match first
+      if (m_set.exists(scope) && m_set[scope].exists(name)) begin
+        val = m_resources[scope][name];
+        return 1;
+      end
+      // Try wildcard scopes
+      foreach (m_set[s]) begin
+        if (m_set[s].exists(name)) begin
+          if (uvm_is_match(s, scope)) begin
+            val = m_resources[s][name];
+            return 1;
+          end
+        end
+      end
+      return 0;
+    endfunction
+
+    // Read value (alias for get_by_name that returns value directly)
+    static function T read_by_name(string scope, string name, input uvm_object accessor = null);
+      T val;
+      void'(get_by_name(scope, name, val, accessor));
+      return val;
+    endfunction
+
+    // Check if resource exists
+    static function bit exists(string scope, string name);
+      if (m_set.exists(scope) && m_set[scope].exists(name))
+        return 1;
+      foreach (m_set[s]) begin
+        if (m_set[s].exists(name)) begin
+          if (uvm_is_match(s, scope))
+            return 1;
+        end
+      end
+      return 0;
+    endfunction
+
+    // Clear all resources
+    static function void clear();
+      m_resources.delete();
+      m_set.delete();
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
   // uvm_phase - phase base class with objection tracking
   //----------------------------------------------------------------------
   class uvm_phase extends uvm_object;
@@ -2132,22 +2260,6 @@ package uvm_pkg;
     endfunction
   endclass
 
-  //----------------------------------------------------------------------
-  // uvm_resource_db - resource database (stub)
-  //----------------------------------------------------------------------
-  class uvm_resource_db #(type T = int);
-    static function void set(string scope, string name, T val, uvm_object accessor = null);
-      // Stub
-    endfunction
-
-    static function bit read_by_name(string scope, string name, inout T val, input uvm_object accessor = null);
-      return 0;
-    endfunction
-
-    static function bit read_by_type(string scope, inout T val, input uvm_object accessor = null);
-      return 0;
-    endfunction
-  endclass
 
   //----------------------------------------------------------------------
   // uvm_root - the implicit top of the UVM hierarchy
