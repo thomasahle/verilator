@@ -1074,22 +1074,22 @@ package uvm_pkg;
 
     // Get first key
     virtual function bit first(ref KEY key);
-      return pool.first(key);
+      return pool.first(key) != 0;
     endfunction
 
     // Get next key
     virtual function bit next(ref KEY key);
-      return pool.next(key);
+      return pool.next(key) != 0;
     endfunction
 
     // Get last key
     virtual function bit last(ref KEY key);
-      return pool.last(key);
+      return pool.last(key) != 0;
     endfunction
 
     // Get prev key
     virtual function bit prev(ref KEY key);
-      return pool.prev(key);
+      return pool.prev(key) != 0;
     endfunction
   endclass
 
