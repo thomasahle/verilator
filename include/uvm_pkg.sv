@@ -1761,7 +1761,8 @@ package uvm_pkg;
   //----------------------------------------------------------------------
   // Analysis ports
   //----------------------------------------------------------------------
-  class uvm_analysis_port #(type T = uvm_object) extends uvm_object;
+  // Analysis port - can connect to imps or other ports (hierarchical connections)
+  class uvm_analysis_port #(type T = uvm_object) extends uvm_analysis_imp_base;
     protected uvm_component m_parent;
     protected uvm_analysis_imp_base m_subscribers[$];
 
@@ -1770,7 +1771,7 @@ package uvm_pkg;
       m_parent = parent;
     endfunction
 
-    // Connect to any analysis imp (type-erased)
+    // Connect to any analysis imp or port (type-erased)
     virtual function void connect(uvm_analysis_imp_base imp);
       m_subscribers.push_back(imp);
     endfunction
@@ -1778,6 +1779,13 @@ package uvm_pkg;
     virtual function void write(T t);
       foreach (m_subscribers[i])
         m_subscribers[i].write_object(t);
+    endfunction
+
+    // Implementation for when this port is a subscriber (hierarchical connection)
+    virtual function void write_object(uvm_object t);
+      T item;
+      if ($cast(item, t))
+        write(item);
     endfunction
   endclass
 
@@ -1802,7 +1810,8 @@ package uvm_pkg;
     endfunction
   endclass
 
-  class uvm_analysis_export #(type T = uvm_object) extends uvm_object;
+  // Analysis export - can be connected to from ports (hierarchical connections)
+  class uvm_analysis_export #(type T = uvm_object) extends uvm_analysis_imp_base;
     protected uvm_analysis_imp_base m_imp;
 
     function new(string name = "", uvm_component parent = null);
@@ -1816,6 +1825,13 @@ package uvm_pkg;
     virtual function void write(T t);
       if (m_imp != null)
         m_imp.write_object(t);
+    endfunction
+
+    // Implementation for when this export is a subscriber
+    virtual function void write_object(uvm_object t);
+      T item;
+      if ($cast(item, t))
+        write(item);
     endfunction
   endclass
 
