@@ -130,9 +130,15 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
     - Configurable FIFO depths
     - Test: `t_uvm_tlm_req_rsp_channel`
 
+17. **Nonblocking TLM Ports**:
+    - `uvm_nonblocking_put_port` / `uvm_nonblocking_put_imp` - try_put/can_put
+    - `uvm_nonblocking_get_port` / `uvm_nonblocking_get_imp` - try_get/can_get
+    - `uvm_put_port` / `uvm_get_port` - combined blocking + nonblocking
+    - Test: `t_uvm_nonblocking_tlm_ports`
+
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 42 passed, 0 failed, 2 skipped
+**Verilator UVM Unit Tests**: 43 passed, 0 failed, 2 skipped
 **Verilator Constraint Tests**: 54 passed, 0 failed
 **Verilator Class Param Tests**: 40 passed, 0 failed
 
@@ -162,6 +168,7 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_uvm_in_order_comparator | ✅ PASS (expected vs actual comparison) |
 | t_uvm_blocking_tlm_ports | ✅ PASS (blocking put/get interfaces) |
 | t_uvm_tlm_req_rsp_channel | ✅ PASS (bidirectional req/rsp) |
+| t_uvm_nonblocking_tlm_ports | ✅ PASS (try_put/try_get/can_put/can_get) |
 | t_constraint_countones | ✅ PASS |
 | t_constraint_countones_fixed | ✅ PASS |
 | t_constraint_queue_simple | ✅ PASS |
