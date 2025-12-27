@@ -94,6 +94,43 @@ package uvm_pkg;
   } uvm_packer_policy;
 
   //----------------------------------------------------------------------
+  // UVM Register Abstraction Layer (RAL) types
+  //----------------------------------------------------------------------
+
+  // Register access type
+  typedef enum {
+    UVM_READ,
+    UVM_WRITE,
+    UVM_BURST_READ,
+    UVM_BURST_WRITE
+  } uvm_access_e;
+
+  // Register status
+  typedef enum {
+    UVM_IS_OK,
+    UVM_NOT_OK,
+    UVM_HAS_X
+  } uvm_status_e;
+
+  // Register path type
+  typedef enum {
+    UVM_FRONTDOOR,
+    UVM_BACKDOOR,
+    UVM_PREDICT,
+    UVM_DEFAULT_PATH
+  } uvm_path_e;
+
+  // Register bus operation struct
+  typedef struct {
+    uvm_access_e kind;
+    logic [63:0] addr;
+    logic [63:0] data;
+    int n_bits;
+    uvm_status_e status;
+    logic [63:0] byte_en;
+  } uvm_reg_bus_op;
+
+  //----------------------------------------------------------------------
   // Forward declarations
   //----------------------------------------------------------------------
   typedef class uvm_object;
@@ -112,6 +149,7 @@ package uvm_pkg;
   typedef class uvm_analysis_imp_base;
   typedef class uvm_event;
   typedef class uvm_barrier;
+  typedef class uvm_reg_adapter;
 
   //----------------------------------------------------------------------
   // uvm_void - base class for all UVM classes
@@ -722,6 +760,45 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
+  // uvm_reg_adapter - base class for register adapters
+  // Converts between register operations and bus transactions
+  //----------------------------------------------------------------------
+  class uvm_reg_adapter extends uvm_object;
+    // Configuration for adapter behavior
+    bit supports_byte_enable;
+    bit provides_responses;
+
+    function new(string name = "uvm_reg_adapter");
+      super.new(name);
+      supports_byte_enable = 0;
+      provides_responses = 0;
+    endfunction
+
+    // Convert a register operation to a bus transaction
+    // Must be overridden in derived class
+    virtual function uvm_sequence_item reg2bus(const ref uvm_reg_bus_op rw);
+      $fatal(1, "UVM_REG_ADAPTER: reg2bus must be implemented in derived class");
+      return null;
+    endfunction
+
+    // Convert a bus transaction to a register operation
+    // Must be overridden in derived class
+    virtual function void bus2reg(uvm_sequence_item bus_item, ref uvm_reg_bus_op rw);
+      $fatal(1, "UVM_REG_ADAPTER: bus2reg must be implemented in derived class");
+    endfunction
+
+    // Get the parent sequence for bus item (optional override)
+    virtual function uvm_sequence_base get_parent_sequence();
+      return null;
+    endfunction
+
+    // Get the sequencer for bus item (optional override)
+    virtual function uvm_sequencer_base get_sequencer();
+      return null;
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
   // uvm_phase - phase base class with objection tracking
   //----------------------------------------------------------------------
   class uvm_phase extends uvm_object;
@@ -1290,6 +1367,10 @@ package uvm_pkg;
   class uvm_driver #(type REQ = uvm_sequence_item, type RSP = REQ) extends uvm_component;
     uvm_seq_item_pull_port #(REQ, RSP) seq_item_port;
     uvm_analysis_port #(RSP) rsp_port;
+
+    // Request and response objects - convenience variables for derived classes
+    REQ req;
+    RSP rsp;
 
     function new(string name = "", uvm_component parent = null);
       super.new(name, parent);
