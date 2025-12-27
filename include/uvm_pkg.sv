@@ -799,6 +799,131 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
+  // uvm_pool - parameterized pool for sharing objects
+  // Used for sharing objects across the testbench hierarchy
+  //----------------------------------------------------------------------
+  class uvm_pool #(type KEY = int, type T = uvm_object) extends uvm_object;
+    protected T pool[KEY];
+
+    function new(string name = "uvm_pool");
+      super.new(name);
+    endfunction
+
+    // Add an item to the pool
+    virtual function void add(KEY key, T item);
+      pool[key] = item;
+    endfunction
+
+    // Get an item from the pool
+    virtual function T get(KEY key);
+      if (pool.exists(key))
+        return pool[key];
+      else
+        return null;
+    endfunction
+
+    // Check if key exists
+    virtual function bit exists(KEY key);
+      return pool.exists(key);
+    endfunction
+
+    // Delete an item
+    virtual function void delete(KEY key);
+      if (pool.exists(key))
+        pool.delete(key);
+    endfunction
+
+    // Get number of items
+    virtual function int num();
+      return pool.num();
+    endfunction
+
+    // Get first key
+    virtual function bit first(ref KEY key);
+      return pool.first(key);
+    endfunction
+
+    // Get next key
+    virtual function bit next(ref KEY key);
+      return pool.next(key);
+    endfunction
+
+    // Get last key
+    virtual function bit last(ref KEY key);
+      return pool.last(key);
+    endfunction
+
+    // Get prev key
+    virtual function bit prev(ref KEY key);
+      return pool.prev(key);
+    endfunction
+  endclass
+
+  // Convenience typedef for string-keyed object pools
+  typedef uvm_pool #(string, uvm_object) uvm_object_string_pool;
+
+  //----------------------------------------------------------------------
+  // uvm_queue - parameterized queue container
+  //----------------------------------------------------------------------
+  class uvm_queue #(type T = uvm_object) extends uvm_object;
+    protected T queue[$];
+
+    function new(string name = "uvm_queue");
+      super.new(name);
+    endfunction
+
+    // Get size
+    virtual function int size();
+      return queue.size();
+    endfunction
+
+    // Insert at back
+    virtual function void push_back(T item);
+      queue.push_back(item);
+    endfunction
+
+    // Insert at front
+    virtual function void push_front(T item);
+      queue.push_front(item);
+    endfunction
+
+    // Remove from back
+    virtual function T pop_back();
+      if (queue.size() > 0)
+        return queue.pop_back();
+      return null;
+    endfunction
+
+    // Remove from front
+    virtual function T pop_front();
+      if (queue.size() > 0)
+        return queue.pop_front();
+      return null;
+    endfunction
+
+    // Get item at index
+    virtual function T get(int index);
+      if (index >= 0 && index < queue.size())
+        return queue[index];
+      return null;
+    endfunction
+
+    // Insert at index
+    virtual function void insert(int index, T item);
+      if (index >= 0 && index <= queue.size())
+        queue.insert(index, item);
+    endfunction
+
+    // Delete at index
+    virtual function void delete(int index = -1);
+      if (index < 0)
+        queue.delete();  // Delete all
+      else if (index < queue.size())
+        queue.delete(index);
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
   // uvm_phase - phase base class with objection tracking
   //----------------------------------------------------------------------
   class uvm_phase extends uvm_object;
