@@ -216,6 +216,66 @@ package uvm_pkg;
       end
     endfunction
 
+    // Type overrides: type_name -> override_type_name
+    static local uvm_object_wrapper m_type_overrides[string];
+    // Instance overrides: inst_path.type_name -> override_type_name
+    static local uvm_object_wrapper m_inst_overrides[string];
+
+    // Set type override - all instances of original_type use override_type
+    static function void set_type_override_by_type(uvm_object_wrapper original_type,
+                                                    uvm_object_wrapper override_type,
+                                                    bit replace = 1);
+      string type_name = original_type.get_type_name();
+      if (replace || !m_type_overrides.exists(type_name))
+        m_type_overrides[type_name] = override_type;
+    endfunction
+
+    // Set instance override - specific instance path uses override_type
+    static function void set_inst_override_by_type(string inst_path,
+                                                    uvm_object_wrapper original_type,
+                                                    uvm_object_wrapper override_type);
+      string key = {inst_path, ".", original_type.get_type_name()};
+      m_inst_overrides[key] = override_type;
+    endfunction
+
+    // Set type override by name
+    static function void set_type_override(string original_type_name,
+                                            string override_type_name,
+                                            bit replace = 1);
+      if (m_type_registry.exists(override_type_name)) begin
+        if (replace || !m_type_overrides.exists(original_type_name))
+          m_type_overrides[original_type_name] = m_type_registry[override_type_name];
+      end
+    endfunction
+
+    // Set instance override by name
+    static function void set_inst_override(string original_type_name,
+                                            string override_type_name,
+                                            string inst_path);
+      if (m_type_registry.exists(override_type_name)) begin
+        string key = {inst_path, ".", original_type_name};
+        m_inst_overrides[key] = m_type_registry[override_type_name];
+      end
+    endfunction
+
+    // Get override for a type (checks instance then type overrides)
+    static function uvm_object_wrapper get_override(string type_name, string inst_path = "");
+      string key;
+      // Check instance override first
+      if (inst_path != "") begin
+        key = {inst_path, ".", type_name};
+        if (m_inst_overrides.exists(key))
+          return m_inst_overrides[key];
+      end
+      // Check type override
+      if (m_type_overrides.exists(type_name))
+        return m_type_overrides[type_name];
+      // Return original type
+      if (m_type_registry.exists(type_name))
+        return m_type_registry[type_name];
+      return null;
+    endfunction
+
     // Print all registered types
     static function void print_all_types();
       $display("UVM Factory Registered Types:");
@@ -232,6 +292,19 @@ package uvm_pkg;
   // Global factory instance accessor
   function uvm_factory uvm_factory_get();
     return uvm_factory::get();
+  endfunction
+
+  // Global factory override functions
+  function void set_inst_override_by_type(string inst_path,
+                                          uvm_object_wrapper original_type,
+                                          uvm_object_wrapper override_type);
+    uvm_factory::set_inst_override_by_type(inst_path, original_type, override_type);
+  endfunction
+
+  function void set_type_override_by_type(uvm_object_wrapper original_type,
+                                          uvm_object_wrapper override_type,
+                                          bit replace = 1);
+    uvm_factory::set_type_override_by_type(original_type, override_type, replace);
   endfunction
 
   // Deferred registration helper for uvm_*_utils macros
