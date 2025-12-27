@@ -1422,12 +1422,22 @@ package uvm_pkg;
       // Legacy
     endtask
 
-    // Utility methods
+    // Utility methods - print component hierarchy starting from this component
     virtual function void print_topology(uvm_printer printer = null);
-      $display("Topology for %s:", get_full_name());
-      foreach (m_children[name]) begin
-        $display("  %s", m_children[name].get_full_name());
-      end
+      __print_topology_recursive(this, 0);
+    endfunction
+
+    // Helper for recursive topology printing
+    protected function void __print_topology_recursive(uvm_component comp, int depth);
+      string indent;
+      uvm_component children[$];
+      for (int i = 0; i < depth; i++) indent = {indent, "  "};
+      $display("%s%s (%s)", indent,
+               comp.get_full_name() == "" ? "<unnamed>" : comp.get_full_name(),
+               comp.get_type_name());
+      comp.get_children(children);
+      foreach (children[i])
+        __print_topology_recursive(children[i], depth + 1);
     endfunction
 
     // Raise/drop objection shortcuts
