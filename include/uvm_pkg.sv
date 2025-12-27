@@ -1790,6 +1790,81 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
+  // uvm_sequence_library - collection of sequences to run
+  //----------------------------------------------------------------------
+  typedef enum int {
+    UVM_SEQ_LIB_RAND,     // Random selection
+    UVM_SEQ_LIB_RANDC,    // Random cyclic selection
+    UVM_SEQ_LIB_ITEM,     // Single item per sequence
+    UVM_SEQ_LIB_USER      // User-defined selection
+  } uvm_sequence_lib_mode;
+
+  class uvm_sequence_library #(type REQ = uvm_sequence_item, type RSP = REQ) extends uvm_sequence #(REQ, RSP);
+    protected uvm_sequence_base m_sequences[$];
+    protected int unsigned min_random_count = 10;
+    protected int unsigned max_random_count = 10;
+    protected uvm_sequence_lib_mode selection_mode = UVM_SEQ_LIB_RAND;
+
+    function new(string name = "uvm_sequence_library");
+      super.new(name);
+    endfunction
+
+    // Add a sequence to the library
+    virtual function void add_sequence(uvm_sequence_base seq);
+      m_sequences.push_back(seq);
+    endfunction
+
+    // Get number of sequences in library
+    virtual function int unsigned get_num_sequences();
+      return m_sequences.size();
+    endfunction
+
+    // Set min/max random count
+    virtual function void set_random_count(int unsigned min_val, int unsigned max_val);
+      min_random_count = min_val;
+      max_random_count = max_val;
+    endfunction
+
+    // Set selection mode
+    virtual function void set_selection_mode(uvm_sequence_lib_mode mode);
+      selection_mode = mode;
+    endfunction
+
+    // Body - execute sequences from library
+    virtual task body();
+      int unsigned count;
+      int idx;
+
+      if (m_sequences.size() == 0) begin
+        $display("[UVM_WARNING] Sequence library is empty");
+        return;
+      end
+
+      // Randomize count between min and max
+      count = min_random_count + ($urandom() % (max_random_count - min_random_count + 1));
+
+      for (int i = 0; i < count; i++) begin
+        case (selection_mode)
+          UVM_SEQ_LIB_RAND: idx = $urandom() % m_sequences.size();
+          UVM_SEQ_LIB_RANDC: idx = i % m_sequences.size();  // Simplified cyclic
+          UVM_SEQ_LIB_ITEM: idx = 0;  // Just use first
+          UVM_SEQ_LIB_USER: idx = select_sequence(i);
+          default: idx = 0;
+        endcase
+
+        if (m_sequences[idx] != null) begin
+          m_sequences[idx].start(m_sequencer, this);
+        end
+      end
+    endtask
+
+    // Override for custom selection
+    virtual function int select_sequence(int idx);
+      return idx % m_sequences.size();
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
   // uvm_sequencer_base - base sequencer
   //----------------------------------------------------------------------
   class uvm_sequencer_base extends uvm_component;
