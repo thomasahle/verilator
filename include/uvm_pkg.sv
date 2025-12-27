@@ -38,6 +38,17 @@ package uvm_pkg;
     UVM_DEBUG  = 500
   } uvm_verbosity;
 
+  // Message severity levels
+  typedef enum int {
+    UVM_INFO    = 0,
+    UVM_WARNING = 1,
+    UVM_ERROR   = 2,
+    UVM_FATAL   = 3
+  } uvm_severity;
+
+  // File handle type
+  typedef int UVM_FILE;
+
   // Global verbosity setting (can be changed at runtime)
   int uvm_global_verbosity = UVM_MEDIUM;
 
@@ -315,6 +326,156 @@ package uvm_pkg;
     // Registration already happened in type_id::get() call
     return 1;
   endfunction
+
+  //----------------------------------------------------------------------
+  // uvm_report_server - centralized message reporting and counts
+  //----------------------------------------------------------------------
+  typedef class uvm_report_server;
+
+  class uvm_report_server;
+    // Singleton instance
+    static local uvm_report_server m_global_server;
+
+    // Severity counts
+    protected int m_info_count;
+    protected int m_warning_count;
+    protected int m_error_count;
+    protected int m_fatal_count;
+
+    // Message ID counts (id -> count)
+    protected int m_id_counts[string];
+
+    // Max quit count (simulation stops after this many errors)
+    protected int m_max_quit_count = 10;
+    protected int m_quit_count = 0;
+
+    function new();
+      m_info_count = 0;
+      m_warning_count = 0;
+      m_error_count = 0;
+      m_fatal_count = 0;
+    endfunction
+
+    // Get the global report server
+    static function uvm_report_server get_server();
+      if (m_global_server == null)
+        m_global_server = new();
+      return m_global_server;
+    endfunction
+
+    // Set the global report server
+    static function void set_server(uvm_report_server server);
+      m_global_server = server;
+    endfunction
+
+    // Increment severity counts
+    virtual function void incr_severity_count(uvm_severity severity);
+      case (severity)
+        UVM_INFO:    m_info_count++;
+        UVM_WARNING: m_warning_count++;
+        UVM_ERROR: begin
+          m_error_count++;
+          m_quit_count++;
+          if (m_max_quit_count > 0 && m_quit_count >= m_max_quit_count) begin
+            $display("[UVM_FATAL] Quit count reached max (%0d errors)", m_max_quit_count);
+            $fatal(1, "UVM_ERROR count exceeded max_quit_count");
+          end
+        end
+        UVM_FATAL:   m_fatal_count++;
+      endcase
+    endfunction
+
+    // Increment ID count
+    virtual function void incr_id_count(string id);
+      if (m_id_counts.exists(id))
+        m_id_counts[id]++;
+      else
+        m_id_counts[id] = 1;
+    endfunction
+
+    // Get severity counts
+    virtual function int get_severity_count(uvm_severity severity);
+      case (severity)
+        UVM_INFO:    return m_info_count;
+        UVM_WARNING: return m_warning_count;
+        UVM_ERROR:   return m_error_count;
+        UVM_FATAL:   return m_fatal_count;
+        default:     return 0;
+      endcase
+    endfunction
+
+    // Get ID count
+    virtual function int get_id_count(string id);
+      if (m_id_counts.exists(id))
+        return m_id_counts[id];
+      return 0;
+    endfunction
+
+    // Set/get max quit count
+    virtual function void set_max_quit_count(int count);
+      m_max_quit_count = count;
+    endfunction
+
+    virtual function int get_max_quit_count();
+      return m_max_quit_count;
+    endfunction
+
+    virtual function int get_quit_count();
+      return m_quit_count;
+    endfunction
+
+    virtual function void set_quit_count(int count);
+      m_quit_count = count;
+    endfunction
+
+    // Reset counts
+    virtual function void reset_severity_counts();
+      m_info_count = 0;
+      m_warning_count = 0;
+      m_error_count = 0;
+      m_fatal_count = 0;
+    endfunction
+
+    virtual function void reset_quit_count();
+      m_quit_count = 0;
+    endfunction
+
+    // Report summary
+    virtual function void report_summarize(UVM_FILE file = 0);
+      $display("\n--- UVM Report Summary ---");
+      $display("");
+      $display("** Report counts by severity");
+      $display("UVM_INFO:    %0d", m_info_count);
+      $display("UVM_WARNING: %0d", m_warning_count);
+      $display("UVM_ERROR:   %0d", m_error_count);
+      $display("UVM_FATAL:   %0d", m_fatal_count);
+      $display("");
+      if (m_error_count > 0 || m_fatal_count > 0)
+        $display("** TEST FAILED **");
+      else
+        $display("** TEST PASSED **");
+      $display("--------------------------\n");
+    endfunction
+
+    // Compose message (can be overridden for custom formatting)
+    virtual function string compose_message(uvm_severity severity,
+                                            string name,
+                                            string id,
+                                            string message,
+                                            string filename,
+                                            int line);
+      string severity_str;
+      case (severity)
+        UVM_INFO:    severity_str = "UVM_INFO";
+        UVM_WARNING: severity_str = "UVM_WARNING";
+        UVM_ERROR:   severity_str = "UVM_ERROR";
+        UVM_FATAL:   severity_str = "UVM_FATAL";
+        default:     severity_str = "UVM_UNKNOWN";
+      endcase
+      return $sformatf("[%s] %s(%0d) @ %0t: %s [%s]",
+                       severity_str, filename, line, $time, message, id);
+    endfunction
+  endclass
 
   //----------------------------------------------------------------------
   // uvm_object - base class for data objects
