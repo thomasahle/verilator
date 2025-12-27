@@ -82,9 +82,25 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
    - `set_inst_override_by_type()` - override type for specific instance path
    - `set_type_override_by_type()` - override all instances of a type
 
+9. **UVM Report Server**:
+   - `uvm_report_server` - centralized message reporting with severity counts
+   - `uvm_severity` enum - UVM_INFO, UVM_WARNING, UVM_ERROR, UVM_FATAL
+   - `report_summarize()` - print summary with pass/fail indication
+   - Max quit count with automatic simulation stop
+
+10. **TLM Hierarchical Connections**:
+    - Analysis ports can connect to other analysis ports (port-to-port)
+    - Enables hierarchical forwarding of transactions
+    - Test: `t_uvm_analysis_port_chain`
+
+11. **Component Topology**:
+    - `print_topology()` - recursive printing of component hierarchy
+    - Shows full component names and type names
+    - Test: `t_uvm_print_topology`
+
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 36 passed, 0 failed, 2 skipped
+**Verilator UVM Unit Tests**: 37 passed, 0 failed, 2 skipped
 **Verilator Constraint Tests**: 54 passed, 0 failed
 **Verilator Class Param Tests**: 40 passed, 0 failed
 
@@ -106,6 +122,9 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_uvm_cmdline_callback | ✅ PASS (cmdline processor, callbacks) |
 | t_uvm_resource_db | ✅ PASS (resource, resource_db) |
 | t_uvm_factory_override | ✅ PASS (get_type, set_inst_override_by_type) |
+| t_uvm_report_server | ✅ PASS (severity counts, quit count, summarize) |
+| t_uvm_analysis_port_chain | ✅ PASS (hierarchical port connections) |
+| t_uvm_print_topology | ✅ PASS (recursive component tree printing) |
 | t_constraint_countones | ✅ PASS |
 | t_constraint_countones_fixed | ✅ PASS |
 | t_constraint_queue_simple | ✅ PASS |
