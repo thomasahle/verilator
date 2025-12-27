@@ -994,6 +994,101 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
+  // uvm_heartbeat - watchdog for detecting deadlocks/hangs
+  //----------------------------------------------------------------------
+  typedef enum int {
+    UVM_NO_HB_MODE,      // Heartbeat disabled
+    UVM_ALL_ACTIVE,      // All components must be active
+    UVM_ONE_ACTIVE,      // At least one component must be active
+    UVM_ANY_ACTIVE       // Same as ONE_ACTIVE
+  } uvm_heartbeat_modes;
+
+  class uvm_heartbeat extends uvm_object;
+    protected uvm_component m_cntxt;
+    protected uvm_objection m_objection;
+    protected uvm_component m_comp_list[$];
+    protected uvm_heartbeat_modes m_mode;
+    protected time m_hb_window;
+    protected bit m_started;
+    protected int unsigned m_cnt;
+    protected event m_stop_event;
+
+    function new(string name = "uvm_heartbeat", uvm_component cntxt = null, uvm_objection objection = null);
+      super.new(name);
+      m_cntxt = cntxt;
+      m_objection = objection;
+      m_mode = UVM_NO_HB_MODE;
+      m_hb_window = 0;
+      m_started = 0;
+      m_cnt = 0;
+    endfunction
+
+    // Set heartbeat mode
+    virtual function void set_mode(uvm_heartbeat_modes mode);
+      m_mode = mode;
+    endfunction
+
+    // Set heartbeat window (timeout)
+    virtual function void set_heartbeat(time hbs, uvm_component comps[$]);
+      m_hb_window = hbs;
+      m_comp_list = comps;
+    endfunction
+
+    // Add components to monitor
+    virtual function void add(uvm_component comp);
+      m_comp_list.push_back(comp);
+    endfunction
+
+    // Remove component from monitor
+    virtual function void remove(uvm_component comp);
+      foreach (m_comp_list[i]) begin
+        if (m_comp_list[i] == comp) begin
+          m_comp_list.delete(i);
+          return;
+        end
+      end
+    endfunction
+
+    // Signal activity (heartbeat) from a component
+    virtual function void raise_objection(uvm_object obj = null, string description = "", int count = 1);
+      m_cnt++;
+    endfunction
+
+    // Start heartbeat monitoring
+    virtual task start(uvm_event e = null);
+      m_started = 1;
+      fork
+        begin
+          while (m_started) begin
+            int last_cnt = m_cnt;
+            #(m_hb_window);
+            if (!m_started) break;
+            if (m_mode != UVM_NO_HB_MODE && m_cnt == last_cnt) begin
+              $display("[UVM_FATAL] Heartbeat timeout - no activity in %0t", m_hb_window);
+              $fatal(1, "Heartbeat timeout");
+            end
+          end
+        end
+        begin
+          @(m_stop_event);
+        end
+      join_any
+      disable fork;
+    endtask
+
+    // Stop heartbeat monitoring
+    virtual function void stop();
+      m_started = 0;
+      -> m_stop_event;
+    endfunction
+
+    // Check if heartbeat is running
+    virtual function bit is_started();
+      return m_started;
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
   // uvm_reg_adapter - base class for register adapters
   // Converts between register operations and bus transactions
   //----------------------------------------------------------------------
