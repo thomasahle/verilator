@@ -56,11 +56,16 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
    - SystemVerilog `semaphore` and `mailbox` work correctly
    - `process::self()`, `status()`, `await()` work correctly
 
-4. **UVM Register Abstraction Layer (RAL)** (basic support):
-   - `uvm_reg_adapter` base class with reg2bus/bus2reg
+4. **UVM Register Abstraction Layer (RAL)**:
+   - `uvm_reg_adapter` - base class with reg2bus/bus2reg
+   - `uvm_reg_field` - individual register field with value tracking
+   - `uvm_reg` - register abstraction with field composition
+   - `uvm_mem` - memory abstraction with peek/poke
+   - `uvm_reg_map` - address map with offset management
+   - `uvm_reg_block` - container for registers, memories, maps
    - `uvm_reg_bus_op` struct for register operations
-   - `uvm_access_e` (UVM_READ, UVM_WRITE, etc.)
-   - `uvm_status_e` (UVM_IS_OK, UVM_NOT_OK, etc.)
+   - Supporting types: `uvm_reg_data_t`, `uvm_reg_addr_t`, `uvm_predict_e`, etc.
+   - Test: `t_uvm_ral`
 
 5. **UVM Utility Classes**:
    - `uvm_pool` - parameterized pool for sharing objects
@@ -138,7 +143,7 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 43 passed, 0 failed, 2 skipped
+**Verilator UVM Unit Tests**: 44 passed, 0 failed, 2 skipped
 **Verilator Constraint Tests**: 54 passed, 0 failed
 **Verilator Class Param Tests**: 40 passed, 0 failed
 
@@ -169,6 +174,7 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_uvm_blocking_tlm_ports | ✅ PASS (blocking put/get interfaces) |
 | t_uvm_tlm_req_rsp_channel | ✅ PASS (bidirectional req/rsp) |
 | t_uvm_nonblocking_tlm_ports | ✅ PASS (try_put/try_get/can_put/can_get) |
+| t_uvm_ral | ✅ PASS (registers, fields, memories, maps, blocks) |
 | t_constraint_countones | ✅ PASS |
 | t_constraint_countones_fixed | ✅ PASS |
 | t_constraint_queue_simple | ✅ PASS |
@@ -296,10 +302,9 @@ verilator --timing -cc -Wno-fatal --exe --build \
    - SystemVerilog `s_until_with` property operator is unsupported
    - Workaround: Remove or replace with simpler assertions
 
-4. **UVM Register Abstraction Layer (RAL)**:
-   - Classes like `uvm_reg_adapter`, `uvm_reg_block`, `uvm_reg_bus_op` are NOT implemented
-   - APB AVIP uses RAL and cannot compile without these classes
-   - Adding RAL would be a significant feature addition
+4. ~~**UVM Register Abstraction Layer (RAL)**~~: **IMPLEMENTED!**
+   - Full RAL support added: `uvm_reg`, `uvm_reg_field`, `uvm_reg_block`, `uvm_reg_map`, `uvm_mem`
+   - Test: `t_uvm_ral`
 
 5. **defparam with generate arrays**:
    - `defparam instance[i].param = value;` syntax unsupported in Verilator
