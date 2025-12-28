@@ -186,9 +186,13 @@ package uvm_pkg;
   typedef class uvm_packer;
   typedef class uvm_recorder;
   typedef class uvm_analysis_imp_base;
+  typedef class uvm_analysis_port;
+  typedef class uvm_analysis_imp;
   typedef class uvm_event;
   typedef class uvm_barrier;
   typedef class uvm_reg_adapter;
+  typedef class uvm_reg_file;
+  typedef class uvm_reg_frontdoor;
 
   //----------------------------------------------------------------------
   // uvm_void - base class for all UVM classes
@@ -1950,85 +1954,6 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
-  // uvm_reg_sequence - Base sequence for register operations
-  //----------------------------------------------------------------------
-  class uvm_reg_sequence #(type BASE = uvm_sequence #(uvm_reg_item)) extends BASE;
-    protected uvm_reg_block model;
-    protected uvm_reg_map reg_map;
-
-    function new(string name = "uvm_reg_sequence");
-      super.new(name);
-    endfunction
-
-    // Set the register model
-    virtual function void set_model(uvm_reg_block model, uvm_reg_map map = null);
-      this.model = model;
-      if (map == null)
-        this.reg_map = model.get_default_map();
-      else
-        this.reg_map = map;
-    endfunction
-
-    // Read a register
-    virtual task read_reg(input uvm_reg rg,
-                          output uvm_status_e status,
-                          output uvm_reg_data_t value,
-                          input uvm_path_e path = UVM_DEFAULT_PATH);
-      rg.read(status, value, path, reg_map, this);
-    endtask
-
-    // Write a register
-    virtual task write_reg(input uvm_reg rg,
-                           output uvm_status_e status,
-                           input uvm_reg_data_t value,
-                           input uvm_path_e path = UVM_DEFAULT_PATH);
-      rg.write(status, value, path, reg_map, this);
-    endtask
-
-    // Read a memory location
-    virtual task read_mem(input uvm_mem mem,
-                          input longint unsigned offset,
-                          output uvm_status_e status,
-                          output uvm_reg_data_t value,
-                          input uvm_path_e path = UVM_DEFAULT_PATH);
-      mem.read(status, offset, value, path, reg_map, this);
-    endtask
-
-    // Write a memory location
-    virtual task write_mem(input uvm_mem mem,
-                           input longint unsigned offset,
-                           output uvm_status_e status,
-                           input uvm_reg_data_t value,
-                           input uvm_path_e path = UVM_DEFAULT_PATH);
-      mem.write(status, offset, value, path, reg_map, this);
-    endtask
-
-    // Mirror a register (read and update model)
-    virtual task mirror_reg(input uvm_reg rg,
-                            output uvm_status_e status,
-                            input uvm_check_e check = UVM_NO_CHECK,
-                            input uvm_path_e path = UVM_DEFAULT_PATH);
-      uvm_reg_data_t value;
-      rg.read(status, value, path, reg_map, this);
-      if (status == UVM_IS_OK)
-        rg.predict(value, UVM_PREDICT_READ);
-    endtask
-
-    // Update a register (write desired value)
-    virtual task update_reg(input uvm_reg rg,
-                            output uvm_status_e status,
-                            input uvm_path_e path = UVM_DEFAULT_PATH);
-      uvm_reg_data_t value;
-      if (rg.needs_update()) begin
-        value = rg.get();
-        rg.write(status, value, path, reg_map, this);
-      end else begin
-        status = UVM_IS_OK;
-      end
-    endtask
-  endclass
-
-  //----------------------------------------------------------------------
   // uvm_pool - parameterized pool for sharing objects
   // Used for sharing objects across the testbench hierarchy
   //----------------------------------------------------------------------
@@ -2783,6 +2708,85 @@ package uvm_pkg;
     function new(string name = "uvm_sequence");
       super.new(name);
     endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_reg_sequence - Base sequence for register operations
+  //----------------------------------------------------------------------
+  class uvm_reg_sequence #(type BASE = uvm_sequence #(uvm_reg_item)) extends BASE;
+    protected uvm_reg_block model;
+    protected uvm_reg_map reg_map;
+
+    function new(string name = "uvm_reg_sequence");
+      super.new(name);
+    endfunction
+
+    // Set the register model
+    virtual function void set_model(uvm_reg_block model, uvm_reg_map map = null);
+      this.model = model;
+      if (map == null)
+        this.reg_map = model.get_default_map();
+      else
+        this.reg_map = map;
+    endfunction
+
+    // Read a register
+    virtual task read_reg(input uvm_reg rg,
+                          output uvm_status_e status,
+                          output uvm_reg_data_t value,
+                          input uvm_path_e path = UVM_DEFAULT_PATH);
+      rg.read(status, value, path, reg_map, this);
+    endtask
+
+    // Write a register
+    virtual task write_reg(input uvm_reg rg,
+                           output uvm_status_e status,
+                           input uvm_reg_data_t value,
+                           input uvm_path_e path = UVM_DEFAULT_PATH);
+      rg.write(status, value, path, reg_map, this);
+    endtask
+
+    // Read a memory location
+    virtual task read_mem(input uvm_mem mem,
+                          input longint unsigned offset,
+                          output uvm_status_e status,
+                          output uvm_reg_data_t value,
+                          input uvm_path_e path = UVM_DEFAULT_PATH);
+      mem.read(status, offset, value, path, reg_map, this);
+    endtask
+
+    // Write a memory location
+    virtual task write_mem(input uvm_mem mem,
+                           input longint unsigned offset,
+                           output uvm_status_e status,
+                           input uvm_reg_data_t value,
+                           input uvm_path_e path = UVM_DEFAULT_PATH);
+      mem.write(status, offset, value, path, reg_map, this);
+    endtask
+
+    // Mirror a register (read and update model)
+    virtual task mirror_reg(input uvm_reg rg,
+                            output uvm_status_e status,
+                            input uvm_check_e check = UVM_NO_CHECK,
+                            input uvm_path_e path = UVM_DEFAULT_PATH);
+      uvm_reg_data_t value;
+      rg.read(status, value, path, reg_map, this);
+      if (status == UVM_IS_OK)
+        rg.predict(value, UVM_PREDICT_READ);
+    endtask
+
+    // Update a register (write desired value)
+    virtual task update_reg(input uvm_reg rg,
+                            output uvm_status_e status,
+                            input uvm_path_e path = UVM_DEFAULT_PATH);
+      uvm_reg_data_t value;
+      if (rg.needs_update()) begin
+        value = rg.get();
+        rg.write(status, value, path, reg_map, this);
+      end else begin
+        status = UVM_IS_OK;
+      end
+    endtask
   endclass
 
   //----------------------------------------------------------------------

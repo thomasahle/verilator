@@ -141,9 +141,23 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
     - `uvm_put_port` / `uvm_get_port` - combined blocking + nonblocking
     - Test: `t_uvm_nonblocking_tlm_ports`
 
+18. **UVM Register Predictor**:
+    - `uvm_reg_predictor` - monitors bus transactions and updates register model
+    - `uvm_reg_item` - register item for analysis port communication
+    - `uvm_check_e` - enum for check mode (UVM_NO_CHECK, UVM_DO_CHECK)
+    - Test: `t_uvm_reg_predictor`
+
+19. **UVM Register Sequence**:
+    - `uvm_reg_sequence` - base sequence for register operations
+    - `read_reg` / `write_reg` - register access tasks
+    - `mirror_reg` / `update_reg` - mirroring and updating
+    - `read_mem` / `write_mem` - memory access tasks
+    - `set_model` - sets register block and map
+    - Test: `t_uvm_reg_sequence`
+
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 44 passed, 0 failed, 2 skipped
+**Verilator UVM Unit Tests**: 46 passed, 0 failed, 2 skipped
 **Verilator Constraint Tests**: 54 passed, 0 failed
 **Verilator Class Param Tests**: 40 passed, 0 failed
 
@@ -175,6 +189,8 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_uvm_tlm_req_rsp_channel | ✅ PASS (bidirectional req/rsp) |
 | t_uvm_nonblocking_tlm_ports | ✅ PASS (try_put/try_get/can_put/can_get) |
 | t_uvm_ral | ✅ PASS (registers, fields, memories, maps, blocks) |
+| t_uvm_reg_predictor | ✅ PASS (bus transaction monitoring, register prediction) |
+| t_uvm_reg_sequence | ✅ PASS (read/write/mirror/update operations) |
 | t_constraint_countones | ✅ PASS |
 | t_constraint_countones_fixed | ✅ PASS |
 | t_constraint_queue_simple | ✅ PASS |
@@ -293,10 +309,10 @@ verilator --timing -cc -Wno-fatal --exe --build \
 
 1. ~~**Parametric class inline constraints**~~: **FIXED!** (see Recent Fixes above)
 
-2. ~~**Nested parametric types - axi4_avip specific**~~: **FIXED!**
-   - `uvm_seq_item_pull_port #(REQ,RSP)` now works correctly in axi4_avip
-   - Original source code compiles without any workarounds
-   - Tests: `t_class_param_nested.v`, `t_class_param_inherited.v`, `t_class_param_pkg.v`, `t_uvm_driver_ports.v` - ALL PASS
+2. **Inherited type parameters in nested parameterized classes**:
+   - `uvm_seq_item_pull_port #(REQ,RSP)` where REQ/RSP are inherited from parent class
+   - Currently fails with "Parameter type pin value isn't a type" error
+   - Affects axi4_avip driver proxy classes
 
 3. **s_until_with in assertions**:
    - SystemVerilog `s_until_with` property operator is unsupported
@@ -314,8 +330,9 @@ verilator --timing -cc -Wno-fatal --exe --build \
 
 | AVIP | Status | Notes |
 |------|--------|-------|
-| axi4_avip | ✅ Compiles & Runs | Write test passes |
-| apb_avip | ⚠️ Partial | RAL works; BFM interface issues |
+| axi4_avip | ⚠️ Blocked | Inherited type params issue (see limitation #2) |
+| i3c_avip | ⚠️ Partial | UVM compiles; BFM has enum/interface issues |
+| apb_avip | ⚠️ Partial | RAL works; defparam + BFM interface issues |
 | ahb_avip | ❌ Needs SVA | Uses `##` sequence operators |
 | uart_avip | ❌ Needs SVA | Uses `##` in assertions |
 | spi_avip | ❌ Needs SVA | Uses `sequence` declarations |
