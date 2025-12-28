@@ -141,6 +141,34 @@ package uvm_pkg;
     logic [63:0] byte_en;
   } uvm_reg_bus_op;
 
+  // Register data and address types
+  typedef logic [63:0] uvm_reg_data_t;
+  typedef logic [63:0] uvm_reg_addr_t;
+
+  // Prediction type
+  typedef enum {
+    UVM_PREDICT_DIRECT,
+    UVM_PREDICT_READ,
+    UVM_PREDICT_WRITE
+  } uvm_predict_e;
+
+  // Hierarchy type
+  typedef enum {
+    UVM_HIER,
+    UVM_FLAT
+  } uvm_hier_e;
+
+  // Endianness type
+  typedef enum {
+    UVM_LITTLE_ENDIAN,
+    UVM_BIG_ENDIAN,
+    UVM_LITTLE_FIFO,
+    UVM_BIG_FIFO
+  } uvm_endianness_e;
+
+  // Add to access type (RW variant)
+  localparam uvm_access_e UVM_RW = UVM_WRITE;  // For RAL field access
+
   //----------------------------------------------------------------------
   // Forward declarations
   //----------------------------------------------------------------------
@@ -1124,6 +1152,725 @@ package uvm_pkg;
     // Get the sequencer for bus item (optional override)
     virtual function uvm_sequencer_base get_sequencer();
       return null;
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // Forward declarations for RAL classes
+  //----------------------------------------------------------------------
+  typedef class uvm_reg;
+  typedef class uvm_reg_field;
+  typedef class uvm_reg_block;
+  typedef class uvm_reg_map;
+  typedef class uvm_mem;
+
+  //----------------------------------------------------------------------
+  // uvm_reg_field - Individual field within a register
+  //----------------------------------------------------------------------
+  class uvm_reg_field extends uvm_object;
+    protected uvm_reg m_parent;
+    protected int unsigned m_lsb;
+    protected int unsigned m_size;
+    protected bit m_volatile;
+    protected uvm_access_e m_access;
+    protected uvm_reg_data_t m_reset;
+    protected uvm_reg_data_t m_value;
+    protected uvm_reg_data_t m_mirrored;
+    protected string m_name;
+
+    function new(string name = "uvm_reg_field");
+      super.new(name);
+      m_name = name;
+      m_volatile = 0;
+      m_access = UVM_RW;
+      m_reset = 0;
+      m_value = 0;
+      m_mirrored = 0;
+    endfunction
+
+    // Configure the field
+    function void configure(uvm_reg parent,
+                           int unsigned size,
+                           int unsigned lsb_pos,
+                           string access,
+                           bit volatile_field,
+                           uvm_reg_data_t reset,
+                           bit has_reset,
+                           bit is_rand,
+                           bit individually_accessible);
+      m_parent = parent;
+      m_size = size;
+      m_lsb = lsb_pos;
+      m_volatile = volatile_field;
+      m_reset = reset;
+      m_value = reset;
+      m_mirrored = reset;
+
+      case (access)
+        "RO": m_access = UVM_READ;
+        "RW": m_access = UVM_RW;
+        "WO": m_access = UVM_WRITE;
+        default: m_access = UVM_RW;
+      endcase
+    endfunction
+
+    // Get field properties
+    virtual function string get_name();
+      return m_name;
+    endfunction
+
+    virtual function int unsigned get_n_bits();
+      return m_size;
+    endfunction
+
+    virtual function int unsigned get_lsb_pos();
+      return m_lsb;
+    endfunction
+
+    virtual function uvm_access_e get_access(uvm_reg_map map = null);
+      return m_access;
+    endfunction
+
+    virtual function uvm_reg get_parent();
+      return m_parent;
+    endfunction
+
+    virtual function uvm_reg get_register();
+      return m_parent;
+    endfunction
+
+    // Value access
+    virtual function uvm_reg_data_t get();
+      return m_value;
+    endfunction
+
+    virtual function void set(uvm_reg_data_t value, string fname = "", int lineno = 0);
+      uvm_reg_data_t mask = (1 << m_size) - 1;
+      m_value = value & mask;
+    endfunction
+
+    virtual function uvm_reg_data_t get_mirrored_value();
+      return m_mirrored;
+    endfunction
+
+    virtual function uvm_reg_data_t get_reset(string kind = "HARD");
+      return m_reset;
+    endfunction
+
+    virtual function void reset(string kind = "HARD");
+      m_value = m_reset;
+      m_mirrored = m_reset;
+    endfunction
+
+    virtual function bit needs_update();
+      return m_value != m_mirrored;
+    endfunction
+
+    // Predict value after access
+    virtual function void predict(uvm_reg_data_t value, uvm_predict_e kind = UVM_PREDICT_DIRECT);
+      uvm_reg_data_t mask = (1 << m_size) - 1;
+      m_mirrored = value & mask;
+      if (kind == UVM_PREDICT_DIRECT)
+        m_value = m_mirrored;
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_reg - Register abstraction
+  //----------------------------------------------------------------------
+  class uvm_reg extends uvm_object;
+    protected uvm_reg_block m_parent;
+    protected uvm_reg_field m_fields[$];
+    protected int unsigned m_n_bits;
+    protected int unsigned m_n_used_bits;
+    protected bit m_locked;
+    protected uvm_reg_data_t m_reset;
+    protected string m_name;
+
+    function new(string name = "uvm_reg", int unsigned n_bits = 32, int has_coverage = 0);
+      super.new(name);
+      m_name = name;
+      m_n_bits = n_bits;
+      m_n_used_bits = 0;
+      m_locked = 0;
+      m_reset = 0;
+    endfunction
+
+    // Configure the register
+    function void configure(uvm_reg_block blk_parent,
+                           uvm_reg_file regfile_parent = null,
+                           string hdl_path = "");
+      m_parent = blk_parent;
+      if (blk_parent != null)
+        blk_parent.add_reg(this);
+    endfunction
+
+    // Add a field to this register
+    function void add_field(uvm_reg_field field);
+      m_fields.push_back(field);
+      m_n_used_bits += field.get_n_bits();
+    endfunction
+
+    // Get register properties
+    virtual function string get_name();
+      return m_name;
+    endfunction
+
+    virtual function int unsigned get_n_bits();
+      return m_n_bits;
+    endfunction
+
+    virtual function int unsigned get_n_bytes();
+      return (m_n_bits + 7) / 8;
+    endfunction
+
+    virtual function uvm_reg_block get_parent();
+      return m_parent;
+    endfunction
+
+    virtual function uvm_reg_block get_block();
+      return m_parent;
+    endfunction
+
+    // Get all fields
+    virtual function void get_fields(ref uvm_reg_field fields[$]);
+      fields = m_fields;
+    endfunction
+
+    virtual function uvm_reg_field get_field_by_name(string name);
+      foreach (m_fields[i])
+        if (m_fields[i].get_name() == name)
+          return m_fields[i];
+      return null;
+    endfunction
+
+    // Value access - composite of all fields
+    virtual function uvm_reg_data_t get();
+      uvm_reg_data_t value = 0;
+      foreach (m_fields[i]) begin
+        value |= m_fields[i].get() << m_fields[i].get_lsb_pos();
+      end
+      return value;
+    endfunction
+
+    virtual function void set(uvm_reg_data_t value, string fname = "", int lineno = 0);
+      foreach (m_fields[i]) begin
+        uvm_reg_data_t field_val = (value >> m_fields[i].get_lsb_pos()) &
+                                   ((1 << m_fields[i].get_n_bits()) - 1);
+        m_fields[i].set(field_val);
+      end
+    endfunction
+
+    virtual function uvm_reg_data_t get_mirrored_value();
+      uvm_reg_data_t value = 0;
+      foreach (m_fields[i]) begin
+        value |= m_fields[i].get_mirrored_value() << m_fields[i].get_lsb_pos();
+      end
+      return value;
+    endfunction
+
+    virtual function uvm_reg_data_t get_reset(string kind = "HARD");
+      uvm_reg_data_t value = 0;
+      foreach (m_fields[i]) begin
+        value |= m_fields[i].get_reset(kind) << m_fields[i].get_lsb_pos();
+      end
+      return value;
+    endfunction
+
+    virtual function void reset(string kind = "HARD");
+      foreach (m_fields[i])
+        m_fields[i].reset(kind);
+    endfunction
+
+    virtual function bit needs_update();
+      foreach (m_fields[i])
+        if (m_fields[i].needs_update())
+          return 1;
+      return 0;
+    endfunction
+
+    // Predict value after access
+    virtual function void predict(uvm_reg_data_t value, uvm_predict_e kind = UVM_PREDICT_DIRECT);
+      foreach (m_fields[i]) begin
+        uvm_reg_data_t field_val = (value >> m_fields[i].get_lsb_pos()) &
+                                   ((1 << m_fields[i].get_n_bits()) - 1);
+        m_fields[i].predict(field_val, kind);
+      end
+    endfunction
+
+    // Lock configuration
+    virtual function void lock_model();
+      m_locked = 1;
+    endfunction
+
+    virtual function bit is_locked();
+      return m_locked;
+    endfunction
+
+    // Read/write tasks - to be overridden or use through map
+    virtual task read(output uvm_status_e status,
+                      output uvm_reg_data_t value,
+                      input uvm_path_e path = UVM_DEFAULT_PATH,
+                      input uvm_reg_map map = null,
+                      input uvm_sequence_base parent = null,
+                      input int prior = -1,
+                      input uvm_object extension = null,
+                      input string fname = "",
+                      input int lineno = 0);
+      status = UVM_NOT_OK;
+      value = 0;
+      $display("[UVM_WARNING] uvm_reg::read not implemented - use through map");
+    endtask
+
+    virtual task write(output uvm_status_e status,
+                       input uvm_reg_data_t value,
+                       input uvm_path_e path = UVM_DEFAULT_PATH,
+                       input uvm_reg_map map = null,
+                       input uvm_sequence_base parent = null,
+                       input int prior = -1,
+                       input uvm_object extension = null,
+                       input string fname = "",
+                       input int lineno = 0);
+      status = UVM_NOT_OK;
+      $display("[UVM_WARNING] uvm_reg::write not implemented - use through map");
+    endtask
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_mem - Memory abstraction
+  //----------------------------------------------------------------------
+  class uvm_mem extends uvm_object;
+    protected uvm_reg_block m_parent;
+    protected longint unsigned m_size;
+    protected int unsigned m_n_bits;
+    protected uvm_access_e m_access;
+    protected string m_name;
+    protected uvm_reg_data_t m_mem[longint unsigned];
+
+    function new(string name = "uvm_mem",
+                 longint unsigned size = 0,
+                 int unsigned n_bits = 32,
+                 string access = "RW",
+                 int has_coverage = 0);
+      super.new(name);
+      m_name = name;
+      m_size = size;
+      m_n_bits = n_bits;
+      case (access)
+        "RO": m_access = UVM_READ;
+        "RW": m_access = UVM_RW;
+        "WO": m_access = UVM_WRITE;
+        default: m_access = UVM_RW;
+      endcase
+    endfunction
+
+    // Configure the memory
+    function void configure(uvm_reg_block parent, string hdl_path = "");
+      m_parent = parent;
+      if (parent != null)
+        parent.add_mem(this);
+    endfunction
+
+    // Get memory properties
+    virtual function string get_name();
+      return m_name;
+    endfunction
+
+    virtual function longint unsigned get_size();
+      return m_size;
+    endfunction
+
+    virtual function int unsigned get_n_bits();
+      return m_n_bits;
+    endfunction
+
+    virtual function int unsigned get_n_bytes();
+      return (m_n_bits + 7) / 8;
+    endfunction
+
+    virtual function uvm_access_e get_access(uvm_reg_map map = null);
+      return m_access;
+    endfunction
+
+    virtual function uvm_reg_block get_parent();
+      return m_parent;
+    endfunction
+
+    virtual function uvm_reg_block get_block();
+      return m_parent;
+    endfunction
+
+    // Direct memory access (for backdoor)
+    virtual function uvm_reg_data_t peek(longint unsigned offset);
+      if (m_mem.exists(offset))
+        return m_mem[offset];
+      return 0;
+    endfunction
+
+    virtual function void poke(longint unsigned offset, uvm_reg_data_t value);
+      m_mem[offset] = value;
+    endfunction
+
+    // Read/write tasks
+    virtual task read(output uvm_status_e status,
+                      input longint unsigned offset,
+                      output uvm_reg_data_t value,
+                      input uvm_path_e path = UVM_DEFAULT_PATH,
+                      input uvm_reg_map map = null,
+                      input uvm_sequence_base parent = null,
+                      input int prior = -1,
+                      input uvm_object extension = null,
+                      input string fname = "",
+                      input int lineno = 0);
+      if (offset < m_size) begin
+        value = peek(offset);
+        status = UVM_IS_OK;
+      end else begin
+        value = 0;
+        status = UVM_NOT_OK;
+      end
+    endtask
+
+    virtual task write(output uvm_status_e status,
+                       input longint unsigned offset,
+                       input uvm_reg_data_t value,
+                       input uvm_path_e path = UVM_DEFAULT_PATH,
+                       input uvm_reg_map map = null,
+                       input uvm_sequence_base parent = null,
+                       input int prior = -1,
+                       input uvm_object extension = null,
+                       input string fname = "",
+                       input int lineno = 0);
+      if (offset < m_size) begin
+        poke(offset, value);
+        status = UVM_IS_OK;
+      end else begin
+        status = UVM_NOT_OK;
+      end
+    endtask
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_reg_map - Address map for registers
+  //----------------------------------------------------------------------
+  class uvm_reg_map extends uvm_object;
+    protected uvm_reg_block m_parent;
+    protected uvm_reg_addr_t m_base_addr;
+    protected int unsigned m_n_bytes;
+    protected uvm_endianness_e m_endian;
+    protected string m_name;
+    protected uvm_reg m_regs_by_offset[uvm_reg_addr_t];
+    protected uvm_mem m_mems_by_offset[uvm_reg_addr_t];
+    protected uvm_reg_map m_submaps[$];
+    protected uvm_sequencer_base m_sequencer;
+    protected uvm_reg_adapter m_adapter;
+
+    function new(string name = "uvm_reg_map");
+      super.new(name);
+      m_name = name;
+      m_base_addr = 0;
+      m_n_bytes = 4;
+      m_endian = UVM_LITTLE_ENDIAN;
+    endfunction
+
+    // Configure the map
+    function void configure(uvm_reg_block parent,
+                           uvm_reg_addr_t base_addr,
+                           int unsigned n_bytes,
+                           uvm_endianness_e endian,
+                           bit byte_addressing = 1);
+      m_parent = parent;
+      m_base_addr = base_addr;
+      m_n_bytes = n_bytes;
+      m_endian = endian;
+    endfunction
+
+    // Get map properties
+    virtual function string get_name();
+      return m_name;
+    endfunction
+
+    virtual function string get_full_name();
+      if (m_parent != null)
+        return {m_parent.get_full_name(), ".", m_name};
+      return m_name;
+    endfunction
+
+    virtual function uvm_reg_addr_t get_base_addr(uvm_hier_e hier = UVM_HIER);
+      return m_base_addr;
+    endfunction
+
+    virtual function int unsigned get_n_bytes(uvm_hier_e hier = UVM_HIER);
+      return m_n_bytes;
+    endfunction
+
+    virtual function uvm_endianness_e get_endian(uvm_hier_e hier = UVM_HIER);
+      return m_endian;
+    endfunction
+
+    virtual function uvm_reg_block get_parent();
+      return m_parent;
+    endfunction
+
+    // Add register to map
+    virtual function void add_reg(uvm_reg rg, uvm_reg_addr_t offset,
+                                  string rights = "RW", bit unmapped = 0,
+                                  uvm_reg_frontdoor frontdoor = null);
+      m_regs_by_offset[offset] = rg;
+    endfunction
+
+    // Add memory to map
+    virtual function void add_mem(uvm_mem mem, uvm_reg_addr_t offset,
+                                  string rights = "RW", bit unmapped = 0,
+                                  uvm_reg_frontdoor frontdoor = null);
+      m_mems_by_offset[offset] = mem;
+    endfunction
+
+    // Add submap
+    virtual function void add_submap(uvm_reg_map child_map, uvm_reg_addr_t offset);
+      m_submaps.push_back(child_map);
+    endfunction
+
+    // Get register by offset
+    virtual function uvm_reg get_reg_by_offset(uvm_reg_addr_t offset, bit read = 1);
+      if (m_regs_by_offset.exists(offset))
+        return m_regs_by_offset[offset];
+      return null;
+    endfunction
+
+    // Get memory by offset
+    virtual function uvm_mem get_mem_by_offset(uvm_reg_addr_t offset);
+      if (m_mems_by_offset.exists(offset))
+        return m_mems_by_offset[offset];
+      return null;
+    endfunction
+
+    // Get all registers
+    virtual function void get_registers(ref uvm_reg regs[$], input uvm_hier_e hier = UVM_HIER);
+      foreach (m_regs_by_offset[offset])
+        regs.push_back(m_regs_by_offset[offset]);
+    endfunction
+
+    // Get all memories
+    virtual function void get_memories(ref uvm_mem mems[$], input uvm_hier_e hier = UVM_HIER);
+      foreach (m_mems_by_offset[offset])
+        mems.push_back(m_mems_by_offset[offset]);
+    endfunction
+
+    // Set/get sequencer and adapter
+    virtual function void set_sequencer(uvm_sequencer_base sequencer,
+                                        uvm_reg_adapter adapter = null);
+      m_sequencer = sequencer;
+      m_adapter = adapter;
+    endfunction
+
+    virtual function uvm_sequencer_base get_sequencer();
+      return m_sequencer;
+    endfunction
+
+    virtual function uvm_reg_adapter get_adapter();
+      return m_adapter;
+    endfunction
+
+    // Get offset of a register
+    virtual function uvm_reg_addr_t get_reg_offset(uvm_reg rg, uvm_hier_e hier = UVM_FLAT);
+      foreach (m_regs_by_offset[offset])
+        if (m_regs_by_offset[offset] == rg)
+          return offset;
+      return -1;
+    endfunction
+
+    // Get offset of a memory
+    virtual function uvm_reg_addr_t get_mem_offset(uvm_mem mem, uvm_hier_e hier = UVM_FLAT);
+      foreach (m_mems_by_offset[offset])
+        if (m_mems_by_offset[offset] == mem)
+          return offset;
+      return -1;
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_reg_block - Container for registers and memories
+  //----------------------------------------------------------------------
+  class uvm_reg_block extends uvm_object;
+    protected uvm_reg_block m_parent;
+    protected uvm_reg m_regs[$];
+    protected uvm_mem m_mems[$];
+    protected uvm_reg_map m_maps[$];
+    protected uvm_reg_map m_default_map;
+    protected uvm_reg_block m_children[$];
+    protected bit m_locked;
+    protected string m_name;
+
+    function new(string name = "uvm_reg_block", int has_coverage = 0);
+      super.new(name);
+      m_name = name;
+      m_locked = 0;
+    endfunction
+
+    // Configure the block
+    function void configure(uvm_reg_block parent = null, string hdl_path = "");
+      m_parent = parent;
+      if (parent != null)
+        parent.add_block(this);
+    endfunction
+
+    // Create a map for this block
+    virtual function uvm_reg_map create_map(string name,
+                                            uvm_reg_addr_t base_addr,
+                                            int unsigned n_bytes,
+                                            uvm_endianness_e endian,
+                                            bit byte_addressing = 1);
+      uvm_reg_map map = new(name);
+      map.configure(this, base_addr, n_bytes, endian, byte_addressing);
+      m_maps.push_back(map);
+      if (m_default_map == null)
+        m_default_map = map;
+      return map;
+    endfunction
+
+    // Get block properties
+    virtual function string get_name();
+      return m_name;
+    endfunction
+
+    virtual function string get_full_name();
+      if (m_parent != null)
+        return {m_parent.get_full_name(), ".", m_name};
+      return m_name;
+    endfunction
+
+    virtual function uvm_reg_block get_parent();
+      return m_parent;
+    endfunction
+
+    // Add register
+    virtual function void add_reg(uvm_reg rg);
+      m_regs.push_back(rg);
+    endfunction
+
+    // Add memory
+    virtual function void add_mem(uvm_mem mem);
+      m_mems.push_back(mem);
+    endfunction
+
+    // Add child block
+    virtual function void add_block(uvm_reg_block child);
+      m_children.push_back(child);
+    endfunction
+
+    // Get all registers
+    virtual function void get_registers(ref uvm_reg regs[$], input uvm_hier_e hier = UVM_HIER);
+      regs = m_regs;
+      if (hier == UVM_HIER) begin
+        foreach (m_children[i]) begin
+          uvm_reg child_regs[$];
+          m_children[i].get_registers(child_regs, hier);
+          foreach (child_regs[j])
+            regs.push_back(child_regs[j]);
+        end
+      end
+    endfunction
+
+    // Get all memories
+    virtual function void get_memories(ref uvm_mem mems[$], input uvm_hier_e hier = UVM_HIER);
+      mems = m_mems;
+      if (hier == UVM_HIER) begin
+        foreach (m_children[i]) begin
+          uvm_mem child_mems[$];
+          m_children[i].get_memories(child_mems, hier);
+          foreach (child_mems[j])
+            mems.push_back(child_mems[j]);
+        end
+      end
+    endfunction
+
+    // Get all maps
+    virtual function void get_maps(ref uvm_reg_map maps[$]);
+      maps = m_maps;
+    endfunction
+
+    virtual function uvm_reg_map get_map_by_name(string name);
+      foreach (m_maps[i])
+        if (m_maps[i].get_name() == name)
+          return m_maps[i];
+      return null;
+    endfunction
+
+    virtual function uvm_reg_map get_default_map();
+      return m_default_map;
+    endfunction
+
+    virtual function void set_default_map(uvm_reg_map map);
+      m_default_map = map;
+    endfunction
+
+    // Get register by name
+    virtual function uvm_reg get_reg_by_name(string name);
+      foreach (m_regs[i])
+        if (m_regs[i].get_name() == name)
+          return m_regs[i];
+      foreach (m_children[i]) begin
+        uvm_reg rg = m_children[i].get_reg_by_name(name);
+        if (rg != null)
+          return rg;
+      end
+      return null;
+    endfunction
+
+    // Get memory by name
+    virtual function uvm_mem get_mem_by_name(string name);
+      foreach (m_mems[i])
+        if (m_mems[i].get_name() == name)
+          return m_mems[i];
+      foreach (m_children[i]) begin
+        uvm_mem mem = m_children[i].get_mem_by_name(name);
+        if (mem != null)
+          return mem;
+      end
+      return null;
+    endfunction
+
+    // Get child blocks
+    virtual function void get_blocks(ref uvm_reg_block blks[$], input uvm_hier_e hier = UVM_HIER);
+      blks = m_children;
+    endfunction
+
+    // Lock configuration
+    virtual function void lock_model();
+      m_locked = 1;
+      foreach (m_regs[i])
+        m_regs[i].lock_model();
+      foreach (m_children[i])
+        m_children[i].lock_model();
+    endfunction
+
+    virtual function bit is_locked();
+      return m_locked;
+    endfunction
+
+    // Reset all registers
+    virtual function void reset(string kind = "HARD");
+      foreach (m_regs[i])
+        m_regs[i].reset(kind);
+      foreach (m_children[i])
+        m_children[i].reset(kind);
+    endfunction
+  endclass
+
+  // Typedef for frontdoor (placeholder)
+  typedef class uvm_reg_frontdoor;
+  class uvm_reg_frontdoor extends uvm_object;
+    function new(string name = "uvm_reg_frontdoor");
+      super.new(name);
+    endfunction
+  endclass
+
+  // Typedef for reg file (placeholder)
+  typedef class uvm_reg_file;
+  class uvm_reg_file extends uvm_object;
+    function new(string name = "uvm_reg_file");
+      super.new(name);
     endfunction
   endclass
 
