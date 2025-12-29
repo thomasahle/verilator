@@ -98,6 +98,31 @@ package uvm_pkg;
     UVM_ALL_DROPPED
   } uvm_objection_event;
 
+  // Phase execution states for wait_for_state()
+  typedef enum int {
+    UVM_PHASE_UNINITIALIZED,
+    UVM_PHASE_DORMANT,
+    UVM_PHASE_SCHEDULED,
+    UVM_PHASE_SYNCING,
+    UVM_PHASE_STARTED,
+    UVM_PHASE_EXECUTING,
+    UVM_PHASE_READY_TO_END,
+    UVM_PHASE_ENDED,
+    UVM_PHASE_CLEANUP,
+    UVM_PHASE_DONE,
+    UVM_PHASE_JUMPING
+  } uvm_phase_exec_state;
+
+  // Wait operation for wait_for_state()
+  typedef enum int {
+    UVM_LT,
+    UVM_LTE,
+    UVM_NE,
+    UVM_EQ,
+    UVM_GT,
+    UVM_GTE
+  } uvm_wait_op;
+
   // Packer/unpacker policy
   typedef enum int {
     UVM_PACK,
@@ -2392,11 +2417,41 @@ package uvm_pkg;
   class uvm_phase extends uvm_object;
     // Each phase has its own objection tracker
     protected uvm_objection m_phase_objection;
+    // Phase execution state
+    protected uvm_phase_exec_state m_state = UVM_PHASE_DORMANT;
+    // Event for state changes
+    protected event m_state_changed;
 
     function new(string name = "uvm_phase");
       super.new(name);
       m_phase_objection = new({name, "_objection"});
     endfunction
+
+    // Get current phase state
+    virtual function uvm_phase_exec_state get_state();
+      return m_state;
+    endfunction
+
+    // Set phase state (called by phase controller)
+    virtual function void set_state(uvm_phase_exec_state state);
+      m_state = state;
+      ->m_state_changed;
+    endfunction
+
+    // Wait for phase to reach specified state
+    virtual task wait_for_state(uvm_phase_exec_state state, uvm_wait_op op = UVM_EQ);
+      // Already at or past the state
+      if (op == UVM_EQ && m_state == state) return;
+      if (op == UVM_GTE && m_state >= state) return;
+      if (op == UVM_LTE && m_state <= state) return;
+      // Wait for state change
+      forever begin
+        @(m_state_changed);
+        if (op == UVM_EQ && m_state == state) return;
+        if (op == UVM_GTE && m_state >= state) return;
+        if (op == UVM_LTE && m_state <= state) return;
+      end
+    endtask
 
     virtual function void raise_objection(uvm_object obj, string description = "", int count = 1);
       m_phase_objection.raise_objection(obj, description, count);
@@ -4568,11 +4623,11 @@ package uvm_pkg;
   // Run test function - creates test from factory and runs UVM phases
   task run_test(string test_name = "");
     uvm_component test_inst;
-    uvm_phase build_ph, connect_ph, elab_ph, start_ph, run_ph, extract_ph, check_ph, report_ph, final_ph;
     string cmdline_test;
 
     // Ensure globals are initialized
     __uvm_pkg_init();
+    __init_global_phases();
 
     // Check for +UVM_TESTNAME on command line - this overrides the passed test_name
     if ($value$plusargs("UVM_TESTNAME=%s", cmdline_test)) begin
@@ -4580,17 +4635,6 @@ package uvm_pkg;
     end
 
     $display("[UVM_INFO] @ %0t: run_test: Starting test '%s' [UVM]", $time, test_name);
-
-    // Create phase objects
-    build_ph = new("build");
-    connect_ph = new("connect");
-    elab_ph = new("end_of_elaboration");
-    start_ph = new("start_of_simulation");
-    run_ph = new("run");
-    extract_ph = new("extract");
-    check_ph = new("check");
-    report_ph = new("report");
-    final_ph = new("final");
 
     // Try to create test from factory
     if (test_name != "" && uvm_factory::is_type_registered(test_name)) begin
@@ -4605,36 +4649,54 @@ package uvm_pkg;
     end
 
     if (test_inst != null) begin
-      // Run UVM phases
+      // Run UVM phases with state tracking for wait_for_state()
       $display("[UVM_INFO] @ %0t: run_test: Starting build_phase [UVM]", $time);
+      build_ph.set_state(UVM_PHASE_STARTED);
       __run_build_phase(test_inst, build_ph);
+      build_ph.set_state(UVM_PHASE_ENDED);
 
       $display("[UVM_INFO] @ %0t: run_test: Starting connect_phase [UVM]", $time);
+      connect_ph.set_state(UVM_PHASE_STARTED);
       __run_connect_phase(test_inst, connect_ph);
+      connect_ph.set_state(UVM_PHASE_ENDED);
 
       $display("[UVM_INFO] @ %0t: run_test: Starting end_of_elaboration_phase [UVM]", $time);
-      __run_elab_phase(test_inst, elab_ph);
+      end_of_elaboration_ph.set_state(UVM_PHASE_STARTED);
+      __run_elab_phase(test_inst, end_of_elaboration_ph);
+      end_of_elaboration_ph.set_state(UVM_PHASE_ENDED);
 
       $display("[UVM_INFO] @ %0t: run_test: Starting start_of_simulation_phase [UVM]", $time);
-      __run_start_phase(test_inst, start_ph);
+      start_of_simulation_ph.set_state(UVM_PHASE_STARTED);
+      __run_start_phase(test_inst, start_of_simulation_ph);
+      start_of_simulation_ph.set_state(UVM_PHASE_ENDED);
 
       $display("[UVM_INFO] @ %0t: run_test: Starting run_phase [UVM]", $time);
+      run_ph.set_state(UVM_PHASE_STARTED);
       __run_run_phase(test_inst, run_ph);
+      run_ph.set_state(UVM_PHASE_ENDED);
 
       // With wait fork, all run_phase tasks have completed
       $display("[UVM_INFO] @ %0t: run_test: All run_phase tasks completed [UVM]", $time);
 
       $display("[UVM_INFO] @ %0t: run_test: Starting extract_phase [UVM]", $time);
+      extract_ph.set_state(UVM_PHASE_STARTED);
       __run_extract_phase(test_inst, extract_ph);
+      extract_ph.set_state(UVM_PHASE_ENDED);
 
       $display("[UVM_INFO] @ %0t: run_test: Starting check_phase [UVM]", $time);
+      check_ph.set_state(UVM_PHASE_STARTED);
       __run_check_phase(test_inst, check_ph);
+      check_ph.set_state(UVM_PHASE_ENDED);
 
       $display("[UVM_INFO] @ %0t: run_test: Starting report_phase [UVM]", $time);
+      report_ph.set_state(UVM_PHASE_STARTED);
       __run_report_phase(test_inst, report_ph);
+      report_ph.set_state(UVM_PHASE_ENDED);
 
       $display("[UVM_INFO] @ %0t: run_test: Starting final_phase [UVM]", $time);
+      final_ph.set_state(UVM_PHASE_STARTED);
       __run_final_phase(test_inst, final_ph);
+      final_ph.set_state(UVM_PHASE_ENDED);
 
       $display("[UVM_INFO] @ %0t: run_test: Test complete [UVM]", $time);
       $finish;
@@ -4824,6 +4886,32 @@ package uvm_pkg;
                                   string filename = "", int line = 0);
     $display("[UVM_FATAL] @ %0t: %s [%s]", $time, message, id);
     $fatal(1, "UVM Fatal");
+  endfunction
+
+  //----------------------------------------------------------------------
+  // Global phase objects - used for wait_for_state() synchronization
+  //----------------------------------------------------------------------
+  uvm_phase build_ph;
+  uvm_phase connect_ph;
+  uvm_phase end_of_elaboration_ph;
+  uvm_phase start_of_simulation_ph;
+  uvm_phase run_ph;
+  uvm_phase extract_ph;
+  uvm_phase check_ph;
+  uvm_phase report_ph;
+  uvm_phase final_ph;
+
+  // Initialize global phase objects
+  function void __init_global_phases();
+    if (build_ph == null) build_ph = new("build");
+    if (connect_ph == null) connect_ph = new("connect");
+    if (end_of_elaboration_ph == null) end_of_elaboration_ph = new("end_of_elaboration");
+    if (start_of_simulation_ph == null) start_of_simulation_ph = new("start_of_simulation");
+    if (run_ph == null) run_ph = new("run");
+    if (extract_ph == null) extract_ph = new("extract");
+    if (check_ph == null) check_ph = new("check");
+    if (report_ph == null) report_ph = new("report");
+    if (final_ph == null) final_ph = new("final");
   endfunction
 
 endpackage : uvm_pkg
