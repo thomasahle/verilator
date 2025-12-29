@@ -5549,6 +5549,12 @@ public:
     void numberOperate(V3Number& out, const V3Number& lhs) override { out.opOneHot(lhs); }
     string emitVerilog() override { return "%f$onehot(%l)"; }
     string emitC() override { return "VL_ONEHOT_%lq(%lW, %P, %li)"; }
+    string emitSMT() const override {
+        // OneHot is true if exactly one bit is set: x != 0 AND (x & (x-1)) == 0
+        const string w = cvtToStr(lhsp()->width());
+        return "(__Vbv (and (not (= %l (_ bv0 " + w + "))) "
+               "(= (bvand %l (bvsub %l (_ bv1 " + w + "))) (_ bv0 " + w + "))))";
+    }
     bool cleanOut() const override { return true; }
     bool cleanLhs() const override { return true; }
     bool sizeMattersLhs() const override { return false; }
@@ -5566,6 +5572,11 @@ public:
     void numberOperate(V3Number& out, const V3Number& lhs) override { out.opOneHot0(lhs); }
     string emitVerilog() override { return "%f$onehot0(%l)"; }
     string emitC() override { return "VL_ONEHOT0_%lq(%lW, %P, %li)"; }
+    string emitSMT() const override {
+        // OneHot0 is true if at most one bit is set: (x & (x-1)) == 0
+        const string w = cvtToStr(lhsp()->width());
+        return "(__Vbv (= (bvand %l (bvsub %l (_ bv1 " + w + "))) (_ bv0 " + w + ")))";
+    }
     bool cleanOut() const override { return true; }
     bool cleanLhs() const override { return true; }
     bool sizeMattersLhs() const override { return false; }
@@ -5634,6 +5645,10 @@ public:
     void numberOperate(V3Number& out, const V3Number& lhs) override { out.opRedAnd(lhs); }
     string emitVerilog() override { return "%f(& %l)"; }
     string emitC() override { return "VL_REDAND_%nq%lq(%lw, %P, %li)"; }
+    string emitSMT() const override {
+        // RedAnd is true if all bits are 1: expr == ~0
+        return "(__Vbv (= %l (bvnot (_ bv0 " + cvtToStr(lhsp()->width()) + "))))";
+    }
     bool cleanOut() const override { return true; }
     bool cleanLhs() const override { return true; }
     bool sizeMattersLhs() const override { return false; }
@@ -5648,6 +5663,10 @@ public:
     void numberOperate(V3Number& out, const V3Number& lhs) override { out.opRedOr(lhs); }
     string emitVerilog() override { return "%f(| %l)"; }
     string emitC() override { return "VL_REDOR_%lq(%lW, %P, %li)"; }
+    string emitSMT() const override {
+        // RedOr is true if any bit is 1: expr != 0
+        return "(__Vbv (not (= %l (_ bv0 " + cvtToStr(lhsp()->width()) + "))))";
+    }
     bool cleanOut() const override { return true; }
     bool cleanLhs() const override { return true; }
     bool sizeMattersLhs() const override { return false; }
