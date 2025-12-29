@@ -234,6 +234,7 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_assert_seq_lhs_impl | ✅ PASS (sequences on LHS of implication) |
 | t_assert_range_delay | ✅ PASS (##[n:m] range delay support) |
 | t_assert_seq_delay_patterns | ✅ PASS (AHB-style SVA patterns) |
+| t_assert_unbounded_delay | ✅ PASS (##[n:$] unbounded range delays) |
 
 ### 🧪 AXI4 Pattern Tests (PASSING)
 
@@ -318,14 +319,16 @@ verilator --timing -cc -Wno-fatal --exe --build \
 
 ### ✅ Recent Fixes
 
-1. **SVA sequence delay operators** (FIXED!):
+1. **SVA sequence delay operators** (FULLY FIXED!):
    - **FIXED**: `##n` fixed delays on LHS of implication now work
    - **FIXED**: `##[n:m]` bounded range delays now work
+   - **FIXED**: `##[n:$]` unbounded range delays now work (keeps checking until condition met)
    - **FIXED**: Sequences on LHS like `(a ##1 b) |-> c` now work
    - Implementation: V3AssertProp.cpp transforms sequences on LHS into procedural code
    - Implementation: V3AssertPre.cpp implements retry loop for range delays
-   - Tests: `t_assert_seq_lhs_impl`, `t_assert_range_delay`, `t_assert_seq_delay_patterns`
-   - AHB AVIP assertion patterns like `(cond) ##1 $stable(hready) |-> expr` now work!
+   - For unbounded: AstUnbounded wrapped in AstExtend after width resolution
+   - Tests: `t_assert_seq_lhs_impl`, `t_assert_range_delay`, `t_assert_seq_delay_patterns`, `t_assert_unbounded_delay`
+   - All AHB AVIP assertion patterns now work!
 
 2. **Parametric class inline constraints** (FIXED!):
    - **FIXED**: `req.randomize() with { req.member == x; }` now works correctly
@@ -388,12 +391,12 @@ verilator --timing -cc -Wno-fatal --exe --build \
    - `defparam instance[i].param = value;` syntax unsupported in Verilator
    - APB AVIP uses this pattern (workaround: remove redundant defparam)
 
-6. **SVA sequence operators (`##`)** - PARTIALLY FIXED:
+6. **SVA sequence operators (`##`)** - FULLY FIXED:
    - ✅ Fixed delay `##n` on LHS of implication now works
    - ✅ Range delay `##[n:m]` with bounded ranges now works
    - ✅ Sequences on LHS of implication `(a ##1 b) |-> c` now works
-   - ⚠️ Unbounded ranges `##[n:$]` not yet supported
-   - AHB AVIP basic patterns now work; assertions with `##[1:$]` still unsupported
+   - ✅ Unbounded ranges `##[n:$]` now supported (keeps checking until condition met)
+   - All AHB AVIP assertion patterns should now work!
 
 7. **Inout variable writes in fork after timing control**:
    - Writing to an inout variable from inside a fork block after a timing control is unsupported
@@ -409,7 +412,7 @@ verilator --timing -cc -Wno-fatal --exe --build \
 | uart_avip | ✅ Runs | Full UVM flow completes (assertion failure is config issue) |
 | i2s_avip | ✅ Runs | Works with global phase objects and wait_for_state() |
 | i3c_avip | ⚠️ Blocked | Inout variable writes in fork after timing control unsupported |
-| ahb_avip | 🔍 Partial | `##n` and `##[n:m]` now work; `##[1:$]` still unsupported; needs UVM for full test |
+| ahb_avip | ✅ Ready | All SVA patterns including `##[n:$]` now work; needs UVM for full test |
 | spi_avip | ✅ Runs | Full UVM phases complete; config_db testbench issue |
 | jtag_avip | ✅ Runs | Full UVM phases complete; module name fix needed (tb_top) |
 | axi4Lite_avip | 🔍 Complex | Nested VIPs with many env variables; needs manual setup |
