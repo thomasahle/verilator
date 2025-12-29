@@ -415,10 +415,9 @@ verilator --timing -cc -Wno-fatal --exe --build \
    - Error: "Unsupported: Writing to a captured inout variable in a fork after a timing control"
 
 8. **Bind statements inside modules with uvm_config_db** (AHB AVIP):
-   - Internal error: "Module/etc never assigned a symbol entry" at V3LinkDot.cpp:481
-   - AhbSlaveAgentBFM.sv uses `bind` statements to bind assertions/coverage to BFM
-   - Combined with `uvm_config_db` usage in the same module
-   - May be related to how bind targets and UVM virtual interfaces interact
+   - **FIXED**: Previous internal error is no longer occurring
+   - AHB AVIP compiles and runs successfully with assertions firing
+   - Test doesn't complete due to stimulus loop in testbench (not a Verilator issue)
 
 ### 🧪 Other AVIP Status
 
@@ -429,10 +428,10 @@ verilator --timing -cc -Wno-fatal --exe --build \
 | uart_avip | ✅ Runs | Full UVM flow completes (assertion failure is config issue) |
 | i2s_avip | ✅ Runs | Works with global phase objects and wait_for_state() |
 | i3c_avip | ⚠️ Blocked | Inout variable writes in fork after timing control unsupported |
-| ahb_avip | ⚠️ Partial | SVA patterns work; covergroup same-name fixed; blocked by bind statement internal error |
+| ahb_avip | ✅ Runs | Compiles successfully; assertions firing; test doesn't complete (stimulus loop) |
 | spi_avip | ✅ Runs | Full UVM phases complete; config_db testbench issue |
 | jtag_avip | ✅ Runs | Full UVM phases complete; module name fix needed (tb_top) |
-| axi4Lite_avip | 🔍 Complex | Nested VIPs with many env variables; needs manual setup |
+| axi4Lite_avip | ⚠️ Blocked | Interface-inside-module code pattern unsupported |
 
 ### 📁 Key Files
 
