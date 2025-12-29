@@ -381,6 +381,11 @@ verilator --timing -cc -Wno-fatal --exe --build \
    - AHB AVIP uses these in assertions (AhbMasterAssertion.sv, AhbSlaveAssertion.sv)
    - Workaround: Remove or comment out assertions using `##`
 
+7. **Inout variable writes in fork after timing control**:
+   - Writing to an inout variable from inside a fork block after a timing control is unsupported
+   - I3C AVIP uses this pattern in monitor/driver BFMs for sampling data
+   - Error: "Unsupported: Writing to a captured inout variable in a fork after a timing control"
+
 ### 🧪 Other AVIP Status
 
 | AVIP | Status | Notes |
@@ -389,11 +394,11 @@ verilator --timing -cc -Wno-fatal --exe --build \
 | apb_avip | ✅ Runs | Full UVM flow completes with config_db wildcard fix |
 | uart_avip | ✅ Runs | Full UVM flow completes (assertion failure is config issue) |
 | i2s_avip | ✅ Runs | Works with global phase objects and wait_for_state() |
-| i3c_avip | ⚠️ Partial | UVM compiles; BFM has enum/interface issues |
+| i3c_avip | ⚠️ Blocked | Inout variable writes in fork after timing control unsupported |
 | ahb_avip | ⚠️ Blocked | Uses `##` sequence operators in assertions (unsupported) |
 | spi_avip | ✅ Runs | Full UVM phases complete; config_db testbench issue |
 | jtag_avip | ✅ Runs | Full UVM phases complete; module name fix needed (tb_top) |
-| axi4Lite_avip | 🔍 Untested | Complex env variable setup |
+| axi4Lite_avip | 🔍 Complex | Nested VIPs with many env variables; needs manual setup |
 
 ### 📁 Key Files
 
