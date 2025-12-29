@@ -4306,10 +4306,11 @@ package uvm_pkg;
     endfunction
 
     // Check if a pattern matches a path
-    // Patterns can contain wildcards in individual path segments
+    // UVM-style glob matching where * can match across hierarchical levels
     // "foo.bar" matches only "foo.bar"
-    // "foo.*" matches "foo.bar", "foo.baz", etc.
-    // "foo.*env*" matches "foo.myenv", "foo.axi4_env_h", etc.
+    // "foo.*" matches "foo.bar", "foo.baz", "foo.a.b.c" etc. (any depth)
+    // "*foo*" matches any path containing "foo" (including across dots)
+    // "foo.*bar*" matches "foo.bar", "foo.mybar", "foo.x.y.mybar_z" etc.
     static function bit pattern_matches_path(string pattern, string path);
       int plen, pathlen;
 
@@ -4336,11 +4337,10 @@ package uvm_pkg;
         return 0;
       end
 
-      // Split pattern and path by dots and match segment by segment
+      // Split pattern into segments by dots
       begin
         string pat_segments[$];
         string path_segments[$];
-        int pi, si;
         string cur_seg;
 
         // Split pattern into segments
@@ -4367,17 +4367,88 @@ package uvm_pkg;
         end
         path_segments.push_back(cur_seg);
 
-        // Must have same number of segments for match
-        if (pat_segments.size() != path_segments.size())
-          return 0;
-
-        // Match each segment
-        for (int i = 0; i < pat_segments.size(); i++) begin
-          if (!segment_matches(pat_segments[i], path_segments[i]))
-            return 0;
-        end
-        return 1;
+        // Use recursive matching to handle wildcards spanning multiple segments
+        return segments_match_recursive(pat_segments, 0, path_segments, 0);
       end
+    endfunction
+
+    // Recursive segment matching - handles * patterns matching multiple segments
+    static function bit segments_match_recursive(
+        string pat_segments[$], int pi,
+        string path_segments[$], int si);
+      string pat_seg;
+      string middle;
+      string combined;
+
+      // Base cases
+      if (pi >= pat_segments.size() && si >= path_segments.size())
+        return 1;  // Both exhausted - match
+      if (pi >= pat_segments.size())
+        return 0;  // Pattern exhausted but path remains - no match
+
+      pat_seg = pat_segments[pi];
+
+      // If pattern segment is just "*", it can match zero or more path segments
+      if (pat_seg == "*") begin
+        // Try matching zero segments (skip this *)
+        if (segments_match_recursive(pat_segments, pi+1, path_segments, si))
+          return 1;
+        // Try matching one or more segments
+        for (int i = si; i < path_segments.size(); i++) begin
+          if (segments_match_recursive(pat_segments, pi+1, path_segments, i+1))
+            return 1;
+        end
+        return 0;
+      end
+
+      // If pattern segment starts and ends with * (like *foo*), it can match
+      // one or more path segments as long as one contains the middle part
+      if (pat_seg.len() >= 2 && pat_seg[0] == "*" && pat_seg[pat_seg.len()-1] == "*") begin
+        middle = pat_seg.substr(1, pat_seg.len()-2);
+        // Try to find a position where a contiguous sequence of path segments
+        // (joined with dots) contains the middle pattern
+        for (int start = si; start < path_segments.size(); start++) begin
+          for (int end_idx = start; end_idx < path_segments.size(); end_idx++) begin
+            // Build the combined string from path_segments[start..end_idx]
+            combined = "";
+            for (int k = start; k <= end_idx; k++) begin
+              if (k > start) combined = {combined, "."};
+              combined = {combined, path_segments[k]};
+            end
+            // Check if combined contains the middle part
+            if (string_contains(combined, middle)) begin
+              // Try to continue matching from the remaining segments
+              if (segments_match_recursive(pat_segments, pi+1, path_segments, end_idx+1))
+                return 1;
+            end
+          end
+        end
+        return 0;
+      end
+
+      // Path exhausted but pattern has non-* segments - no match
+      if (si >= path_segments.size())
+        return 0;
+
+      // Regular segment match
+      if (segment_matches(pat_seg, path_segments[si])) begin
+        return segments_match_recursive(pat_segments, pi+1, path_segments, si+1);
+      end
+
+      return 0;
+    endfunction
+
+    // Helper: check if str contains substr
+    static function bit string_contains(string str, string substr);
+      int slen = str.len();
+      int sublen = substr.len();
+      if (sublen == 0) return 1;
+      if (sublen > slen) return 0;
+      for (int i = 0; i <= slen - sublen; i++) begin
+        if (str.substr(i, i + sublen - 1) == substr)
+          return 1;
+      end
+      return 0;
     endfunction
 
     static function void set(uvm_component cntxt, string inst_name, string field_name, T value);
