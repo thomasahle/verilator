@@ -346,26 +346,106 @@ class AssertPropIfVisitor final : public VNVisitor {
         nodep->replaceWith(seqp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
+    // Helper to transform PExprClause nodes in a tree
+    // For implication LHS: pass -> check RHS, fail -> vacuous pass
+    static void transformImplicationLhs(AstNode* bodyp, AstNodeExpr* rhsp, FileLine* flp) {
+        // Collect all PExprClause nodes first to avoid modifying while iterating
+        std::vector<AstPExprClause*> clauses;
+        bodyp->foreach([&clauses](AstPExprClause* clausep) { clauses.push_back(clausep); });
+
+        // Now transform each clause
+        for (AstPExprClause* nodep : clauses) {
+            if (nodep->pass()) {
+                // LHS sequence matched -> check RHS
+                AstSampled* const sampledRhsp = new AstSampled{flp, rhsp->cloneTreePure(false)};
+                sampledRhsp->dtypeFrom(rhsp);
+                AstPExprClause* const passClause = new AstPExprClause{flp, true};
+                AstPExprClause* const failClause = new AstPExprClause{flp, false};
+                AstIf* const checkIf = new AstIf{flp, sampledRhsp, passClause, failClause};
+                nodep->replaceWith(checkIf);
+                VL_DO_DANGLING(nodep->deleteTree(), nodep);
+            } else {
+                // LHS sequence failed -> vacuous pass (implication passes)
+                AstPExprClause* const vacuousPass = new AstPExprClause{nodep->fileline(), true};
+                nodep->replaceWith(vacuousPass);
+                VL_DO_DANGLING(nodep->deleteTree(), nodep);
+            }
+        }
+    }
+
     void visit(AstImplication* nodep) override {
         // First transform any children (handle nested implications, first_match, etc.)
         iterateChildren(nodep);
 
-        // Only handle implication when RHS is a sequence (PExpr).
-        // Simple expression RHS is handled by V3AssertPre which properly handles
-        // overlapped (|->) vs non-overlapped (|=>) with $past transform.
-        if (AstPExpr* pexprp = VN_CAST(nodep->rhsp(), PExpr)) {
+        FileLine* const flp = nodep->fileline();
+        AstPExpr* const lhsPExpr = VN_CAST(nodep->lhsp(), PExpr);
+        AstPExpr* const rhsPExpr = VN_CAST(nodep->rhsp(), PExpr);
+
+        if (lhsPExpr && rhsPExpr) {
+            // Both LHS and RHS are sequences
+            // Transform LHS clauses: pass -> execute RHS, fail -> vacuous pass
+            lhsPExpr->unlinkFrBack();
+            rhsPExpr->unlinkFrBack();
+
+            // For each pass clause in LHS, replace with RHS sequence body
+            // For each fail clause in LHS, convert to pass (vacuous)
+            AstBegin* const lhsBodyp = lhsPExpr->bodyp();
+            AstBegin* const rhsBodyp = rhsPExpr->bodyp();
+
+            // Collect all PExprClause nodes first
+            std::vector<AstPExprClause*> clauses;
+            lhsBodyp->foreach([&clauses](AstPExprClause* clausep) { clauses.push_back(clausep); });
+
+            // Transform each clause
+            for (AstPExprClause* clausep : clauses) {
+                if (clausep->pass()) {
+                    // LHS matched -> execute RHS body
+                    AstNode* rhsStmts = rhsBodyp->stmtsp();
+                    if (rhsStmts) {
+                        rhsStmts = rhsStmts->cloneTree(false);
+                        clausep->replaceWith(rhsStmts);
+                        VL_DO_DANGLING(clausep->deleteTree(), clausep);
+                    }
+                } else {
+                    // LHS failed -> vacuous pass
+                    AstPExprClause* const vacuousPass
+                        = new AstPExprClause{clausep->fileline(), true};
+                    clausep->replaceWith(vacuousPass);
+                    VL_DO_DANGLING(clausep->deleteTree(), clausep);
+                }
+            }
+
+            nodep->replaceWith(lhsPExpr);
+            VL_DO_DANGLING(rhsPExpr->deleteTree(), rhsPExpr);
+            VL_DO_DANGLING(nodep->deleteTree(), nodep);
+        } else if (lhsPExpr) {
+            // LHS is a sequence, RHS is a simple expression
+            // Transform LHS clauses: pass -> check RHS, fail -> vacuous pass
+            lhsPExpr->unlinkFrBack();
+            AstNodeExpr* const rhsp = nodep->rhsp()->unlinkFrBack();
+
+            AstBegin* const bodyp = lhsPExpr->bodyp();
+
+            // Transform pass/fail clauses in the sequence body
+            transformImplicationLhs(bodyp, rhsp, flp);
+
+            // Delete the original RHS after cloning
+            VL_DO_DANGLING(rhsp->deleteTree(), rhsp);
+
+            nodep->replaceWith(lhsPExpr);
+            VL_DO_DANGLING(nodep->deleteTree(), nodep);
+        } else if (rhsPExpr) {
             // RHS is a sequence that has been transformed to PExpr
             // Inject LHS as guard condition: if (!sampled(lhs)) { pass } else { original body }
-            FileLine* const flp = nodep->fileline();
             AstNodeExpr* const lhsp = nodep->lhsp()->unlinkFrBack();
 
             // Create sampled condition for proper concurrent assertion semantics
             AstSampled* const sampledLhsp = new AstSampled{flp, lhsp};
             sampledLhsp->dtypeFrom(lhsp);
 
-            pexprp->unlinkFrBack();
+            rhsPExpr->unlinkFrBack();
 
-            AstBegin* const bodyp = pexprp->bodyp();
+            AstBegin* const bodyp = rhsPExpr->bodyp();
             AstNode* origStmts = bodyp->stmtsp();
             if (origStmts) origStmts = origStmts->unlinkFrBackWithNext();
 
@@ -379,10 +459,10 @@ class AssertPropIfVisitor final : public VNVisitor {
 
             bodyp->addStmtsp(guardIf);
 
-            nodep->replaceWith(pexprp);
+            nodep->replaceWith(rhsPExpr);
             VL_DO_DANGLING(nodep->deleteTree(), nodep);
         }
-        // else: Simple expression RHS - leave for V3AssertPre
+        // else: Both are simple expressions - leave for V3AssertPre
     }
     void visit(AstUntil* nodep) override {
         // SVA until operators: a until b, a s_until b, a until_with b, a s_until_with b
