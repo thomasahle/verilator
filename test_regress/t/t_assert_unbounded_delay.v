@@ -6,12 +6,9 @@
 
 // Test for SVA unbounded delay ##[min:$]
 
-module t (/*AUTOARG*/
-   // Inputs
-   clk
-   );
-
-   input clk;
+module t;
+   logic clk = 0;
+   always #5 clk = ~clk;
 
    int   cyc = 0;
    logic req, ack;
