@@ -341,6 +341,20 @@ verilator --timing -cc -Wno-fatal --exe --build \
    - The wait statement didn't advance time, causing infinite loops
    - Test: `t_uvm_sequence.py` - PASSES
 
+5. **SMT support for constraint reduction operations** (commit f7bfbcd91):
+   - Added `emitSMT()` for `AstRedAnd` - reduction AND (all bits set)
+   - Added `emitSMT()` for `AstRedOr` - reduction OR (any bit set)
+   - Added `emitSMT()` for `AstOneHot` - exactly one bit set
+   - Added `emitSMT()` for `AstOneHot0` - at most one bit set
+   - Now enabled in constraint expressions for SMT solver:
+     ```systemverilog
+     constraint has_bits { |value; }           // at least one bit set
+     constraint all_ones { &value; }           // all bits set
+     constraint one_bit { $onehot(value); }    // exactly one bit
+     constraint at_most_one { $onehot0(value); } // at most one bit
+     ```
+   - Test: `t_constraint_reduction_ops.py`
+
 ### ⚠️ Known Limitations
 
 1. ~~**Parametric class inline constraints**~~: **FIXED!** (see Recent Fixes above)
@@ -362,6 +376,11 @@ verilator --timing -cc -Wno-fatal --exe --build \
    - `defparam instance[i].param = value;` syntax unsupported in Verilator
    - APB AVIP uses this pattern (workaround: remove redundant defparam)
 
+6. **SVA sequence operators (`##`)**:
+   - Cycle delay operators like `##1`, `##[1:$]` in sequence expressions are unsupported
+   - AHB AVIP uses these in assertions (AhbMasterAssertion.sv, AhbSlaveAssertion.sv)
+   - Workaround: Remove or comment out assertions using `##`
+
 ### 🧪 Other AVIP Status
 
 | AVIP | Status | Notes |
@@ -371,8 +390,8 @@ verilator --timing -cc -Wno-fatal --exe --build \
 | uart_avip | ✅ Runs | Full UVM flow completes (assertion failure is config issue) |
 | i2s_avip | ✅ Runs | Works with global phase objects and wait_for_state() |
 | i3c_avip | ⚠️ Partial | UVM compiles; BFM has enum/interface issues |
-| ahb_avip | 🔍 Untested | Uses `##` sequence operators |
-| spi_avip | 🔍 Untested | Uses `sequence` declarations |
+| ahb_avip | ⚠️ Blocked | Uses `##` sequence operators in assertions (unsupported) |
+| spi_avip | ✅ Compiles | Full UVM compiles; unbounded $ in dist now supported |
 | axi4Lite_avip | 🔍 Untested | Complex env variable setup |
 | jtag_avip | 🔍 Untested | Not yet tested |
 
