@@ -164,9 +164,20 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
     - `uvm_sequence_item` properly inherits from `uvm_transaction`
     - Test: `t_uvm_transaction`
 
+21. **TLM2 Generic Payload**:
+    - `uvm_tlm_generic_payload` - standard TLM2 payload for bus transactions
+    - Address, command (READ/WRITE/IGNORE), data, byte enable, streaming width
+    - Response status with OK, ERROR, ADDRESS_ERROR, etc.
+    - DMI (Direct Memory Interface) allowed flag
+    - `copy()` and `compare()` support via `do_copy()`/`do_compare()`
+    - TLM phase enum: `UVM_TLM_BEGIN_REQ`, `UVM_TLM_END_REQ`, etc.
+    - TLM sync enum: `UVM_TLM_ACCEPTED`, `UVM_TLM_UPDATED`, `UVM_TLM_COMPLETED`
+    - Convenience typedef `uvm_tlm_gp`
+    - Test: `t_uvm_tlm_generic_payload`
+
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 49 passed, 0 failed, 2 skipped
+**Verilator UVM Unit Tests**: 50 passed, 0 failed, 2 skipped
 **Verilator Constraint Tests**: 54 passed, 0 failed
 **Verilator Class Param Tests**: 40 passed, 0 failed
 
@@ -201,6 +212,7 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_uvm_reg_predictor | ✅ PASS (bus transaction monitoring, register prediction) |
 | t_uvm_reg_sequence | ✅ PASS (read/write/mirror/update operations) |
 | t_uvm_transaction | ✅ PASS (timing, IDs, initiator tracking) |
+| t_uvm_tlm_generic_payload | ✅ PASS (TLM2 payload, copy, compare) |
 | t_constraint_countones | ✅ PASS |
 | t_constraint_countones_fixed | ✅ PASS |
 | t_constraint_queue_simple | ✅ PASS |

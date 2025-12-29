@@ -540,11 +540,19 @@ package uvm_pkg;
     endfunction
 
     virtual function void copy(uvm_object rhs);
+      do_copy(rhs);
+    endfunction
+
+    virtual function void do_copy(uvm_object rhs);
       // Stub - derived classes should override
     endfunction
 
     virtual function bit compare(uvm_object rhs, uvm_comparer comparer = null);
-      return 1;  // Stub
+      return do_compare(rhs, comparer);
+    endfunction
+
+    virtual function bit do_compare(uvm_object rhs, uvm_comparer comparer);
+      return 1;  // Stub - derived classes should override
     endfunction
 
     virtual function void print(uvm_printer printer = null);
@@ -571,14 +579,6 @@ package uvm_pkg;
       do_print(printer);
       result = {result, printer.emit()};
       return result;
-    endfunction
-
-    virtual function void do_copy(uvm_object rhs);
-      // Override in derived classes
-    endfunction
-
-    virtual function bit do_compare(uvm_object rhs, uvm_comparer comparer);
-      return 1;
     endfunction
 
     virtual function void do_print(uvm_printer printer);
@@ -3809,6 +3809,231 @@ package uvm_pkg;
       m_rsp_fifo.flush();
     endfunction
   endclass
+
+  //----------------------------------------------------------------------
+  // TLM2 Generic Payload types and classes
+  //----------------------------------------------------------------------
+
+  // TLM command type
+  typedef enum {
+    UVM_TLM_READ_COMMAND,
+    UVM_TLM_WRITE_COMMAND,
+    UVM_TLM_IGNORE_COMMAND
+  } uvm_tlm_command_e;
+
+  // TLM response status
+  typedef enum {
+    UVM_TLM_OK_RESPONSE = 1,
+    UVM_TLM_INCOMPLETE_RESPONSE = 0,
+    UVM_TLM_GENERIC_ERROR_RESPONSE = -1,
+    UVM_TLM_ADDRESS_ERROR_RESPONSE = -2,
+    UVM_TLM_COMMAND_ERROR_RESPONSE = -3,
+    UVM_TLM_BURST_ERROR_RESPONSE = -4,
+    UVM_TLM_BYTE_ENABLE_ERROR_RESPONSE = -5
+  } uvm_tlm_response_status_e;
+
+  // TLM sync enum
+  typedef enum {
+    UVM_TLM_ACCEPTED,
+    UVM_TLM_UPDATED,
+    UVM_TLM_COMPLETED
+  } uvm_tlm_sync_e;
+
+  // TLM phase enum
+  typedef enum {
+    UVM_TLM_UNINITIALIZED_PHASE,
+    UVM_TLM_BEGIN_REQ,
+    UVM_TLM_END_REQ,
+    UVM_TLM_BEGIN_RESP,
+    UVM_TLM_END_RESP
+  } uvm_tlm_phase_e;
+
+  //----------------------------------------------------------------------
+  // uvm_tlm_generic_payload - TLM2 Generic Payload
+  // Standard TLM2 payload for bus transactions
+  //----------------------------------------------------------------------
+  class uvm_tlm_generic_payload extends uvm_sequence_item;
+    rand bit [63:0] m_address;
+    rand uvm_tlm_command_e m_command;
+    rand byte unsigned m_data[];
+    rand int unsigned m_length;
+    uvm_tlm_response_status_e m_response_status;
+    rand bit m_dmi;
+    rand byte unsigned m_byte_enable[];
+    rand int unsigned m_byte_enable_length;
+    rand int unsigned m_streaming_width;
+
+    function new(string name = "uvm_tlm_generic_payload");
+      super.new(name);
+      m_address = 0;
+      m_command = UVM_TLM_IGNORE_COMMAND;
+      m_length = 0;
+      m_response_status = UVM_TLM_INCOMPLETE_RESPONSE;
+      m_dmi = 0;
+      m_byte_enable_length = 0;
+      m_streaming_width = 0;
+    endfunction
+
+    // Address
+    virtual function void set_address(bit [63:0] addr);
+      m_address = addr;
+    endfunction
+
+    virtual function bit [63:0] get_address();
+      return m_address;
+    endfunction
+
+    // Command
+    virtual function void set_command(uvm_tlm_command_e command);
+      m_command = command;
+    endfunction
+
+    virtual function uvm_tlm_command_e get_command();
+      return m_command;
+    endfunction
+
+    virtual function bit is_read();
+      return (m_command == UVM_TLM_READ_COMMAND);
+    endfunction
+
+    virtual function bit is_write();
+      return (m_command == UVM_TLM_WRITE_COMMAND);
+    endfunction
+
+    virtual function void set_read();
+      m_command = UVM_TLM_READ_COMMAND;
+    endfunction
+
+    virtual function void set_write();
+      m_command = UVM_TLM_WRITE_COMMAND;
+    endfunction
+
+    // Data
+    virtual function void set_data(ref byte unsigned data[]);
+      m_data = data;
+    endfunction
+
+    virtual function void get_data(ref byte unsigned data[]);
+      data = m_data;
+    endfunction
+
+    virtual function void set_data_length(int unsigned length);
+      m_length = length;
+    endfunction
+
+    virtual function int unsigned get_data_length();
+      return m_length;
+    endfunction
+
+    // Response status
+    virtual function void set_response_status(uvm_tlm_response_status_e status);
+      m_response_status = status;
+    endfunction
+
+    virtual function uvm_tlm_response_status_e get_response_status();
+      return m_response_status;
+    endfunction
+
+    virtual function bit is_response_ok();
+      return (m_response_status > 0);
+    endfunction
+
+    virtual function bit is_response_error();
+      return (m_response_status <= 0);
+    endfunction
+
+    virtual function string get_response_string();
+      case (m_response_status)
+        UVM_TLM_OK_RESPONSE: return "OK";
+        UVM_TLM_INCOMPLETE_RESPONSE: return "INCOMPLETE";
+        UVM_TLM_GENERIC_ERROR_RESPONSE: return "GENERIC_ERROR";
+        UVM_TLM_ADDRESS_ERROR_RESPONSE: return "ADDRESS_ERROR";
+        UVM_TLM_COMMAND_ERROR_RESPONSE: return "COMMAND_ERROR";
+        UVM_TLM_BURST_ERROR_RESPONSE: return "BURST_ERROR";
+        UVM_TLM_BYTE_ENABLE_ERROR_RESPONSE: return "BYTE_ENABLE_ERROR";
+        default: return "UNKNOWN";
+      endcase
+    endfunction
+
+    // Byte enable
+    virtual function void set_byte_enable(ref byte unsigned byte_enable[]);
+      m_byte_enable = byte_enable;
+    endfunction
+
+    virtual function void get_byte_enable(ref byte unsigned byte_enable[]);
+      byte_enable = m_byte_enable;
+    endfunction
+
+    virtual function void set_byte_enable_length(int unsigned length);
+      m_byte_enable_length = length;
+    endfunction
+
+    virtual function int unsigned get_byte_enable_length();
+      return m_byte_enable_length;
+    endfunction
+
+    // Streaming width
+    virtual function void set_streaming_width(int unsigned width);
+      m_streaming_width = width;
+    endfunction
+
+    virtual function int unsigned get_streaming_width();
+      return m_streaming_width;
+    endfunction
+
+    // DMI allowed
+    virtual function void set_dmi_allowed(bit dmi);
+      m_dmi = dmi;
+    endfunction
+
+    virtual function bit is_dmi_allowed();
+      return m_dmi;
+    endfunction
+
+    // Deep copy
+    virtual function void do_copy(uvm_object rhs);
+      uvm_tlm_generic_payload gp;
+      super.do_copy(rhs);
+      if (!$cast(gp, rhs)) return;
+      m_address = gp.m_address;
+      m_command = gp.m_command;
+      m_data = gp.m_data;
+      m_length = gp.m_length;
+      m_response_status = gp.m_response_status;
+      m_dmi = gp.m_dmi;
+      m_byte_enable = gp.m_byte_enable;
+      m_byte_enable_length = gp.m_byte_enable_length;
+      m_streaming_width = gp.m_streaming_width;
+    endfunction
+
+    // Convert to string
+    virtual function string convert2string();
+      string s;
+      s = $sformatf("addr=0x%0h cmd=%s len=%0d resp=%s",
+                    m_address, m_command.name(), m_length, get_response_string());
+      return s;
+    endfunction
+
+    // Compare
+    virtual function bit do_compare(uvm_object rhs, uvm_comparer comparer);
+      uvm_tlm_generic_payload gp;
+      if (!$cast(gp, rhs)) return 0;
+      return (m_address == gp.m_address &&
+              m_command == gp.m_command &&
+              m_length == gp.m_length &&
+              m_data == gp.m_data);
+    endfunction
+
+    // Type name for factory
+    virtual function string get_type_name();
+      return "uvm_tlm_generic_payload";
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
+  // uvm_tlm_gp - Convenience typedef for generic payload
+  //----------------------------------------------------------------------
+  typedef uvm_tlm_generic_payload uvm_tlm_gp;
 
   //----------------------------------------------------------------------
   // uvm_in_order_comparator - Compares two streams of transactions
