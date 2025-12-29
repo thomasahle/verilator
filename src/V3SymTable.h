@@ -167,6 +167,21 @@ public:
         if (m_fallbackp) return m_fallbackp->findIdFallback(name);
         return nullptr;
     }
+    VSymEnt* findIdFallbackType(const string& name) const {
+        // Find type identifier looking upward through symbol hierarchy
+        // Similar to findIdFallback, but only matches types (Typedef, ParamTypeDType, Class)
+        // and continues searching parent scopes if a non-type is found
+        if (VSymEnt* const entp = findIdFlat(name)) {
+            const AstNode* const nodep = entp->nodep();
+            if (VN_IS(nodep, Typedef) || VN_IS(nodep, ParamTypeDType) || VN_IS(nodep, Class)) {
+                return entp;
+            }
+            // Found a non-type, continue searching parent scopes
+        }
+        // Then scan the upper begin/end block or module for the name
+        if (m_fallbackp) return m_fallbackp->findIdFallbackType(name);
+        return nullptr;
+    }
     void candidateIdFlat(VSpellCheck* spellerp, const VNodeMatcher* matcherp) const {
         // Suggest alternative symbol candidates without looking upward through symbol hierarchy
         for (IdNameMap::const_iterator it = m_idNameMap.begin(); it != m_idNameMap.end(); ++it) {

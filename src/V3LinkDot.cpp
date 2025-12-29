@@ -5553,7 +5553,10 @@ class LinkDotResolveVisitor final : public VNVisitor {
             if (nodep->classOrPackagep()) {
                 foundp = m_statep->getNodeSym(nodep->classOrPackagep())->findIdFlat(nodep->name());
             } else if (m_ds.m_dotPos == DP_FIRST || m_ds.m_dotPos == DP_NONE) {
-                foundp = m_curSymp->findIdFallback(nodep->name());
+                // Use findIdFallbackType to skip non-type symbols (e.g., variables with
+                // the same name as a type). This handles the case where a covergroup
+                // sample function parameter has the same name as its type.
+                foundp = m_curSymp->findIdFallbackType(nodep->name());
             } else {
                 // Use dotSymp if set (e.g., for captured interface typedefs), else curSymp
                 VSymEnt* const lookupSymp = m_ds.m_dotSymp ? m_ds.m_dotSymp : m_curSymp;
