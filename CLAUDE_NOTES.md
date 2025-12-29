@@ -155,9 +155,18 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
     - `set_model` - sets register block and map
     - Test: `t_uvm_reg_sequence`
 
+20. **UVM Transaction Base Class**:
+    - `uvm_transaction` - base class for transactions with timing support
+    - Transaction ID tracking (auto-incrementing IDs)
+    - Timing methods: `accept_tr()`, `begin_tr()`, `end_tr()`
+    - Time getters/setters: `get_accept_time()`, `set_begin_time()`, etc.
+    - Initiator tracking: `set_initiator()`, `get_initiator()`
+    - `uvm_sequence_item` properly inherits from `uvm_transaction`
+    - Test: `t_uvm_transaction`
+
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 46 passed, 0 failed, 2 skipped
+**Verilator UVM Unit Tests**: 49 passed, 0 failed, 2 skipped
 **Verilator Constraint Tests**: 54 passed, 0 failed
 **Verilator Class Param Tests**: 40 passed, 0 failed
 
@@ -191,6 +200,7 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_uvm_ral | ✅ PASS (registers, fields, memories, maps, blocks) |
 | t_uvm_reg_predictor | ✅ PASS (bus transaction monitoring, register prediction) |
 | t_uvm_reg_sequence | ✅ PASS (read/write/mirror/update operations) |
+| t_uvm_transaction | ✅ PASS (timing, IDs, initiator tracking) |
 | t_constraint_countones | ✅ PASS |
 | t_constraint_countones_fixed | ✅ PASS |
 | t_constraint_queue_simple | ✅ PASS |
