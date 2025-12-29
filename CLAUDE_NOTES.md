@@ -175,6 +175,20 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
     - Convenience typedef `uvm_tlm_gp`
     - Test: `t_uvm_tlm_generic_payload`
 
+22. **Global Phase Objects & wait_for_state()**:
+    - Global phase objects: `build_ph`, `connect_ph`, `end_of_elaboration_ph`, `start_of_simulation_ph`, `run_ph`, `extract_ph`, `check_ph`, `report_ph`, `final_ph`
+    - `uvm_phase_exec_state` enum: `UVM_PHASE_DORMANT`, `UVM_PHASE_STARTED`, `UVM_PHASE_EXECUTING`, `UVM_PHASE_ENDED`, etc.
+    - `wait_for_state(state, op)` - wait for phase to reach a specific execution state
+    - Operators: `UVM_EQ`, `UVM_GTE`, `UVM_LTE`, etc.
+    - Required by I2S AVIP and other designs that synchronize with phase starts
+    - Test: `t_uvm_global_phases`
+
+23. **Config DB Wildcard Pattern Matching**:
+    - `uvm_config_db::get()` now properly matches wildcards across hierarchical levels
+    - Pattern `*agent*` matches component paths like `uvm_test_top.env.agent`
+    - Supports `*` (match any) and `?` (match single char) wildcards
+    - Test: `t_uvm_config_db_wildcard`
+
 ### 📝 Test Status
 
 **Verilator UVM Unit Tests**: 50 passed, 0 failed, 2 skipped
@@ -352,13 +366,15 @@ verilator --timing -cc -Wno-fatal --exe --build \
 
 | AVIP | Status | Notes |
 |------|--------|-------|
-| axi4_avip | ⚠️ Blocked | Inherited type params issue (see limitation #2) |
+| axi4_avip | ✅ Runs | Write test passes; read test has testbench bug |
+| apb_avip | ✅ Runs | Full UVM flow completes with config_db wildcard fix |
+| uart_avip | ✅ Runs | Full UVM flow completes (assertion failure is config issue) |
+| i2s_avip | ✅ Runs | Works with global phase objects and wait_for_state() |
 | i3c_avip | ⚠️ Partial | UVM compiles; BFM has enum/interface issues |
-| apb_avip | ⚠️ Partial | RAL works; defparam + BFM interface issues |
-| ahb_avip | ❌ Needs SVA | Uses `##` sequence operators |
-| uart_avip | ❌ Needs SVA | Uses `##` in assertions |
-| spi_avip | ❌ Needs SVA | Uses `sequence` declarations |
+| ahb_avip | 🔍 Untested | Uses `##` sequence operators |
+| spi_avip | 🔍 Untested | Uses `sequence` declarations |
 | axi4Lite_avip | 🔍 Untested | Complex env variable setup |
+| jtag_avip | 🔍 Untested | Not yet tested |
 
 ### 📁 Key Files
 
