@@ -391,9 +391,9 @@ verilator --timing -cc -Wno-fatal --exe --build \
 | i2s_avip | ✅ Runs | Works with global phase objects and wait_for_state() |
 | i3c_avip | ⚠️ Partial | UVM compiles; BFM has enum/interface issues |
 | ahb_avip | ⚠️ Blocked | Uses `##` sequence operators in assertions (unsupported) |
-| spi_avip | ✅ Compiles | Full UVM compiles; unbounded $ in dist now supported |
+| spi_avip | ✅ Runs | Full UVM phases complete; config_db testbench issue |
+| jtag_avip | ✅ Runs | Full UVM phases complete; module name fix needed (tb_top) |
 | axi4Lite_avip | 🔍 Untested | Complex env variable setup |
-| jtag_avip | 🔍 Untested | Not yet tested |
 
 ### 📁 Key Files
 
