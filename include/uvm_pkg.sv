@@ -2533,19 +2533,104 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
+  // uvm_transaction - base class for transactions
+  //----------------------------------------------------------------------
+  class uvm_transaction extends uvm_object;
+    protected time begin_time = -1;
+    protected time end_time = -1;
+    protected time accept_time = -1;
+    protected int m_transaction_id = -1;
+    protected bit m_initiator_set = 0;
+    protected uvm_component m_initiator;
+    static protected int m_next_transaction_id = 0;
+
+    function new(string name = "uvm_transaction", uvm_component initiator = null);
+      super.new(name);
+      m_transaction_id = m_next_transaction_id++;
+      if (initiator != null) begin
+        m_initiator = initiator;
+        m_initiator_set = 1;
+      end
+    endfunction
+
+    // Transaction ID
+    virtual function int get_transaction_id();
+      return m_transaction_id;
+    endfunction
+
+    virtual function void set_transaction_id(int id);
+      m_transaction_id = id;
+    endfunction
+
+    // Timing
+    virtual function void set_begin_time(time t);
+      begin_time = t;
+    endfunction
+
+    virtual function time get_begin_time();
+      return begin_time;
+    endfunction
+
+    virtual function void set_end_time(time t);
+      end_time = t;
+    endfunction
+
+    virtual function time get_end_time();
+      return end_time;
+    endfunction
+
+    virtual function void set_accept_time(time t);
+      accept_time = t;
+    endfunction
+
+    virtual function time get_accept_time();
+      return accept_time;
+    endfunction
+
+    // Initiator
+    virtual function void set_initiator(uvm_component initiator);
+      m_initiator = initiator;
+      m_initiator_set = 1;
+    endfunction
+
+    virtual function uvm_component get_initiator();
+      return m_initiator;
+    endfunction
+
+    // Accept/end transaction events (stubs for now)
+    virtual function void accept_tr(time accept_time = 0);
+      if (accept_time != 0)
+        this.accept_time = accept_time;
+      else
+        this.accept_time = $time;
+    endfunction
+
+    virtual task begin_tr(time begin_time = 0, int parent_handle = 0);
+      if (begin_time != 0)
+        this.begin_time = begin_time;
+      else
+        this.begin_time = $time;
+    endtask
+
+    virtual function void end_tr(time end_time = 0, bit free_handle = 1);
+      if (end_time != 0)
+        this.end_time = end_time;
+      else
+        this.end_time = $time;
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
   // uvm_sequence_item - base class for sequence items
   //----------------------------------------------------------------------
-  class uvm_sequence_item extends uvm_object;
+  class uvm_sequence_item extends uvm_transaction;
     protected int m_sequence_id = -1;
-    protected int m_transaction_id = -1;
     protected bit m_use_sequence_info = 0;
     protected uvm_sequencer_base m_sequencer;
     protected uvm_sequence_base m_parent_sequence;
-    static protected int m_next_transaction_id = 0;
 
     function new(string name = "uvm_sequence_item");
       super.new(name);
-      m_transaction_id = m_next_transaction_id++;
     endfunction
 
     virtual function int get_sequence_id();
@@ -2554,14 +2639,6 @@ package uvm_pkg;
 
     virtual function void set_sequence_id(int id);
       m_sequence_id = id;
-    endfunction
-
-    virtual function int get_transaction_id();
-      return m_transaction_id;
-    endfunction
-
-    virtual function void set_transaction_id(int id);
-      m_transaction_id = id;
     endfunction
 
     virtual function uvm_sequencer_base get_sequencer();
