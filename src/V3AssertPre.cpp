@@ -329,25 +329,61 @@ private:
         }
         if (nodep->stmtsp()) nodep->addNextHere(nodep->stmtsp()->unlinkFrBackWithNext());
         FileLine* const flp = nodep->fileline();
-        AstNodeExpr* valuep = V3Const::constifyEdit(nodep->lhsp()->unlinkFrBack());
-        const AstConst* const constp = VN_CAST(valuep, Const);
-        if (!constp) {
+
+        // Get min delay value
+        AstNodeExpr* minValuep = V3Const::constifyEdit(nodep->lhsp()->unlinkFrBack());
+        const AstConst* const minConstp = VN_CAST(minValuep, Const);
+        if (!minConstp) {
             nodep->v3error(
                 "Delay value is not an elaboration-time constant (IEEE 1800-2023 16.7)");
-        } else if (constp->isZero()) {
-            // ##0 means no delay - just execute the following statements immediately
-            // Statements were already moved to siblings at line 334, so just delete the delay
             VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
-            VL_DO_DANGLING(valuep->deleteTree(), valuep);
+            VL_DO_DANGLING(minValuep->deleteTree(), minValuep);
             return;
         }
+
+        // Check for range delay ##[min:max]
+        const bool isRange = nodep->isRangeDelay();
+        uint32_t minVal = minConstp->toUInt();
+        uint32_t maxVal = minVal;  // Default: fixed delay
+
+        if (isRange) {
+            AstNodeExpr* maxValuep = V3Const::constifyEdit(nodep->rhsp()->unlinkFrBack());
+            const AstConst* const maxConstp = VN_CAST(maxValuep, Const);
+            if (!maxConstp) {
+                nodep->v3error(
+                    "Range delay max is not an elaboration-time constant (IEEE 1800-2023 16.7)");
+                VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+                VL_DO_DANGLING(minValuep->deleteTree(), minValuep);
+                VL_DO_DANGLING(maxValuep->deleteTree(), maxValuep);
+                return;
+            }
+            maxVal = maxConstp->toUInt();
+            VL_DO_DANGLING(maxValuep->deleteTree(), maxValuep);
+
+            if (minVal > maxVal) {
+                nodep->v3error("Range delay min (" + std::to_string(minVal)
+                               + ") > max (" + std::to_string(maxVal) + ")");
+                VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+                VL_DO_DANGLING(minValuep->deleteTree(), minValuep);
+                return;
+            }
+        }
+
+        if (minVal == 0 && maxVal == 0) {
+            // ##0 means no delay - just execute the following statements immediately
+            // Statements were already moved to siblings, so just delete the delay
+            VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+            VL_DO_DANGLING(minValuep->deleteTree(), minValuep);
+            return;
+        }
+
         AstSenItem* sensesp = nullptr;
         if (!m_defaultClockingp) {
             if (!m_inPExpr) {
                 nodep->v3error("Usage of cycle delays requires default clocking"
                                " (IEEE 1800-2023 14.11)");
                 VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
-                VL_DO_DANGLING(valuep->deleteTree(), valuep);
+                VL_DO_DANGLING(minValuep->deleteTree(), minValuep);
                 return;
             }
             sensesp = m_senip;
@@ -355,22 +391,24 @@ private:
                 nodep->v3error("Cycle delay requires property clocking event"
                                " (IEEE 1800-2023 16.7)");
                 VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
-                VL_DO_DANGLING(valuep->deleteTree(), valuep);
+                VL_DO_DANGLING(minValuep->deleteTree(), minValuep);
                 return;
             }
         } else {
             sensesp = m_defaultClockingp->sensesp();
         }
-        AstEventControl* const controlp = new AstEventControl{
-            nodep->fileline(), new AstSenTree{flp, sensesp->cloneTree(false)}, nullptr};
+
         const std::string delayName = m_cycleDlyNames.get(nodep);
         AstVar* const cntVarp = new AstVar{flp, VVarType::BLOCKTEMP, delayName + "__counter",
                                            nodep->findBasicDType(VBasicDTypeKwd::UINT32)};
         cntVarp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
         AstBegin* const beginp = new AstBegin{flp, delayName + "__block", cntVarp, true};
-        beginp->addStmtsp(new AstAssign{flp, new AstVarRef{flp, cntVarp, VAccess::WRITE}, valuep});
+        beginp->addStmtsp(new AstAssign{flp, new AstVarRef{flp, cntVarp, VAccess::WRITE}, minValuep});
 
+        // Wait for min cycles
         {
+            AstEventControl* const controlp = new AstEventControl{
+                flp, new AstSenTree{flp, sensesp->cloneTree(false)}, nullptr};
             AstLoop* const loopp = new AstLoop{flp};
             loopp->addStmtsp(new AstLoopTest{
                 flp, loopp,
@@ -382,6 +420,102 @@ private:
                                          new AstConst{flp, 1}}});
             beginp->addStmtsp(loopp);
         }
+
+        // For range delays, we need to check the following expression at each cycle
+        // in the range [min, max]. The following expression is in the next sibling.
+        if (isRange && maxVal > minVal) {
+            // Get the next sibling (should be an AstIf checking the sequence expression)
+            AstNode* const nextp = nodep->nextp();
+            if (nextp && VN_IS(nextp, If)) {
+                AstIf* const checkIfp = VN_AS(nextp, If);
+
+                // Create attempts counter for range (max - min) additional checks
+                const uint32_t rangeSize = maxVal - minVal;
+                AstVar* const attemptsVarp = new AstVar{
+                    flp, VVarType::BLOCKTEMP, delayName + "__attempts",
+                    nodep->findBasicDType(VBasicDTypeKwd::UINT32)};
+                attemptsVarp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
+                beginp->addStmtsp(attemptsVarp);
+                beginp->addStmtsp(new AstAssign{
+                    flp, new AstVarRef{flp, attemptsVarp, VAccess::WRITE},
+                    new AstConst{flp, rangeSize}});
+
+                // Create matched flag
+                AstVar* const matchedVarp = new AstVar{
+                    flp, VVarType::BLOCKTEMP, delayName + "__matched",
+                    nodep->findBasicDType(VBasicDTypeKwd::BIT)};
+                matchedVarp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
+                beginp->addStmtsp(matchedVarp);
+                beginp->addStmtsp(new AstAssign{
+                    flp, new AstVarRef{flp, matchedVarp, VAccess::WRITE},
+                    new AstConst{flp, AstConst::BitFalse{}}});
+
+                // Unlink the check from its current position
+                checkIfp->unlinkFrBack();
+
+                // Create the retry loop structure:
+                // loop while (!matched && attempts >= 0) {
+                //     if (check_condition) {
+                //         matched = 1;
+                //         // success_path will be added after loop
+                //     } else if (attempts > 0) {
+                //         @(clk);
+                //         attempts--;
+                //     }
+                //     // else: attempts == 0, loop will exit
+                // }
+                AstLoop* const tryLoop = new AstLoop{flp};
+
+                // Loop test: continue while not matched
+                tryLoop->addStmtsp(new AstLoopTest{
+                    flp, tryLoop,
+                    new AstNot{flp, new AstVarRef{flp, matchedVarp, VAccess::READ}}});
+
+                // Clone the condition for checking
+                AstNodeExpr* const condp = checkIfp->condp()->cloneTreePure(false);
+
+                // Retry case: if attempts > 0, wait one cycle and decrement
+                AstEventControl* const retryControl = new AstEventControl{
+                    flp, new AstSenTree{flp, sensesp->cloneTree(false)}, nullptr};
+                retryControl->addNextHere(new AstAssign{
+                    flp, new AstVarRef{flp, attemptsVarp, VAccess::WRITE},
+                    new AstSub{flp, new AstVarRef{flp, attemptsVarp, VAccess::READ},
+                               new AstConst{flp, 1}}});
+
+                AstIf* const retryIf = new AstIf{
+                    flp,
+                    new AstGt{flp, new AstVarRef{flp, attemptsVarp, VAccess::READ},
+                              new AstConst{flp, 0}},
+                    retryControl};
+
+                // Success case: condition true - set matched flag
+                // Else branch: retry if attempts > 0
+                AstIf* const successIf = new AstIf{
+                    flp, condp,
+                    new AstAssign{flp, new AstVarRef{flp, matchedVarp, VAccess::WRITE},
+                                  new AstConst{flp, AstConst::BitTrue{}}},
+                    retryIf};
+
+                tryLoop->addStmtsp(successIf);
+                beginp->addStmtsp(tryLoop);
+
+                // After loop: if matched, execute success path; else execute fail path
+                AstNode* const thenp = checkIfp->thensp()
+                                           ? checkIfp->thensp()->cloneTree(true)
+                                           : nullptr;
+                AstNode* const elsep = checkIfp->elsesp()
+                                           ? checkIfp->elsesp()->cloneTree(true)
+                                           : nullptr;
+                AstIf* const resultIf = new AstIf{
+                    flp, new AstVarRef{flp, matchedVarp, VAccess::READ},
+                    thenp, elsep};
+                beginp->addStmtsp(resultIf);
+
+                // Delete the original check (we've cloned what we need)
+                VL_DO_DANGLING(checkIfp->deleteTree(), checkIfp);
+            }
+        }
+
         nodep->replaceWith(beginp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
