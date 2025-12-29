@@ -28,6 +28,9 @@
 
 package uvm_pkg;
 
+  // Import std for process class needed by fork/join_none
+  import std::*;
+
   // Re-export verbosity enum
   typedef enum int {
     UVM_NONE   = 0,
