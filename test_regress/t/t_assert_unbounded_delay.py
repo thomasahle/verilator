@@ -7,10 +7,9 @@
 
 import vltest_bootstrap
 
-test.scenarios('simulator')
-test.top_filename = "t/t_assert_unbounded_delay.v"
+test.scenarios("simulator")
 
-test.compile(verilator_flags2=["--assert --timing"])
+test.compile(verilator_flags2=["--binary", "--assert"], make_main=False)
 
 test.execute()
 
