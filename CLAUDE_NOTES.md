@@ -350,13 +350,24 @@ verilator --timing -cc -Wno-fatal --exe --build \
    - Bug was: `__Vresize_constrained_arrays()` not called for inline constraints
    - Test: `t_constraint_inline_queue_size.py`
 
-4. **UVM sequencer get_next_item timing** (commit 287b9a1b7):
+4. **Covergroup sample parameter with same name as type** (commit 074445a1e):
+   - Fixed: `covergroup cg with function sample (Config Config)` now works
+   - Problem: Parameter variable shadowed class type in covergroup scope
+   - Solution: Added `findIdFallbackType()` to skip non-type symbols during type lookup
+   - Test: `t_covergroup_samename.py`
+
+5. **UVM fork/join_none requires std import** (commit pending):
+   - Fixed: Added `import std::*` to uvm_pkg.sv for process class
+   - Problem: `fork`/`join_none` generates `process::self()` references internally
+   - The std package must be imported for this to resolve correctly
+
+6. **UVM sequencer get_next_item timing** (commit 287b9a1b7):
    - Fixed: Driver forever loops now work correctly without explicit delays
    - Changed from `wait (m_req_fifo.size() > 0)` to polling loop with `#1` delay
    - The wait statement didn't advance time, causing infinite loops
    - Test: `t_uvm_sequence.py` - PASSES
 
-5. **SMT support for constraint reduction operations** (commit f7bfbcd91):
+7. **SMT support for constraint reduction operations** (commit f7bfbcd91):
    - Added `emitSMT()` for `AstRedAnd` - reduction AND (all bits set)
    - Added `emitSMT()` for `AstRedOr` - reduction OR (any bit set)
    - Added `emitSMT()` for `AstOneHot` - exactly one bit set
@@ -403,6 +414,12 @@ verilator --timing -cc -Wno-fatal --exe --build \
    - I3C AVIP uses this pattern in monitor/driver BFMs for sampling data
    - Error: "Unsupported: Writing to a captured inout variable in a fork after a timing control"
 
+8. **Bind statements inside modules with uvm_config_db** (AHB AVIP):
+   - Internal error: "Module/etc never assigned a symbol entry" at V3LinkDot.cpp:481
+   - AhbSlaveAgentBFM.sv uses `bind` statements to bind assertions/coverage to BFM
+   - Combined with `uvm_config_db` usage in the same module
+   - May be related to how bind targets and UVM virtual interfaces interact
+
 ### 🧪 Other AVIP Status
 
 | AVIP | Status | Notes |
@@ -412,7 +429,7 @@ verilator --timing -cc -Wno-fatal --exe --build \
 | uart_avip | ✅ Runs | Full UVM flow completes (assertion failure is config issue) |
 | i2s_avip | ✅ Runs | Works with global phase objects and wait_for_state() |
 | i3c_avip | ⚠️ Blocked | Inout variable writes in fork after timing control unsupported |
-| ahb_avip | ✅ Ready | All SVA patterns including `##[n:$]` now work; needs UVM for full test |
+| ahb_avip | ⚠️ Partial | SVA patterns work; covergroup same-name fixed; blocked by bind statement internal error |
 | spi_avip | ✅ Runs | Full UVM phases complete; config_db testbench issue |
 | jtag_avip | ✅ Runs | Full UVM phases complete; module name fix needed (tb_top) |
 | axi4Lite_avip | 🔍 Complex | Nested VIPs with many env variables; needs manual setup |
