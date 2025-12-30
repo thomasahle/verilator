@@ -1644,11 +1644,37 @@ class ConstraintExprVisitor final : public VNVisitor {
         // Handle array size() in inline constraints - create a solver variable for the size
         if ((nodep->method() == VCMethod::DYN_SIZE || nodep->method() == VCMethod::ASSOC_SIZE)
             && nodep->fromp()->user1() && m_inlineInitTaskp) {
-            AstVarRef* const queueVarRefp = VN_CAST(nodep->fromp(), VarRef);
-            if (queueVarRefp) {
-                AstVar* const queueVarp = queueVarRefp->varp();
+            // Extract the array variable - could be VarRef or MemberSel
+            AstVar* queueVarp = nullptr;
+            AstClass* classp = nullptr;
+            AstNodeExpr* arrayExprp = nullptr;  // Expression to access the array for resize
+
+            if (AstVarRef* const queueVarRefp = VN_CAST(nodep->fromp(), VarRef)) {
+                // Direct VarRef: data.size()
+                queueVarp = queueVarRefp->varp();
+                classp = VN_AS(VN_AS(m_genp->user2p(), NodeModule), Class);
+                arrayExprp = new AstVarRef{fl, classp, queueVarp, VAccess::WRITE};
+            } else if (AstMemberSel* const memberSelp = VN_CAST(nodep->fromp(), MemberSel)) {
+                // MemberSel: req.data.size() - extract the array variable from the member
+                queueVarp = memberSelp->varp();
+                // Get the class that owns this array variable
+                if (AstNodeModule* const varModp = VN_CAST(queueVarp->user2p(), NodeModule)) {
+                    classp = VN_AS(varModp, Class);
+                } else {
+                    // Fall back to getting class from the type of fromp
+                    AstClassRefDType* const classRefp
+                        = VN_CAST(memberSelp->fromp()->dtypep()->skipRefp(), ClassRefDType);
+                    if (classRefp) classp = classRefp->classp();
+                }
+                // Create a VarRef to the array member (same as VarRef case)
+                // The array is a class member, so we can access it directly
+                if (classp) {
+                    arrayExprp = new AstVarRef{fl, classp, queueVarp, VAccess::WRITE};
+                }
+            }
+
+            if (queueVarp && classp) {
                 AstVar* sizeVarp = VN_CAST(queueVarp->user4p(), Var);
-                AstClass* const classp = VN_AS(VN_AS(m_genp->user2p(), NodeModule), Class);
 
                 if (!sizeVarp) {
                     // Size variable not yet created - create it now for inline constraint
@@ -1672,10 +1698,10 @@ class ConstraintExprVisitor final : public VNVisitor {
                         m_memberMap.insert(classp, resizeTaskp);
                     }
 
-                    // Add resize call to the task
+                    // Add resize call to the task using the array expression
                     AstCMethodHard* const resizep = new AstCMethodHard{
-                        fl, new AstVarRef{fl, classp, queueVarp, VAccess::WRITE},
-                        VCMethod::DYN_RESIZE, new AstVarRef{fl, sizeVarp, VAccess::READ}};
+                        fl, arrayExprp, VCMethod::DYN_RESIZE,
+                        new AstVarRef{fl, sizeVarp, VAccess::READ}};
                     resizep->dtypep(nodep->findVoidDType());
                     resizeTaskp->addStmtsp(new AstStmtExpr{fl, resizep});
 
@@ -3454,6 +3480,7 @@ class RandomizeVisitor final : public VNVisitor {
             = new AstVar{nodep->fileline(), VVarType::BLOCKTEMP, "randomizer",
                          classp->findBasicDType(VBasicDTypeKwd::RANDOM_GENERATOR)};
         localGenp->funcLocal(true);
+        localGenp->user2p(classp);  // For ConstraintExprVisitor to find the class
 
         AstFunc* const randomizeFuncp = V3Randomize::newRandomizeFunc(
             m_memberMap, classp, m_inlineUniqueNames.get(nodep), false);
