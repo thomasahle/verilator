@@ -4,21 +4,21 @@
 // any use, without warranty, 2024 by Antmicro.
 // SPDX-License-Identifier: CC0-1.0
 
+// Test that writing to inout/output in a FUNCTION after timing control is still an error.
+// (Tasks can now do this, but functions cannot.)
+
 module t;
-  bit p = 0, q = 0;
+  bit p = 0;
 
   initial begin
-    t1(p);
-    t2(q);
+    p = f1(p);
   end
 
-  task t1(inout p);
+  // Functions cannot have timing controls with inout writes - this should error
+  function automatic bit f1(inout bit p);
     fork
-      p = #1 1;
+      p = #1 1;  // Error: Writing to inout in function after timing
     join_none
-  endtask
-
-  task t2(output q);
-    q <= #1 1;
-  endtask
+    return p;
+  endfunction
 endmodule

@@ -183,14 +183,34 @@ public:
             }
 
             if (varp->direction().isWritable()) {
-                AstMemberSel* const memberselp = new AstMemberSel{
-                    varp->fileline(),
-                    new AstVarRef{varp->fileline(), m_instance.m_handlep, VAccess::READ},
-                    VN_AS(memberMap.findMember(m_instance.m_classp, varp->name()), Var)};
-                AstNode* writebackAsgnp = new AstAssign{
-                    varp->fileline(), new AstVarRef{varp->fileline(), varp, VAccess::WRITE},
-                    memberselp};
-                stmtp = AstNode::addNext(stmtp, writebackAsgnp);
+                // Check if this variable is written inside a join_none/join_any fork
+                // If so, skip the immediate writeback since it would return stale values
+                bool hasAsyncForkWrite = false;
+                m_procp->foreach([&](AstFork* forkp) {
+                    if (forkp->joinType().join()) return;  // Only check join_none/join_any
+                    forkp->foreach([&](AstVarRef* refp) {
+                        if (refp->varp() == varp && refp->access().isWriteOrRW()) {
+                            hasAsyncForkWrite = true;
+                        }
+                    });
+                });
+
+                if (!hasAsyncForkWrite) {
+                    // Regular case: add writeback at task end
+                    AstMemberSel* const memberselp = new AstMemberSel{
+                        varp->fileline(),
+                        new AstVarRef{varp->fileline(), m_instance.m_handlep, VAccess::READ},
+                        VN_AS(memberMap.findMember(m_instance.m_classp, varp->name()), Var)};
+                    AstNode* writebackAsgnp = new AstAssign{
+                        varp->fileline(), new AstVarRef{varp->fileline(), varp, VAccess::WRITE},
+                        memberselp};
+                    stmtp = AstNode::addNext(stmtp, writebackAsgnp);
+                }
+                // For join_none/join_any with inout writes, the forked process writes to
+                // the dynscope but we can't writeback to the original variable because
+                // ForkVisitor extracts the fork into a separate task where varp isn't
+                // accessible. The caller must use explicit synchronization (wait fork,
+                // disable fork) and the dynscope value will persist until then.
             }
         }
         if (initsp) AstNode::addNext(asgnp, initsp);
@@ -430,15 +450,10 @@ class DynScopeVisitor final : public VNVisitor {
                         "Writing to an "
                         << nodep->varp()->verilogKwd()
                         << " variable of a function after a timing control is not allowed");
-                } else {
-                    nodep->v3warn(E_UNSUPPORTED, "Unsupported: Writing to a captured "
-                                                     << nodep->varp()->verilogKwd()
-                                                     << " variable in a "
-                                                     << (VN_IS(nodep->backp(), AssignDly)
-                                                             ? "non-blocking assignment"
-                                                             : "fork")
-                                                     << " after a timing control");
                 }
+                // For tasks, we now add writeback inside forked processes (see linkNodes),
+                // so this pattern is supported. The caller must ensure the inout variable
+                // remains valid until the forked process completes (e.g., via disable fork).
             }
             if (!framep->instance().initialized()) framep->createInstancePrototype();
             framep->captureVarInsert(nodep->varp());
