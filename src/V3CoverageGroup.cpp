@@ -313,7 +313,9 @@ class CoverageGroupVisitor final : public VNVisitor {
     }
 
     // Process a single bin within a coverpoint
-    void processBin(AstCoverBin* binp, AstNodeExpr* cpExprp, const string& cpName) {
+    // cpIffp is the optional coverpoint-level iff condition (already transformed)
+    void processBin(AstCoverBin* binp, AstNodeExpr* cpExprp, const string& cpName,
+                    AstNodeExpr* cpIffp = nullptr) {
         FileLine* const fl = binp->fileline();
         const string binName = binp->name().empty() ? "bin" + cvtToStr(m_binCount) : binp->name();
 
@@ -373,9 +375,16 @@ class CoverageGroupVisitor final : public VNVisitor {
         // If no condition was built, skip this bin
         if (!condp) return;
 
-        // Apply iff condition if present
+        // Apply bin-level iff condition if present
+        // Must use cloneWithTransforms to resolve sample arguments correctly
         if (binp->iffp()) {
-            condp = new AstLogAnd{fl, binp->iffp()->cloneTree(false), condp};
+            condp = new AstLogAnd{fl, cloneWithTransforms(binp->iffp()), condp};
+        }
+
+        // Apply coverpoint-level iff condition if present
+        // Note: cpIffp is already transformed by caller
+        if (cpIffp) {
+            condp = new AstLogAnd{fl, cpIffp->cloneTree(false), condp};
         }
 
         // For illegal_bins, generate error when hit
@@ -435,18 +444,14 @@ class CoverageGroupVisitor final : public VNVisitor {
         AstNodeExpr* const exprp = cpp->exprp();
         if (!exprp) return;
 
-        // Apply coverpoint iff condition to sample
-        AstNodeExpr* cpIffp = cpp->iffp() ? cpp->iffp()->cloneTree(false) : nullptr;
+        // Transform coverpoint iff condition if present
+        // Must use cloneWithTransforms to resolve sample arguments correctly
+        AstNodeExpr* cpIffp = cpp->iffp() ? cloneWithTransforms(cpp->iffp()) : nullptr;
 
-        // Process each bin
+        // Process each bin, passing the coverpoint-level iff condition
         for (AstNode* nodep = cpp->binsp(); nodep; nodep = nodep->nextp()) {
             if (AstCoverBin* const binp = VN_CAST(nodep, CoverBin)) {
-                // If coverpoint has iff, wrap bin processing
-                if (cpIffp) {
-                    // We'll apply the iff condition to each bin
-                    // For now, handled in processBin by checking cpp->iffp()
-                }
-                processBin(binp, exprp, cpName);
+                processBin(binp, exprp, cpName, cpIffp);
             }
         }
     }
@@ -545,9 +550,10 @@ class CoverageGroupVisitor final : public VNVisitor {
             }
 
             // Apply iff condition if present
+            // Must use cloneWithTransforms to resolve sample arguments correctly
             AstNodeExpr* finalCondp = condp;
             if (xp->iffp()) {
-                finalCondp = new AstLogAnd{fl, xp->iffp()->cloneTree(false), condp};
+                finalCondp = new AstLogAnd{fl, cloneWithTransforms(xp->iffp()), condp};
             }
 
             AstVarRef* const crossHitRefW = new AstVarRef{fl, crossHitVarp, VAccess::WRITE};
