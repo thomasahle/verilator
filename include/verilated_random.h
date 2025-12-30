@@ -379,6 +379,22 @@ public:
         if (dimension > 0) record_struct_arr(var, name, dimension, {}, {});
     }
 
+    // Register queue of class references - only size is randomizable, not the pointers
+    // Class instances should be randomized via their own randomize() method
+    template <typename T, size_t N_MaxSize>
+    void write_var(VlQueue<VlClassRef<T>, N_MaxSize>& var, int /*width*/, const char* name,
+                   int dimension,
+                   std::uint32_t randmodeIdx = std::numeric_limits<std::uint32_t>::max()) {
+        // Register the queue variable for size constraints only (width=32 for size)
+        // Don't record elements - class references shouldn't be randomized directly
+        if (m_vars.find(name) == m_vars.end()) {
+            m_vars[name]
+                = std::make_shared<const VlRandomArrayVarTemplate<VlQueue<VlClassRef<T>, N_MaxSize>>>(
+                    name, 32, &var, dimension, randmodeIdx);
+        }
+        // Skip record_arr_table - class references are not randomizable primitives
+    }
+
     // Register unpacked array of non-struct types
     template <typename T, std::size_t N_Depth>
     typename std::enable_if<!VlContainsCustomStruct<T>::value, void>::type
@@ -399,6 +415,19 @@ public:
     write_var(VlUnpacked<T, N_Depth>& var, int width, const char* name, int dimension,
               std::uint32_t randmodeIdx = std::numeric_limits<std::uint32_t>::max()) {
         if (dimension > 0) record_struct_arr(var, name, dimension, {}, {});
+    }
+
+    // Register unpacked array of class references
+    template <typename T, std::size_t N_Depth>
+    void write_var(VlUnpacked<VlClassRef<T>, N_Depth>& var, int /*width*/, const char* name,
+                   int dimension,
+                   std::uint32_t randmodeIdx = std::numeric_limits<std::uint32_t>::max()) {
+        // Register for size constraints only - class references aren't randomizable directly
+        if (m_vars.find(name) == m_vars.end()) {
+            m_vars[name] = std::make_shared<
+                const VlRandomArrayVarTemplate<VlUnpacked<VlClassRef<T>, N_Depth>>>(
+                name, 32, &var, dimension, randmodeIdx);
+        }
     }
 
     // Register associative array of non-struct types
@@ -434,6 +463,15 @@ public:
         const std::string key = generateKey(name, m_index);
         m_arr_vars[key] = std::make_shared<ArrayInfo>(name, &var, m_index, indices, idxWidths);
         ++m_index;
+    }
+
+    // Record a VlClassRef (class reference) element - these are pointers to objects
+    // and should not be recorded for randomization directly. The contained objects
+    // should handle their own randomization via their own randomize() method.
+    template <typename T>
+    void record_arr_table(VlClassRef<T>& /*var*/, const std::string& /*name*/, int /*dimension*/,
+                          std::vector<IData> /*indices*/, std::vector<size_t> /*idxWidths*/) {
+        // Class references are pointers - don't record them for direct randomization
     }
 
     // Recursively record all elements in an unpacked array
