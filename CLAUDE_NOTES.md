@@ -319,7 +319,14 @@ verilator --timing -cc -Wno-fatal --exe --build \
 
 ### ✅ Recent Fixes
 
-1. **SVA sequence delay operators** (FULLY FIXED!):
+1. **VMemberMap duplicate empty name error** (commit 3eb02aaf7):
+   - Fixed: Multiple unnamed initial blocks in interfaces no longer cause duplicate key errors
+   - Problem: VMemberMap tried to cache nodes with empty names, causing duplicate key errors
+   - Solution: Skip nodes with empty names in memberInsert - they can't be looked up by name anyway
+   - Test: `t_iface_initial.py` - tests interfaces with multiple initial blocks
+   - i3c_avip now compiles and runs successfully
+
+2. **SVA sequence delay operators** (FULLY FIXED!):
    - **FIXED**: `##n` fixed delays on LHS of implication now work
    - **FIXED**: `##[n:m]` bounded range delays now work
    - **FIXED**: `##[n:$]` unbounded range delays now work (keeps checking until condition met)
@@ -409,10 +416,10 @@ verilator --timing -cc -Wno-fatal --exe --build \
    - ✅ Unbounded ranges `##[n:$]` now supported (keeps checking until condition met)
    - All AHB AVIP assertion patterns should now work!
 
-7. **Inout variable writes in fork after timing control**:
-   - Writing to an inout variable from inside a fork block after a timing control is unsupported
-   - I3C AVIP uses this pattern in monitor/driver BFMs for sampling data
-   - Error: "Unsupported: Writing to a captured inout variable in a fork after a timing control"
+7. ~~**Inout variable writes in fork after timing control**~~: **FIXED in i3c_avip context**
+   - i3c_avip uses tasks with inout parameters (not functions) - this is now supported
+   - The restriction only applies to functions with inout variables
+   - i3c_avip compiles and runs successfully after VMemberMap fix
 
 8. **Bind statements inside modules with uvm_config_db** (AHB AVIP):
    - **FIXED**: Previous internal error is no longer occurring
@@ -427,11 +434,11 @@ verilator --timing -cc -Wno-fatal --exe --build \
 | apb_avip | ✅ Runs | Full UVM flow completes with config_db wildcard fix |
 | uart_avip | ✅ Runs | Full UVM flow completes (assertion failure is config issue) |
 | i2s_avip | ✅ Runs | Works with global phase objects and wait_for_state() |
-| i3c_avip | ⚠️ Blocked | Inout variable writes in fork after timing control unsupported |
+| i3c_avip | ✅ Runs | VMemberMap fix resolved duplicate empty name error |
 | ahb_avip | ✅ Runs | Compiles successfully; assertions firing; test doesn't complete (stimulus loop) |
 | spi_avip | ✅ Runs | Full UVM phases complete; config_db testbench issue |
 | jtag_avip | ✅ Runs | Full UVM phases complete; module name fix needed (tb_top) |
-| axi4Lite_avip | ⚠️ Blocked | Interface-inside-module code pattern unsupported |
+| axi4Lite_avip | ⚠️ Setup Required | Needs verilator-specific compile file (like axi4_avip has) |
 
 ### 📁 Key Files
 
