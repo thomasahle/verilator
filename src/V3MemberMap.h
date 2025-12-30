@@ -103,8 +103,8 @@ private:
         }
     }
     void memberInsert(MemberMap& mmapr, AstNode* childp, bool warn = true) {
-        // Skip nodes without names (e.g., initial blocks, anonymous statements)
-        // These can't be looked up by name anyway
+        // Skip nodes with empty names - they can't be looked up and would cause
+        // duplicate key errors (e.g., multiple unnamed initial blocks in interfaces)
         if (childp->name().empty()) return;
         const auto mitPair = mmapr.emplace(childp->name(), childp);
         if (VL_UNCOVERABLE(!mitPair.second && warn)) {
