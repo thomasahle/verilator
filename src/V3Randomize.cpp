@@ -1641,6 +1641,82 @@ class ConstraintExprVisitor final : public VNVisitor {
             return;
         }
 
+        // Handle array size() in inline constraints - create a solver variable for the size
+        if ((nodep->method() == VCMethod::DYN_SIZE || nodep->method() == VCMethod::ASSOC_SIZE)
+            && nodep->fromp()->user1() && m_inlineInitTaskp) {
+            AstVarRef* const queueVarRefp = VN_CAST(nodep->fromp(), VarRef);
+            if (queueVarRefp) {
+                AstVar* const queueVarp = queueVarRefp->varp();
+                AstVar* sizeVarp = VN_CAST(queueVarp->user4p(), Var);
+                AstClass* const classp = VN_AS(VN_AS(m_genp->user2p(), NodeModule), Class);
+
+                if (!sizeVarp) {
+                    // Size variable not yet created - create it now for inline constraint
+                    const std::string sizeVarName = "__V" + queueVarp->name() + "_size";
+                    sizeVarp = new AstVar{fl, VVarType::BLOCKTEMP, sizeVarName,
+                                          nodep->findSigned32DType()};
+                    classp->addMembersp(sizeVarp);
+                    m_memberMap.insert(classp, sizeVarp);
+                    sizeVarp->user2p(classp);
+                    queueVarp->user4p(sizeVarp);
+
+                    // Create or get the resize task
+                    static const char* const resizeTaskName = "__Vresize_constrained_arrays";
+                    AstTask* resizeTaskp
+                        = VN_AS(m_memberMap.findMember(classp, resizeTaskName), Task);
+                    if (!resizeTaskp) {
+                        resizeTaskp = new AstTask{classp->fileline(), resizeTaskName, nullptr};
+                        resizeTaskp->classMethod(true);
+                        resizeTaskp->isVirtual(true);
+                        classp->addMembersp(resizeTaskp);
+                        m_memberMap.insert(classp, resizeTaskp);
+                    }
+
+                    // Add resize call to the task
+                    AstCMethodHard* const resizep = new AstCMethodHard{
+                        fl, new AstVarRef{fl, classp, queueVarp, VAccess::WRITE},
+                        VCMethod::DYN_RESIZE, new AstVarRef{fl, sizeVarp, VAccess::READ}};
+                    resizep->dtypep(nodep->findVoidDType());
+                    resizeTaskp->addStmtsp(new AstStmtExpr{fl, resizep});
+
+                    // Add write_var call for the size variable
+                    const std::string smtName = sizeVarName;
+                    AstCMethodHard* const writeVarMethodp = new AstCMethodHard{
+                        fl,
+                        new AstVarRef{fl, VN_AS(m_genp->user2p(), NodeModule), m_genp,
+                                      VAccess::READWRITE},
+                        VCMethod::RANDOMIZER_WRITE_VAR};
+                    writeVarMethodp->dtypeSetVoid();
+                    writeVarMethodp->addPinsp(
+                        new AstVarRef{sizeVarp->fileline(), classp, sizeVarp, VAccess::WRITE});
+                    writeVarMethodp->addPinsp(
+                        new AstConst{fl, AstConst::Unsized64{}, 32});  // width
+                    AstNodeExpr* const varnamep
+                        = new AstCExpr{fl, "\"" + smtName + "\"", sizeVarp->width()};
+                    varnamep->dtypep(sizeVarp->dtypep());
+                    writeVarMethodp->addPinsp(varnamep);
+                    writeVarMethodp->addPinsp(
+                        new AstConst{fl, AstConst::Unsized64{}, 0});  // dimension
+                    m_inlineInitTaskp->addStmtsp(writeVarMethodp->makeStmt());
+
+                    // Add constraint: size >= 0
+                    AstVarRef* const sizeGteRefp = new AstVarRef{fl, sizeVarp, VAccess::READ};
+                    sizeGteRefp->user1(true);
+                    AstGteS* const sizeGtep = new AstGteS{fl, sizeGteRefp, new AstConst{fl, 0}};
+                    sizeGtep->user1(true);
+                    // The constraint will be processed when we return
+                }
+
+                // Replace arr.size() with SMT format referencing the size variable
+                const std::string smtName = "__V" + queueVarp->name() + "_size";
+                AstSFormatF* const newp = new AstSFormatF{fl, smtName, false, nullptr};
+                newp->user1(true);
+                nodep->replaceWith(newp);
+                VL_DO_DANGLING(nodep->deleteTree(), nodep);
+                return;
+            }
+        }
+
         nodep->v3warn(CONSTRAINTIGN,
                       "Unsupported: randomizing this expression, treating as state");
         nodep->user1(false);

@@ -1,9 +1,0 @@
-%Warning-CONSTRAINTIGN: t/t_rand_inline_size.v:36:40: Unsupported: randomizing this expression, treating as state
-   36 |       ok = pkt.randomize() with { data.size() == 2; };
-      |                                        ^~~~
-                        ... For warning description see https://verilator.org/warn/CONSTRAINTIGN?v=latest
-                        ... Use "/* verilator lint_off CONSTRAINTIGN */" and lint_on around source to disable this message.
-%Warning-CONSTRAINTIGN: t/t_rand_inline_size.v:48:40: Unsupported: randomizing this expression, treating as state
-   48 |       ok = pkt.randomize() with { data.size() == 3; value == 42; };
-      |                                        ^~~~
-%Error: Exiting due to
