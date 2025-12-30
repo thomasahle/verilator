@@ -2751,6 +2751,16 @@ package uvm_pkg;
       m_parent_sequence = parent;
     endfunction
 
+    // Override get_full_name to include sequencer path for config_db lookups
+    virtual function string get_full_name();
+      if (m_sequencer != null)
+        return {m_sequencer.get_full_name(), ".", get_name()};
+      else if (m_parent_sequence != null)
+        return {m_parent_sequence.get_full_name(), ".", get_name()};
+      else
+        return get_name();
+    endfunction
+
     virtual task pre_start();
       // Override in derived classes
     endtask
