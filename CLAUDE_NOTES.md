@@ -408,6 +408,14 @@ verilator --timing -cc -Wno-fatal --exe --build \
    - `defparam instance[i].param = value;` syntax unsupported in Verilator
    - APB AVIP uses this pattern (workaround: remove redundant defparam)
 
+6. **axi4Lite_avip Blockers** (compile file created in `sim/axi4Lite_compile_verilator.f`):
+   - **Interface port via macro expansion**: Passing interface references through macros like
+     `Axi4LiteMasterAgentBFM(...) axi4LiteMasterAgentBFM(\`AXI4LITE_MASTERINTERFACE);`
+     where macro expands to hierarchical path `axi4LiteInterface.axi4LiteMasterInterface`
+   - **uvm_reg_predictor nested parameterized types**: Internal error with self-referential
+     nested type parameters like `uvm_analysis_imp #(BUSTYPE, uvm_reg_predictor #(BUSTYPE))`
+   - These are complex Verilator limitations requiring core changes to fix
+
 6. **SVA sequence operators (`##`)** - FULLY FIXED:
    - ✅ Fixed delay `##n` on LHS of implication now works
    - ✅ Range delay `##[n:m]` with bounded ranges now works
@@ -437,7 +445,7 @@ verilator --timing -cc -Wno-fatal --exe --build \
 | ahb_avip | ✅ Runs | Compiles successfully; assertions firing; test doesn't complete (stimulus loop) |
 | spi_avip | ✅ Runs | Full UVM phases complete; config_db testbench issue |
 | jtag_avip | ✅ Runs | Full UVM phases complete; module name fix needed (tb_top) |
-| axi4Lite_avip | ⚠️ Setup Required | Needs verilator-specific compile file (like axi4_avip has) |
+| axi4Lite_avip | ⚠️ Blocked | Compile file created; blocked by: (1) interface port macro expansion, (2) uvm_reg_predictor nested param types |
 
 ### 📁 Key Files
 
