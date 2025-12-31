@@ -235,6 +235,7 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 | t_assert_range_delay | ✅ PASS (##[n:m] range delay support) |
 | t_assert_seq_delay_patterns | ✅ PASS (AHB-style SVA patterns) |
 | t_assert_unbounded_delay | ✅ PASS (##[n:$] unbounded range delays) |
+| t_sva_until_with | ✅ PASS (s_until_with, until_with variants) |
 
 ### 🧪 AXI4 Pattern Tests (PASSING)
 
@@ -300,9 +301,9 @@ verilator --timing -cc -Wno-fatal --exe --build \
 - No explicit type substitution needed
 - Build produces working executable (29MB)
 
-**Remaining workaround** (if using s_until_with assertions):
-- SystemVerilog `s_until_with` property operator is unsupported in Verilator
-- The original assertion files can be used if s_until_with properties are removed/commented
+**Note**: The `s_until_with` operator IS now supported!
+- Original assertion files with `s_until_with` can now be used directly
+- Test: `t_sva_until_with.py` verifies all until variants work
 
 **Runtime status**:
 - ✅ Base test (`axi4_base_test`) runs and completes all UVM phases successfully
@@ -397,9 +398,9 @@ verilator --timing -cc -Wno-fatal --exe --build \
    - Currently fails with "Parameter type pin value isn't a type" error
    - Affects axi4_avip driver proxy classes
 
-3. **s_until_with in assertions**:
-   - SystemVerilog `s_until_with` property operator is unsupported
-   - Workaround: Remove or replace with simpler assertions
+3. ~~**s_until_with in assertions**~~: **ALREADY SUPPORTED!**
+   - All SVA until variants work: `until`, `s_until`, `until_with`, `s_until_with`
+   - Test: `t_sva_until_with.py`
 
 4. ~~**UVM Register Abstraction Layer (RAL)**~~: **IMPLEMENTED!**
    - Full RAL support added: `uvm_reg`, `uvm_reg_field`, `uvm_reg_block`, `uvm_reg_map`, `uvm_mem`
