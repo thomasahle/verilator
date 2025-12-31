@@ -564,7 +564,12 @@ package uvm_pkg;
     endfunction
 
     virtual function uvm_object clone();
-      return null;  // Stub - derived classes should override
+      uvm_object tmp;
+      // Use factory to create a new instance of the same type
+      tmp = uvm_factory::create_object_by_name(get_type_name(), "", get_name());
+      if (tmp != null)
+        tmp.copy(this);
+      return tmp;
     endfunction
 
     virtual function void copy(uvm_object rhs);

@@ -139,10 +139,6 @@ module t;
       $display("\n=== All %0d tests PASSED ===", test_pass_count);
       `uvm_info("TEST", "All phase checks PASSED", UVM_LOW)
     endfunction
-
-    function string get_type_name();
-      return "global_phase_test";
-    endfunction
   endclass
 
   initial begin

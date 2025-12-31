@@ -76,6 +76,7 @@
 `define uvm_object_utils(TYPE) \
   typedef TYPE __verilator_uvm_type_``TYPE; \
   static function string __verilator_get_type_name(); return `"TYPE`"; endfunction \
+  virtual function string get_type_name(); return `"TYPE`"; endfunction \
   static function uvm_object_wrapper get_type(); return type_id::get(); endfunction \
   typedef class type_id; \
   class type_id extends uvm_object_wrapper; \
@@ -114,16 +115,19 @@
 // uvm_object_utils_begin/end - for field automation (stub)
 `define uvm_object_utils_begin(TYPE) \
   typedef TYPE __verilator_uvm_type_``TYPE; \
-  static function string __verilator_get_type_name(); return `"TYPE`"; endfunction
+  static function string __verilator_get_type_name(); return `"TYPE`"; endfunction \
+  virtual function string get_type_name(); return `"TYPE`"; endfunction
 
 `define uvm_object_utils_end
 
 // uvm_object_param_utils - parameterized object registration (stub)
 `define uvm_object_param_utils(TYPE) \
-  static function string __verilator_get_type_name(); return `"TYPE`"; endfunction
+  static function string __verilator_get_type_name(); return `"TYPE`"; endfunction \
+  virtual function string get_type_name(); return `"TYPE`"; endfunction
 
 `define uvm_object_param_utils_begin(TYPE) \
-  static function string __verilator_get_type_name(); return `"TYPE`"; endfunction
+  static function string __verilator_get_type_name(); return `"TYPE`"; endfunction \
+  virtual function string get_type_name(); return `"TYPE`"; endfunction
 
 //----------------------------------------------------------------------
 // Component utility macros
@@ -135,6 +139,7 @@
 `define uvm_component_utils(TYPE) \
   typedef TYPE __verilator_uvm_type_``TYPE; \
   static function string __verilator_get_type_name(); return `"TYPE`"; endfunction \
+  virtual function string get_type_name(); return `"TYPE`"; endfunction \
   static function uvm_object_wrapper get_type(); return type_id::get(); endfunction \
   typedef class type_id; \
   class type_id extends uvm_object_wrapper; \
