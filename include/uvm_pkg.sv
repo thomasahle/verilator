@@ -1086,6 +1086,25 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
+  // uvm_test_done_objection - singleton objection for test completion
+  // This is the UVM 2020 replacement for the deprecated uvm_test_done global
+  //----------------------------------------------------------------------
+  class uvm_test_done_objection extends uvm_objection;
+    static local uvm_test_done_objection m_inst;
+
+    function new(string name = "uvm_test_done_objection");
+      super.new(name);
+    endfunction
+
+    // Singleton accessor - returns the single instance
+    static function uvm_test_done_objection get();
+      if (m_inst == null)
+        m_inst = new("uvm_test_done");
+      return m_inst;
+    endfunction
+  endclass
+
+  //----------------------------------------------------------------------
   // uvm_event - event synchronization class
   // Provides event-based synchronization between processes
   //----------------------------------------------------------------------
@@ -4884,8 +4903,8 @@ package uvm_pkg;
   // Global top component (simulation root) - use get() to access
   uvm_root uvm_top;
 
-  // Test done objection
-  uvm_objection uvm_test_done;
+  // Test done objection - singleton instance for backward compatibility
+  uvm_test_done_objection uvm_test_done;
 
   // Initialize globals at package load time
   function automatic void __uvm_pkg_init();
@@ -4893,7 +4912,7 @@ package uvm_pkg;
       uvm_top = uvm_root::get();
     end
     if (uvm_test_done == null) begin
-      uvm_test_done = new("uvm_test_done");
+      uvm_test_done = uvm_test_done_objection::get();
     end
   endfunction
 
