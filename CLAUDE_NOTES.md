@@ -473,11 +473,13 @@ verilator --timing -cc -Wno-fatal --exe --build \
 | apb_avip | ✅ Compiles & Runs | Base test passes | 30% master, 16.67% slave |
 | i2s_avip | ✅ Compiles & Runs | Base test passes | 40.91% tx, 75% rx |
 | i3c_avip | ✅ With -Wno-ENUMVALUE | Base test passes | - |
-| jtag_avip | ✅ With -Wno-ENUMVALUE | Base test passes | - |
+| jtag_avip | ⚠️ Bind internal error | - | bind statement references enclosing scope |
 | spi_avip | ✅ Compiles & Runs | Base test passes | 45.45% master, 53.33% slave |
 | uart_avip | ✅ Compiles & Runs | Runs (testbench parity issue) | - |
 
-**Summary: 8/9 AVIPs compile (some need `-Wno-ENUMVALUE`). ALL 8 compiling AVIPs run simulations successfully.**
+**Summary: 7/9 AVIPs compile and run successfully. 2 blocked by Verilator limitations:**
+- **axi4Lite_avip**: Nonblocking assignment to automatic variable (IEEE 1800-2023 6.21 violation Verilator enforces)
+- **jtag_avip**: Internal error with bind statements referencing signals from enclosing module scope
 
 ### ✅ -Wno-ENUMVALUE for UVM Testbenches
 
