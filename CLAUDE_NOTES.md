@@ -191,7 +191,7 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
 
 ### 📝 Test Status
 
-**Verilator UVM Unit Tests**: 50 passed, 0 failed, 2 skipped
+**Verilator UVM Unit Tests**: 52 passed, 1 failed (t_uvm_dpi - requires DPI headers)
 **Verilator Constraint Tests**: 54 passed, 0 failed
 **Verilator Class Param Tests**: 40 passed, 0 failed
 
