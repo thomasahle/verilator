@@ -95,9 +95,8 @@ module t;
 
       ap.write(clone_txn);
       $display("[%0t] Monitor: Wrote to analysis port", $time);
-
-      #10;
-      phase.drop_objection(this);
+      $display("*-* All Finished *-*");
+      $finish;
     endtask
   endclass
 
@@ -126,8 +125,6 @@ module t;
 
   initial begin
     run_test("MyTest");
-    $display("*-* All Finished *-*");
-    $finish;
   end
 
 endmodule
