@@ -6,13 +6,13 @@
       |               ^~~~~~
                      ... For warning description see https://verilator.org/warn/PINMISSING?v=latest
                      ... Use "/* verilator lint_off PINMISSING */" and lint_on around source to disable this message.
-%Error: t/t_lint_pindup_bad.v:20:10: Duplicate pin connection: 'i'
+%Error-PINDUP: t/t_lint_pindup_bad.v:20:10: Duplicate pin connection: 'i'
    20 |         .i(i2),   
       |          ^
-        t/t_lint_pindup_bad.v:19:10: ... Location of original pin connection
+               t/t_lint_pindup_bad.v:19:10: ... Location of original pin connection
    19 |         .i(i),
       |          ^
-        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+               ... For error description see https://verilator.org/warn/PINDUP?v=latest
 %Error-PINNOTFOUND: t/t_lint_pindup_bad.v:21:10: Pin not found: 'nexist'
                                                : ... Suggested alternative: 'exists'
    21 |         .nexist(i2)   
@@ -22,10 +22,10 @@
                                               : ... Suggested alternative: 'EXIST'
    15 |      #(.NEXIST(1),   
       |         ^~~~~~
-%Error: t/t_lint_pindup_bad.v:17:9: Duplicate parameter connection: 'P'
+%Error-PINDUP: t/t_lint_pindup_bad.v:17:9: Duplicate parameter connection: 'P'
    17 |        .P(3))   
       |         ^
-        t/t_lint_pindup_bad.v:16:9: ... Location of original parameter connection
+               t/t_lint_pindup_bad.v:16:9: ... Location of original parameter connection
    16 |        .P(2),
       |         ^
 %Error: Exiting due to
