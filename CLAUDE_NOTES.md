@@ -468,21 +468,36 @@ verilator --timing -cc -Wno-fatal --exe --build \
 | AVIP | Status | Simulation | Coverage |
 |------|--------|------------|----------|
 | axi4_avip | ✅ Compiles & Runs | Write test passes | 52.94% |
-| axi4Lite_avip | ⚠️ User code | - | - |
+| axi4Lite_avip | ⚠️ Needs wrapper | - | Has HdlTop/HvlTop, needs unified tb_top |
 | ahb_avip | ✅ Compiles & Runs | Base test passes, assertions fire | 40% master, 25% slave |
 | apb_avip | ✅ Compiles & Runs | Base test passes | 30% master, 16.67% slave |
 | i2s_avip | ✅ Compiles & Runs | Base test passes | 40.91% tx, 75% rx |
-| i3c_avip | ⚠️ User code | - | - |
-| jtag_avip | ⚠️ User code | - | - |
+| i3c_avip | ✅ With -Wno-ENUMVALUE | Base test passes | - |
+| jtag_avip | ✅ With -Wno-ENUMVALUE | Base test passes | - |
 | spi_avip | ✅ Compiles & Runs | Base test passes | 45.45% master, 53.33% slave |
 | uart_avip | ✅ Compiles & Runs | Runs (testbench parity issue) | - |
 
-**Summary: 6/9 AVIPs compile cleanly. ALL 6 compiling AVIPs run simulations successfully with coverage.**
+**Summary: 8/9 AVIPs compile (some need `-Wno-ENUMVALUE`). ALL 8 compiling AVIPs run simulations successfully.**
 
-**Non-compiling AVIPs have IEEE compliance errors in user code (not Verilator issues):**
-- axi4Lite_avip: 2 errors - automatic variable in nonblocking assignment
-- i3c_avip: 3 ENUMVALUE errors - implicit logic-to-enum conversion
-- jtag_avip: 12 ENUMVALUE errors - implicit logic-to-enum conversion
+### ✅ -Wno-ENUMVALUE for UVM Testbenches
+
+Many UVM testbenches use implicit conversions from logic to enum types, which is technically
+an IEEE 1800-2023 violation but is very common in verification code. Use `-Wno-ENUMVALUE`
+to suppress these errors:
+
+```bash
+verilator --timing -cc -Wno-fatal -Wno-ENUMVALUE ...
+```
+
+This allows code patterns like:
+```systemverilog
+logic[4:0] opcode;
+my_enum_type current_op;
+current_op = opcode;  // Implicit conversion - needs -Wno-ENUMVALUE
+```
+
+The proper fix is explicit casting: `current_op = my_enum_type'(opcode);` but this flag
+provides compatibility for existing testbenches.
 
 ### 📁 Key Files
 
