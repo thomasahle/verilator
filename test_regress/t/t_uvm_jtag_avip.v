@@ -1,6 +1,6 @@
 // DESCRIPTION: Verilator: Test JTAG AVIP
-// Wrapper module that instantiates JtagHdlTop and JtagHvlTop
+// Wrapper module that instantiates HdlTop and HvlTop
 module tb_top;
-  JtagHdlTop hdl();
-  JtagHvlTop hvl();
+  HdlTop hdl();
+  HvlTop hvl();
 endmodule

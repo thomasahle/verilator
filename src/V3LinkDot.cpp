@@ -3396,7 +3396,11 @@ class LinkDotResolveVisitor final : public VNVisitor {
                 VSymEnt* const origCurFallbackp = m_curSymp ? m_curSymp->fallbackp() : nullptr;
                 VSymEnt* const origDotFallbackp
                     = m_ds.m_dotSymp ? m_ds.m_dotSymp->fallbackp() : nullptr;
-                if (nodep->bindSourcep()) {
+                if (nodep->bindSourcep() && m_statep->existsNodeSym(nodep->bindSourcep())) {
+                    // When bind uses a module type name (not instance name), all instances
+                    // of that type inherit the bound cells. Some of those instances may be
+                    // visited before the module containing the bind statement. In that case,
+                    // the bind source module won't have a symbol entry yet.
                     VSymEnt* const bindSrcSymp = m_statep->getNodeSym(nodep->bindSourcep());
                     if (bindSrcSymp) {
                         if (m_curSymp) {
@@ -3419,7 +3423,7 @@ class LinkDotResolveVisitor final : public VNVisitor {
                 iterateChildren(nodep);
 
                 // Restore original fallbacks
-                if (nodep->bindSourcep()) {
+                if (nodep->bindSourcep() && m_statep->existsNodeSym(nodep->bindSourcep())) {
                     if (m_curSymp) m_curSymp->fallbackp(origCurFallbackp);
                     if (m_ds.m_dotSymp && m_ds.m_dotSymp != m_curSymp)
                         m_ds.m_dotSymp->fallbackp(origDotFallbackp);
