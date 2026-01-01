@@ -465,21 +465,26 @@ verilator --timing -cc -Wno-fatal --exe --build \
 
 ### 🧪 Other AVIP Status
 
-| AVIP | Status | Simulation | Coverage |
-|------|--------|------------|----------|
-| axi4_avip | ✅ Compiles & Runs | Write test passes | 52.94% |
-| axi4Lite_avip | ⚠️ IEEE violation | - | Automatic var with nonblocking assignment |
-| ahb_avip | ✅ Compiles & Runs | Base test passes, assertions fire | 40% master, 25% slave |
-| apb_avip | ✅ Compiles & Runs | Base test passes | 30% master, 16.67% slave |
-| i2s_avip | ✅ Compiles & Runs | Base test passes | 40.91% tx, 75% rx |
-| i3c_avip | ✅ With -Wno-ENUMVALUE | Base test passes | - |
-| jtag_avip | ⚠️ Bind internal error | - | bind statement references enclosing scope |
+| AVIP | Status | Simulation | Notes |
+|------|--------|------------|-------|
+| axi4_avip | ✅ Compiles & Runs | Write test passes | 52.94% coverage |
+| axi4Lite_avip | ⚠️ IEEE violation | - | Nonblocking assignment to automatic variable |
+| ahb_avip | ✅ Compiles & Runs | Base test passes | Assertions fire |
+| apb_avip | ✅ Compiles & Runs | Base test passes | UVM phases complete |
+| i2s_avip | ✅ Compiles & Runs | Base test passes | 40.91% tx, 75% rx coverage |
+| i3c_avip | ✅ With -Wno-ENUMVALUE | Base test passes | UVM phases complete |
+| jtag_avip | ✅ Compiles | Runtime null ptr | Testbench assertion issue |
 | spi_avip | ✅ Compiles & Runs | Base test passes | 45.45% master, 53.33% slave |
-| uart_avip | ✅ Compiles & Runs | Runs (testbench parity issue) | - |
+| uart_avip | ✅ Compiles & Runs | Runs | Testbench parity issue |
 
-**Summary: 7/9 AVIPs compile and run successfully. 2 blocked by Verilator limitations:**
-- **axi4Lite_avip**: Nonblocking assignment to automatic variable (IEEE 1800-2023 6.21 violation Verilator enforces)
-- **jtag_avip**: Internal error with bind statements referencing signals from enclosing module scope
+**Summary: 8/9 AVIPs compile successfully. 1 blocked by IEEE violation in testbench code:**
+- **axi4Lite_avip**: Nonblocking assignment to automatic variable (IEEE 1800-2023 6.21 violation)
+  - Verilator correctly enforces the standard; Xcelium allows this as an extension
+  - The testbench code would need modification to be IEEE-compliant
+
+**Recent fix (commit d4a9f7f37)**: Fixed bind internal error when bind source module not yet visited.
+Bind statements that use module TYPE names (not instance names) and reference signals from
+the enclosing scope now work correctly.
 
 ### ✅ -Wno-ENUMVALUE for UVM Testbenches
 
