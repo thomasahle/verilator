@@ -481,13 +481,30 @@ void connectPort(AstNodeModule* modp, AstVar* nodep, AstNodeExpr* pinExprp) {
     }
 
     // Otherwise it must be a variable reference due to having called pinReconnectSimple
-    const AstVarRef* const pinRefp = VN_AS(pinExprp, VarRef);
+    // Can be VarRef (direct connection) or VarXRef (hierarchical path like container.inner)
+    const AstVarRef* const pinRefp = VN_CAST(pinExprp, VarRef);
+    const AstVarXRef* const pinXRefp = VN_CAST(pinExprp, VarXRef);
+    UASSERT_OBJ(pinRefp || pinXRefp, pinExprp,
+                "Expected VarRef or VarXRef for pin expression");
 
-    // Helper to create an AstVarRef reference to the pin variable
-    const auto pinRef = [&](VAccess access) {
-        AstVarRef* const p = new AstVarRef{pinRefp->fileline(), pinRefp->varp(), access};
-        p->classOrPackagep(pinRefp->classOrPackagep());
-        return p;
+    // Get the variable from either VarRef or VarXRef
+    AstVar* const pinVarp = pinRefp ? pinRefp->varp() : pinXRefp->varp();
+    FileLine* const pinFlp = pinRefp ? pinRefp->fileline() : pinXRefp->fileline();
+
+    // Helper to create reference to the pin variable
+    // For VarRef, create a new VarRef; for VarXRef, create a VarXRef to preserve hierarchy
+    const auto pinRef = [&](VAccess access) -> AstNodeExpr* {
+        if (pinRefp) {
+            AstVarRef* const p = new AstVarRef{pinFlp, pinVarp, access};
+            p->classOrPackagep(pinRefp->classOrPackagep());
+            return p;
+        } else {
+            // For hierarchical interface paths, preserve the VarXRef structure
+            AstVarXRef* const p = new AstVarXRef{pinFlp, pinXRefp->name(),
+                                                  pinXRefp->dotted(), access};
+            p->varp(pinVarp);
+            return p;
+        }
     };
 
     // If it is being inlined, create the alias for it
@@ -498,14 +515,14 @@ void connectPort(AstNodeModule* modp, AstVar* nodep, AstNodeExpr* pinExprp) {
                 new AstAliasScope{flp, portRef(VAccess::WRITE), pinRef(VAccess::READ)});
         } else {
             AstVarRef* const aliasArgsp = portRef(VAccess::WRITE);
-            aliasArgsp->addNext(pinRef(VAccess::READ));
+            aliasArgsp->addNext(VN_AS(pinRef(VAccess::READ), VarRef));
             modp->addStmtsp(new AstAlias{flp, aliasArgsp});
         }
         // They will become the same variable, so propagate file-line and variable attributes
-        pinRefp->varp()->fileline()->modifyStateInherit(flp);
-        flp->modifyStateInherit(pinRefp->varp()->fileline());
-        pinRefp->varp()->propagateAttrFrom(nodep);
-        nodep->propagateAttrFrom(pinRefp->varp());
+        pinVarp->fileline()->modifyStateInherit(flp);
+        flp->modifyStateInherit(pinVarp->fileline());
+        pinVarp->propagateAttrFrom(nodep);
+        nodep->propagateAttrFrom(pinVarp);
         return;
     }
 

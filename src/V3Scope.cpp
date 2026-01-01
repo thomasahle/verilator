@@ -73,6 +73,17 @@ class ScopeVisitor final : public VNVisitor {
                             "Can't locate class or package scope");
                 scopep = it2->second;
             }
+            // For interface reference variables (e.g., inner__Viftop), start the search from
+            // the interface cell's scope. This handles cross-scope references in ALIASSCOPEs
+            // where a VarRef in a parent scope references a variable defined in an interface.
+            if (const AstIfaceRefDType* const ifrefp
+                = VN_CAST(nodep->varp()->dtypep(), IfaceRefDType)) {
+                if (ifrefp->cellp()) {
+                    if (AstScope* const ifaceScopep = VN_CAST(ifrefp->cellp()->user2p(), Scope)) {
+                        scopep = ifaceScopep;
+                    }
+                }
+            }
             // Search up the scope hierarchy for the variable
             AstVarScope* varscp = nullptr;
             AstScope* searchScopep = scopep;

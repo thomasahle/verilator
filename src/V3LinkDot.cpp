@@ -2512,14 +2512,34 @@ private:
             VSymEnt* symp = nullptr;
             string scopename;
             while (!symp) {
-                scopename
-                    = refp ? refp->name() : (inl.size() ? (inl + xrefp->name()) : xrefp->name());
+                if (refp) {
+                    scopename = refp->name();
+                } else {
+                    // For VarXRef, include dotted path (for hierarchical refs like container.inner)
+                    const string& dotted = xrefp->dotted();
+                    const string& name = xrefp->name();
+                    if (inl.size()) {
+                        scopename = inl + (dotted.empty() ? name : (dotted + "." + name));
+                    } else {
+                        scopename = dotted.empty() ? name : (dotted + "." + name);
+                    }
+                }
                 string baddot;
                 VSymEnt* okSymp;
                 symp = m_statep->findDotted(nodep->rhsp()->fileline(), m_modSymp, scopename,
                                             baddot, okSymp, false);
                 if (inl == "") break;
                 inl = LinkDotState::removeLastInlineScope(inl);
+            }
+            // If not found and VarRef has varScopep with a symbol entry, use it directly
+            // This handles hierarchical interface references like container.inner where
+            // the __Viftop variable is registered under a nested scope
+            if (!symp && refp && refp->varScopep()) {
+                if (VSymEnt* const vsSymp = refp->varScopep()->user1u().toSymEnt()) {
+                    UINFO(9, "Using VarScope symbol directly for " << refp->name()
+                                                                   << " se" << cvtToHex(vsSymp));
+                    symp = vsSymp;
+                }
             }
             if (!symp) {
                 UINFO(9, "No symbol for interface alias rhs ("
@@ -3215,8 +3235,8 @@ class LinkDotResolveVisitor final : public VNVisitor {
             while (const AstNodePreSel* const preSelp = VN_CAST(exprp, NodePreSel)) {
                 exprp = preSelp->fromp();
             }
-            if (const AstVarRef* const varRefp = VN_CAST(exprp, VarRef)) {
-                const AstVar* const varp = varRefp->varp();
+            // Helper to process an interface variable and create the implicit parameter pin
+            const auto processIfaceVar = [&](const AstVar* varp, const AstNodeExpr* errp) -> bool {
                 if (const AstIfaceRefDType* const refp
                     = VN_CAST(getElemDTypep(varp->childDTypep()), IfaceRefDType)) {
                     AstIface* const ifacep = VN_AS(refp->cellp()->modp(), Iface);
@@ -3242,12 +3262,27 @@ class LinkDotResolveVisitor final : public VNVisitor {
                     newPinp->param(true);
                     visit(newPinp);
                     nodep->addParamsp(newPinp);
+                    return true;  // Success
                 } else {
-                    varRefp->v3error("Generic interfaces can only connect to an interface and "
-                                     << varp->prettyNameQ() << " is "
-                                     << (varp->childDTypep()
-                                             ? "of type " + varp->childDTypep()->prettyDTypeNameQ()
-                                             : "not an interface"));
+                    errp->v3error("Generic interfaces can only connect to an interface and "
+                                  << varp->prettyNameQ() << " is "
+                                  << (varp->childDTypep()
+                                          ? "of type " + varp->childDTypep()->prettyDTypeNameQ()
+                                          : "not an interface"));
+                    return false;
+                }
+            };
+
+            if (const AstVarRef* const varRefp = VN_CAST(exprp, VarRef)) {
+                processIfaceVar(varRefp->varp(), varRefp);
+            } else if (const AstMemberSel* const memberSelp = VN_CAST(exprp, MemberSel)) {
+                // Handle interface port connected via hierarchical path (e.g., container.inner)
+                // This pattern is commonly used in UVM VIPs with macro-expanded interface paths
+                if (memberSelp->varp()) {
+                    processIfaceVar(memberSelp->varp(), memberSelp);
+                } else {
+                    exprp->v3error("Interface port " << modIfaceVarp->prettyNameQ()
+                                                     << " is not connected to interface/modport pin expression");
                 }
             } else {
                 exprp->v3error("Expected an interface but " << exprp->prettyNameQ()
