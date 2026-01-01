@@ -468,7 +468,7 @@ verilator --timing -cc -Wno-fatal --exe --build \
 | AVIP | Status | Simulation | Coverage |
 |------|--------|------------|----------|
 | axi4_avip | ✅ Compiles & Runs | Write test passes | 52.94% |
-| axi4Lite_avip | ⚠️ Needs wrapper | - | Has HdlTop/HvlTop, needs unified tb_top |
+| axi4Lite_avip | ⚠️ IEEE violation | - | Automatic var with nonblocking assignment |
 | ahb_avip | ✅ Compiles & Runs | Base test passes, assertions fire | 40% master, 25% slave |
 | apb_avip | ✅ Compiles & Runs | Base test passes | 30% master, 16.67% slave |
 | i2s_avip | ✅ Compiles & Runs | Base test passes | 40.91% tx, 75% rx |
