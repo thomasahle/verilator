@@ -138,6 +138,7 @@ public:
         NULLPORT,       // Null port detected in module definition
         PARAMNODEFAULT, // Parameter without default
         PINCONNECTEMPTY,// Cell pin connected by name with empty reference
+        PINDUP,         // Duplicate pin/parameter connection (e.g. inline + defparam)
         PINMISSING,     // Cell pin not specified
         PINNOCONNECT,   // Cell pin not connected
         PINNOTFOUND,    // instance port name not found in it's module
@@ -226,7 +227,7 @@ public:
             "INFINITELOOP", "INITIALDLY", "INSECURE", "LATCH", "LITENDIAN", "MINTYPMAXDLY",
             "MISINDENT", "MODDUP", "MODMISSING", "MULTIDRIVEN", "MULTITOP", "NEWERSTD", "NOEFFECT",
             "NOLATCH", "NONSTD", "NORETURN", "NULLPORT", "PARAMNODEFAULT", "PINCONNECTEMPTY",
-            "PINMISSING", "PINNOCONNECT", "PINNOTFOUND", "PKGNODECL", "PREPROCZERO", "PROCASSINIT",
+            "PINDUP", "PINMISSING", "PINNOCONNECT", "PINNOTFOUND", "PKGNODECL", "PREPROCZERO", "PROCASSINIT",
             "PROCASSWIRE", "PROFOUTOFDATE", "PROTECTED", "PROTOTYPEMIS", "RANDC", "REALCVT",
             "REDEFMACRO", "RISEFALLDLY", "SELRANGE", "SHORTREAL", "SIDEEFFECT", "SPECIFYIGN",
             "SPLITVAR", "STATICVAR", "STMTDLY", "SUPERNFIRST", "SYMRSVDWORD", "SYNCASYNCNET",
@@ -263,7 +264,7 @@ public:
                 || m_e == BLKLOOPINIT || m_e == CONTASSREG || m_e == ENCAPSULATED
                 || m_e == ENDLABEL || m_e == ENUMITEMWIDTH || m_e == ENUMVALUE || m_e == HIERPARAM
                 || m_e == FUNCTIMECTL || m_e == IMPURE || m_e == MODMISSING
-                || m_e == PARAMNODEFAULT || m_e == PINNOTFOUND || m_e == PKGNODECL
+                || m_e == PARAMNODEFAULT || m_e == PINDUP || m_e == PINNOTFOUND || m_e == PKGNODECL
                 || m_e == PROCASSWIRE || m_e == PROTOTYPEMIS || m_e == SUPERNFIRST
                 || m_e == ZEROREPL);
     }

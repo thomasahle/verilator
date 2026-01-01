@@ -1,0 +1,9 @@
+%Warning-PINDUP: t/t_param_dup_bad.v:17:43: Duplicate parameter connection: 'PARAM'
+   17 |          defparam gen_block[i].inst.PARAM = i;
+      |                                           ^
+                 t/t_param_dup_bad.v:15:24: ... Location of original parameter connection
+   15 |          sub_module #(.PARAM(i)) inst ();
+      |                        ^~~~~
+                 ... For warning description see https://verilator.org/warn/PINDUP?v=latest
+                 ... Use "/* verilator lint_off PINDUP */" and lint_on around source to disable this message.
+%Error: Exiting due to
