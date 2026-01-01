@@ -13,11 +13,10 @@ test.scenarios('vlt')
 test.top_filename = "t/t_uvm_dpi.v"
 test.pli_filename = "t/uvm/v2017_1_0/dpi/uvm_dpi.cc"
 
-if re.search(r'clang', test.cxx_version):
-    test.skip("uvm_regex.cc from upstream has clang warnings")
-
+# Suppress sprintf deprecation warnings from upstream UVM code on macOS/clang
 test.compile(verilator_flags2=[
     "--binary", "--build-jobs 4", "--vpi", "+define+T_V2017_1_0", "+incdir+t/uvm/v2017_1_0",
+    "-CFLAGS", "-Wno-deprecated-declarations",
     test.pli_filename
 ])
 
