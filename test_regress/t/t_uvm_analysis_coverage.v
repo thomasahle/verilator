@@ -22,6 +22,16 @@ module t;
       super.new(name);
     endfunction
 
+    // IMPORTANT: Override do_copy for clone() to work correctly
+    virtual function void do_copy(uvm_object rhs);
+      MyTransaction rhs_tx;
+      super.do_copy(rhs);
+      if ($cast(rhs_tx, rhs)) begin
+        data = rhs_tx.data;
+        addr = rhs_tx.addr;
+      end
+    endfunction
+
     virtual function string convert2string();
       return $sformatf("data=%0h addr=%0h", data, addr);
     endfunction
