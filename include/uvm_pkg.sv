@@ -622,12 +622,24 @@ package uvm_pkg;
       return "";
     endfunction
 
+    // Pack object to packer
+    virtual function void pack(uvm_packer packer);
+      if (packer == null) return;
+      do_pack(packer);
+    endfunction
+
+    // Unpack object from packer
+    virtual function void unpack(uvm_packer packer);
+      if (packer == null) return;
+      do_unpack(packer);
+    endfunction
+
     virtual function void do_pack(uvm_packer packer);
-      // Override in derived classes
+      // Override in derived classes to pack fields
     endfunction
 
     virtual function void do_unpack(uvm_packer packer);
-      // Override in derived classes
+      // Override in derived classes to unpack fields
     endfunction
 
     virtual function void do_record(uvm_recorder recorder);
@@ -774,23 +786,222 @@ package uvm_pkg;
   endclass
 
   //----------------------------------------------------------------------
-  // uvm_packer - pack/unpack utility (stub)
+  // uvm_packer - pack/unpack utility for serializing objects
   //----------------------------------------------------------------------
   class uvm_packer extends uvm_object;
+    // Configuration
     bit big_endian = 0;
     bit use_metadata = 0;
 
+    // Internal storage for packed bits
+    protected bit m_bits[$];
+    protected int m_pack_index;
+    protected int m_unpack_index;
+
     function new(string name = "uvm_packer");
       super.new(name);
+      m_pack_index = 0;
+      m_unpack_index = 0;
+    endfunction
+
+    // Reset packer state
+    virtual function void reset();
+      m_bits.delete();
+      m_pack_index = 0;
+      m_unpack_index = 0;
+    endfunction
+
+    // Get number of packed bits
+    virtual function int get_packed_size();
+      return m_bits.size();
+    endfunction
+
+    // Set position for unpacking (reset to start)
+    virtual function void set_packed_size();
+      m_unpack_index = 0;
+    endfunction
+
+    // Get packed bits as dynamic array
+    virtual function void get_packed_bits(ref bit bits[]);
+      bits = new[m_bits.size()];
+      foreach (m_bits[i]) bits[i] = m_bits[i];
+    endfunction
+
+    // Set bits for unpacking
+    virtual function void set_packed_bits(ref bit bits[]);
+      m_bits.delete();
+      foreach (bits[i]) m_bits.push_back(bits[i]);
+      m_unpack_index = 0;
+    endfunction
+
+    // Pack integer field
+    virtual function void pack_field_int(logic [63:0] value, int size);
+      if (big_endian) begin
+        for (int i = size - 1; i >= 0; i--) begin
+          m_bits.push_back(value[i]);
+        end
+      end else begin
+        for (int i = 0; i < size; i++) begin
+          m_bits.push_back(value[i]);
+        end
+      end
+    endfunction
+
+    // Unpack integer field
+    virtual function logic [63:0] unpack_field_int(int size);
+      logic [63:0] value = 0;
+      if (big_endian) begin
+        for (int i = size - 1; i >= 0; i--) begin
+          if (m_unpack_index < m_bits.size())
+            value[i] = m_bits[m_unpack_index++];
+        end
+      end else begin
+        for (int i = 0; i < size; i++) begin
+          if (m_unpack_index < m_bits.size())
+            value[i] = m_bits[m_unpack_index++];
+        end
+      end
+      return value;
+    endfunction
+
+    // Pack string
+    virtual function void pack_string(string value);
+      int len = value.len();
+      pack_field_int(64'(len), 32);  // Pack length first
+      for (int i = 0; i < len; i++) begin
+        pack_field_int(64'(value[i]), 8);
+      end
+    endfunction
+
+    // Unpack string
+    virtual function string unpack_string();
+      string value = "";
+      int len = unpack_field_int(32);
+      for (int i = 0; i < len; i++) begin
+        value = {value, string'(unpack_field_int(8))};
+      end
+      return value;
+    endfunction
+
+    // Pack real
+    virtual function void pack_real(real value);
+      // Pack as 64-bit representation
+      pack_field_int($realtobits(value), 64);
+    endfunction
+
+    // Unpack real
+    virtual function real unpack_real();
+      return $bitstoreal(unpack_field_int(64));
+    endfunction
+
+    // Pack object (calls object's do_pack)
+    virtual function void pack_object(uvm_object value);
+      if (value != null)
+        value.do_pack(this);
+    endfunction
+
+    // Unpack object (calls object's do_unpack)
+    virtual function void unpack_object(uvm_object value);
+      if (value != null)
+        value.do_unpack(this);
     endfunction
   endclass
 
   //----------------------------------------------------------------------
-  // uvm_recorder - recording utility (stub)
+  // uvm_recorder - recording utility for transaction recording
   //----------------------------------------------------------------------
   class uvm_recorder extends uvm_object;
+    // Recording state
+    protected bit m_is_open = 0;
+    protected int m_handle = 0;
+    protected string m_scope = "";
+    protected static int m_next_handle = 1;
+
+    // Recorded fields storage
+    protected string m_fields[$];
+
     function new(string name = "uvm_recorder");
       super.new(name);
+    endfunction
+
+    // Open recording stream
+    virtual function void open_file(string filename);
+      m_is_open = 1;
+      m_handle = m_next_handle++;
+    endfunction
+
+    // Close recording
+    virtual function void close();
+      m_is_open = 0;
+    endfunction
+
+    // Check if recording is open
+    virtual function bit is_open();
+      return m_is_open;
+    endfunction
+
+    // Get recording handle
+    virtual function int get_handle();
+      return m_handle;
+    endfunction
+
+    // Set scope for recording
+    virtual function void set_scope(string scope);
+      m_scope = scope;
+    endfunction
+
+    // Get current scope
+    virtual function string get_scope();
+      return m_scope;
+    endfunction
+
+    // Record integer field
+    virtual function void record_field(string name, logic [63:0] value, int size, uvm_radix_enum radix = UVM_HEX);
+      string entry;
+      case (radix)
+        UVM_BIN: entry = $sformatf("%s.%s = %0b", m_scope, name, value);
+        UVM_DEC: entry = $sformatf("%s.%s = %0d", m_scope, name, value);
+        UVM_HEX: entry = $sformatf("%s.%s = 0x%0h", m_scope, name, value);
+        default: entry = $sformatf("%s.%s = %0d", m_scope, name, value);
+      endcase
+      m_fields.push_back(entry);
+    endfunction
+
+    // Record string field
+    virtual function void record_string(string name, string value);
+      m_fields.push_back($sformatf("%s.%s = \"%s\"", m_scope, name, value));
+    endfunction
+
+    // Record real field
+    virtual function void record_real(string name, real value);
+      m_fields.push_back($sformatf("%s.%s = %g", m_scope, name, value));
+    endfunction
+
+    // Record time field
+    virtual function void record_time(string name, time value);
+      m_fields.push_back($sformatf("%s.%s = %0t", m_scope, name, value));
+    endfunction
+
+    // Record object field
+    virtual function void record_object(string name, uvm_object value);
+      if (value != null) begin
+        string old_scope = m_scope;
+        m_scope = {m_scope, ".", name};
+        value.do_record(this);
+        m_scope = old_scope;
+      end else begin
+        m_fields.push_back($sformatf("%s.%s = null", m_scope, name));
+      end
+    endfunction
+
+    // Get all recorded fields
+    virtual function void get_fields(ref string fields[$]);
+      fields = m_fields;
+    endfunction
+
+    // Clear recorded fields
+    virtual function void clear();
+      m_fields.delete();
     endfunction
   endclass
 
@@ -2287,6 +2498,54 @@ package uvm_pkg;
               cbs.push_back(m_type_callbacks[key][i]);
           end
         end
+      end
+    endfunction
+
+    // Get first callback iterator
+    static function CB get_first(ref int iter, T obj);
+      CB cbs[$];
+      get(obj, cbs);
+      if (cbs.size() > 0) begin
+        iter = 0;
+        return cbs[0];
+      end
+      return null;
+    endfunction
+
+    // Get next callback iterator
+    static function CB get_next(ref int iter, T obj);
+      CB cbs[$];
+      get(obj, cbs);
+      iter++;
+      if (iter < cbs.size()) begin
+        return cbs[iter];
+      end
+      return null;
+    endfunction
+
+    // Check if there are any callbacks registered
+    static function bit has_callbacks(T obj);
+      CB cbs[$];
+      get(obj, cbs);
+      return cbs.size() > 0;
+    endfunction
+
+    // Get number of callbacks
+    static function int get_count(T obj);
+      CB cbs[$];
+      get(obj, cbs);
+      return cbs.size();
+    endfunction
+
+    // Display all registered callbacks
+    static function void display(T obj = null);
+      CB cbs[$];
+      get(obj, cbs);
+      $display("Callbacks for %s: %0d total",
+               (obj == null) ? "global" : obj.get_full_name(),
+               cbs.size());
+      foreach (cbs[i]) begin
+        $display("  [%0d] %s (enabled=%0d)", i, cbs[i].get_name(), cbs[i].is_enabled());
       end
     endfunction
   endclass
