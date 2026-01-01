@@ -318,7 +318,14 @@ verilator --timing -cc -Wno-fatal --exe --build \
 
 ### ✅ Recent Fixes
 
-1. **VMemberMap duplicate empty name error** (commit 3eb02aaf7):
+1. **Interface port connection via hierarchical path** (commit e21fc696a):
+   - **FIXED**: Interface ports connected via macro-expanded hierarchical paths now work
+   - Pattern: `Axi4LiteMasterAgentBFM(...) axi4LiteMasterAgentBFM(\`AXI4LITE_MASTERINTERFACE);`
+   - Where macro expands to `axi4LiteInterface.axi4LiteMasterInterface`
+   - Changes: V3LinkDot.cpp (MemberSel handling, VarScope symbol lookup), V3Param.cpp (VarXRef/MemberSel), V3Inline.cpp (VarXRef support), V3Scope.cpp (interface cell scope lookup)
+   - Test: `t_interface_hier_path.v`
+
+2. **VMemberMap duplicate empty name error** (commit 3eb02aaf7):
    - Fixed: Multiple unnamed initial blocks in interfaces no longer cause duplicate key errors
    - Problem: VMemberMap tried to cache nodes with empty names, causing duplicate key errors
    - Solution: Skip nodes with empty names in memberInsert - they can't be looked up by name anyway
@@ -408,13 +415,12 @@ verilator --timing -cc -Wno-fatal --exe --build \
    - `defparam instance[i].param = value;` syntax unsupported in Verilator
    - APB AVIP uses this pattern (workaround: remove redundant defparam)
 
-6. **axi4Lite_avip Blockers** (compile file created in `sim/axi4Lite_compile_verilator.f`):
-   - **Interface port via macro expansion**: Passing interface references through macros like
-     `Axi4LiteMasterAgentBFM(...) axi4LiteMasterAgentBFM(\`AXI4LITE_MASTERINTERFACE);`
-     where macro expands to hierarchical path `axi4LiteInterface.axi4LiteMasterInterface`
-   - **uvm_reg_predictor nested parameterized types**: Internal error with self-referential
-     nested type parameters like `uvm_analysis_imp #(BUSTYPE, uvm_reg_predictor #(BUSTYPE))`
-   - These are complex Verilator limitations requiring core changes to fix
+6. **axi4Lite_avip Status** (compile file created in `sim/axi4Lite_compile_verilator.f`):
+   - **✅ FIXED: Interface port via macro expansion**: Now works! (commit e21fc696a)
+   - **✅ FIXED: uvm_reg_predictor nested parameterized types**: Already works!
+   - **⚠️ User code issues**: 2 remaining errors are IEEE violations in user code:
+     - Nonblocking assignment to automatic variable in DriverProxy files
+     - These require user code fixes, not Verilator changes
 
 6. **SVA sequence operators (`##`)** - FULLY FIXED:
    - ✅ Fixed delay `##n` on LHS of implication now works
@@ -437,15 +443,17 @@ verilator --timing -cc -Wno-fatal --exe --build \
 
 | AVIP | Status | Notes |
 |------|--------|-------|
-| axi4_avip | ✅ Runs | Write test passes; read test has testbench bug |
-| apb_avip | ✅ Runs | Full UVM flow completes with config_db wildcard fix |
-| uart_avip | ✅ Runs | Full UVM flow completes (assertion failure is config issue) |
-| i2s_avip | ✅ Runs | Works with global phase objects and wait_for_state() |
-| i3c_avip | ✅ Runs | VMemberMap fix resolved duplicate empty name error |
-| ahb_avip | ✅ Runs | Compiles successfully; assertions firing; test doesn't complete (stimulus loop) |
-| spi_avip | ✅ Runs | Full UVM phases complete; config_db testbench issue |
-| jtag_avip | ✅ Runs | Full UVM phases complete; module name fix needed (tb_top) |
-| axi4Lite_avip | ⚠️ Blocked | Compile file created; blocked by: (1) interface port macro expansion, (2) uvm_reg_predictor nested param types |
+| axi4_avip | ✅ Compiles | Write test passes; read test has testbench bug |
+| axi4Lite_avip | ⚠️ User code | Interface issue FIXED! 2 IEEE violations in user code remain |
+| ahb_avip | ✅ Compiles | Compiles successfully; assertions firing |
+| apb_avip | ✅ Compiles | Full UVM flow completes with config_db wildcard fix |
+| i2s_avip | ✅ Compiles | Works with global phase objects and wait_for_state() |
+| i3c_avip | ⚠️ User code | 3 ENUMVALUE errors - user code needs explicit enum casts |
+| jtag_avip | ⚠️ User code | 12 ENUMVALUE errors - user code needs explicit enum casts |
+| spi_avip | ✅ Compiles | Full UVM phases complete |
+| uart_avip | ✅ Compiles | Full UVM flow completes |
+
+**Summary: 6/9 AVIPs compile cleanly. 3 have IEEE compliance errors in user code (not Verilator issues).**
 
 ### 📁 Key Files
 
