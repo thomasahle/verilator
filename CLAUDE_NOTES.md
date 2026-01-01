@@ -164,7 +164,31 @@ Full UVM support for Verilator - NO WORKAROUNDS. The goal is to fix Verilator it
     - `uvm_sequence_item` properly inherits from `uvm_transaction`
     - Test: `t_uvm_transaction`
 
-21. **TLM2 Generic Payload**:
+21. **UVM Packer** (NEW):
+    - `uvm_packer` - full implementation for object serialization
+    - `pack_field_int(value, size)` / `unpack_field_int(size)` - integer fields
+    - `pack_string()` / `unpack_string()` - string serialization
+    - `pack_real()` / `unpack_real()` - real number serialization
+    - `pack_object()` / `unpack_object()` - nested object serialization
+    - Supports big_endian mode
+    - Test: `t_uvm_packer`
+
+22. **UVM Recorder** (NEW):
+    - `uvm_recorder` - transaction recording utility
+    - `record_field(name, value, size, radix)` - integer recording with radix
+    - `record_string()`, `record_real()`, `record_time()` - type-specific recording
+    - `record_object()` - recursive nested object recording
+    - Scope management, file open/close
+    - Test: `t_uvm_recorder`
+
+23. **UVM Callbacks Enhanced** (NEW):
+    - `uvm_callbacks#(T,CB)` - fully working callback registry
+    - `add()` / `delete()` / `get()` - callback management
+    - `get_first()` / `get_next()` - iterator pattern
+    - `has_callbacks()` / `get_count()` / `display()` - inspection
+    - Test: `t_uvm_callbacks_iter`
+
+24. **TLM2 Generic Payload**:
     - `uvm_tlm_generic_payload` - standard TLM2 payload for bus transactions
     - Address, command (READ/WRITE/IGNORE), data, byte enable, streaming width
     - Response status with OK, ERROR, ADDRESS_ERROR, etc.
