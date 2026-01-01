@@ -2926,11 +2926,12 @@ class LinkDotResolveVisitor final : public VNVisitor {
         const auto pair = m_usedPins.emplace(refp, nodep);
         if (!pair.second) {
             AstNode* const origp = pair.first->second;
-            nodep->v3error("Duplicate " << whatp << " connection: " << nodep->prettyNameQ() << '\n'
-                                        << nodep->warnContextPrimary() << '\n'
-                                        << origp->warnOther() << "... Location of original "
-                                        << whatp << " connection\n"
-                                        << origp->warnContextSecondary());
+            nodep->v3warn(PINDUP, "Duplicate " << whatp << " connection: " << nodep->prettyNameQ()
+                                               << '\n'
+                                               << nodep->warnContextPrimary() << '\n'
+                                               << origp->warnOther() << "... Location of original "
+                                               << whatp << " connection\n"
+                                               << origp->warnContextSecondary());
         }
     }
     // This helper clones the RefDType (including the user2 context), wraps it in a ParamTypeDType
