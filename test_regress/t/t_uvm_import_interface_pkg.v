@@ -14,7 +14,7 @@ package AgentPkg;
    `include "uvm_macros.svh"
    import GlobalsPkg::*;
 
-   class DriverProxy extends uvm_driver#(uvm_object);
+   class DriverProxy extends uvm_driver#(uvm_sequence_item);
       `uvm_component_utils(DriverProxy)
       function new(string name = "DriverProxy", uvm_component parent);
          super.new(name, parent);
