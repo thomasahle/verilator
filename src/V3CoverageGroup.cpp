@@ -359,8 +359,9 @@ class CoverageGroupVisitor final : public VNVisitor {
 
     // Process a single bin within a coverpoint
     // cpIffp is the optional coverpoint-level iff condition (already transformed)
+    // anyMatchedVarp is optional - if provided, set to 1 when this bin matches (for default bins)
     void processBin(AstCoverBin* binp, AstNodeExpr* cpExprp, const string& cpName,
-                    AstNodeExpr* cpIffp = nullptr) {
+                    AstNodeExpr* cpIffp = nullptr, AstVar* anyMatchedVarp = nullptr) {
         FileLine* const fl = binp->fileline();
         const string binName = binp->name().empty() ? "bin" + cvtToStr(m_binCount) : binp->name();
 
@@ -459,6 +460,79 @@ class CoverageGroupVisitor final : public VNVisitor {
         AstAssign* const setHitp = new AstAssign{fl, hitRefW, new AstConst{fl, AstConst::BitTrue{}}};
 
         // Also set static hit flag for type-level coverage
+        AstVarRef* const staticHitRefW = new AstVarRef{fl, staticHitVarp, VAccess::WRITE};
+        AstAssign* const setStaticHitp
+            = new AstAssign{fl, staticHitRefW, new AstConst{fl, AstConst::BitTrue{}}};
+
+        AstIf* const ifp = new AstIf{fl, condp, incCounterp, nullptr};
+        ifp->addThensp(setHitp);
+        ifp->addThensp(setStaticHitp);
+
+        // If tracking matches for default bin, set the anyMatched flag
+        if (anyMatchedVarp) {
+            AstVarRef* const anyMatchedRefW = new AstVarRef{fl, anyMatchedVarp, VAccess::WRITE};
+            AstAssign* const setAnyMatchedp
+                = new AstAssign{fl, anyMatchedRefW, new AstConst{fl, AstConst::BitTrue{}}};
+            ifp->addThensp(setAnyMatchedp);
+        }
+
+        m_sampleFuncp->addStmtsp(ifp);
+
+        // Track for get_inst_coverage()
+        m_hitVars.push_back(hitVarp);
+
+        // Track for get_coverage() (static)
+        m_staticHitVars.push_back(staticHitVarp);
+
+        // Track for cross coverage (map coverpoint name -> bin name + hit var)
+        m_cpBinHitVars[cpName].push_back({binName, hitVarp});
+
+        ++m_binCount;
+    }
+
+    // Process a default bin - matches when no other bin in the coverpoint matches
+    // anyMatchedVarp is set to true by regular bins when they match
+    void processDefaultBin(AstCoverBin* binp, AstNodeExpr* cpExprp, const string& cpName,
+                           AstNodeExpr* cpIffp, AstVar* anyMatchedVarp) {
+        FileLine* const fl = binp->fileline();
+        const string binName = binp->name().empty() ? "default" : binp->name();
+
+        // Create counter and hit flag variables (instance level)
+        const string counterName = makeVarName("__Vcov_cnt_", cpName, binName);
+        const string hitName = makeVarName("__Vcov_hit_", cpName, binName);
+        AstVar* const counterVarp = createCounterVar(fl, counterName);
+        AstVar* const hitVarp = createHitVar(fl, hitName);
+
+        // Create static hit flag for type-level coverage (get_coverage())
+        AstVar* const staticHitVarp = createStaticHitVar(fl, hitName);
+
+        // Build condition: NOT anyMatched (meaning no other bin matched)
+        AstVarRef* const anyMatchedRef = new AstVarRef{fl, anyMatchedVarp, VAccess::READ};
+        AstNodeExpr* condp = new AstLogNot{fl, anyMatchedRef};
+
+        // Apply coverpoint-level iff condition if present
+        if (cpIffp) {
+            condp = new AstLogAnd{fl, cpIffp->cloneTree(false), condp};
+        }
+
+        // Apply bin-level iff condition if present
+        if (binp->iffp()) {
+            condp = new AstLogAnd{fl, cloneWithTransforms(binp->iffp()), condp};
+        }
+
+        UINFO(4, "Processing default bin '" << binName << "' for coverpoint '" << cpName << "'"
+                                            << endl);
+
+        // Generate: if (condp) { counter++; hit = 1; staticHit = 1; }
+        AstVarRef* const counterRefW = new AstVarRef{fl, counterVarp, VAccess::WRITE};
+        AstVarRef* const counterRefR = new AstVarRef{fl, counterVarp, VAccess::READ};
+        AstAssign* const incCounterp
+            = new AstAssign{fl, counterRefW, new AstAdd{fl, counterRefR, new AstConst{fl, 1}}};
+
+        AstVarRef* const hitRefW = new AstVarRef{fl, hitVarp, VAccess::WRITE};
+        AstAssign* const setHitp
+            = new AstAssign{fl, hitRefW, new AstConst{fl, AstConst::BitTrue{}}};
+
         AstVarRef* const staticHitRefW = new AstVarRef{fl, staticHitVarp, VAccess::WRITE};
         AstAssign* const setStaticHitp
             = new AstAssign{fl, staticHitRefW, new AstConst{fl, AstConst::BitTrue{}}};
@@ -662,19 +736,36 @@ class CoverageGroupVisitor final : public VNVisitor {
             return;
         }
 
+        // If there's a default bin, create a member variable to track if any regular bin matched
+        // This variable is reset to 0 at start of sample(), set to 1 by any matching bin
+        AstVar* anyMatchedVarp = nullptr;
+        if (defaultBinp) {
+            const string matchedName = makeVarName("__Vcov_any_match_", cpName, "");
+            anyMatchedVarp = new AstVar{fl, VVarType::MEMBER, matchedName,
+                                        m_classp->findBitDType()};
+            anyMatchedVarp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
+            anyMatchedVarp->valuep(new AstConst{fl, AstConst::BitFalse{}});
+            m_classp->addMembersp(anyMatchedVarp);
+            // Reset to 0 at start of sample()
+            AstVarRef* const matchedRefW = new AstVarRef{fl, anyMatchedVarp, VAccess::WRITE};
+            AstAssign* const initMatchedp
+                = new AstAssign{fl, matchedRefW, new AstConst{fl, AstConst::BitFalse{}}};
+            m_sampleFuncp->addStmtsp(initMatchedp);
+        }
+
         // Process each explicit bin, passing the coverpoint-level iff condition
+        // and the anyMatched variable if we have a default bin
         for (AstNode* nodep = cpp->binsp(); nodep; nodep = nodep->nextp()) {
             if (AstCoverBin* const binp = VN_CAST(nodep, CoverBin)) {
                 if (!binp->isDefault()) {
-                    processBin(binp, exprp, cpName, cpIffp);
+                    processBin(binp, exprp, cpName, cpIffp, anyMatchedVarp);
                 }
             }
         }
 
-        // TODO: Process default bin last (Phase 5)
-        // Default bins need special handling - they should match when no other bin matches
-        if (defaultBinp) {
-            defaultBinp->v3warn(COVERIGN, "Default bins are parsed but not yet implemented");
+        // Process default bin last - it matches when no other bin matched
+        if (defaultBinp && anyMatchedVarp) {
+            processDefaultBin(defaultBinp, exprp, cpName, cpIffp, anyMatchedVarp);
         }
     }
 
