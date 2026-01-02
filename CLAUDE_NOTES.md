@@ -463,19 +463,33 @@ verilator --timing -cc -Wno-fatal --exe --build \
    - AHB AVIP compiles and runs successfully with assertions firing
    - Test doesn't complete due to stimulus loop in testbench (not a Verilator issue)
 
-### 🧪 Other AVIP Status
+### ✅ Recently Added - Auto-bin Generation for Coverpoints (commit 666bffc52)
+
+Coverpoints without explicit bins now automatically generate bins per IEEE 1800:
+- Single-value bins for signals with width ≤ 6 bits (64 values)
+- Ranged bins for wider signals (divides into `auto_bin_max` bins, default 64)
+- Respects `option.auto_bin_max` setting
+- Test: `t_covergroup_autobin.py`
+
+Changes:
+- `src/V3Width.cpp`: Preserve AstCgOptionAssign nodes for processing
+- `src/V3CoverageGroup.cpp`: Add CovergroupOptions struct, extractOptions(), generateAutoBins()
+
+### 🧪 AVIP Compilation Status (Jan 2, 2026)
 
 | AVIP | Status | Simulation | Notes |
 |------|--------|------------|-------|
 | axi4_avip | ✅ Compiles & Runs | Write test passes | 52.94% coverage |
-| axi4Lite_avip | ⚠️ IEEE violation | - | Nonblocking assignment to automatic variable |
-| ahb_avip | ✅ Compiles & Runs | Base test passes | Assertions fire |
-| apb_avip | ✅ Compiles & Runs | Base test passes | UVM phases complete |
-| i2s_avip | ✅ Compiles & Runs | Base test passes | 40.91% tx, 75% rx coverage |
-| i3c_avip | ✅ With -Wno-ENUMVALUE | Base test passes | UVM phases complete |
-| jtag_avip | ✅ Compiles | Runtime null ptr | Testbench assertion issue |
-| spi_avip | ✅ Compiles & Runs | Base test passes | 45.45% master, 53.33% slave |
-| uart_avip | ✅ Compiles & Runs | Runs | Testbench parity issue |
+| axi4Lite_avip | ⚠️ Interface resolution | - | Nested interface member access issues |
+| ahb_avip | ✅ Compiles (-Wno-fatal) | Base test passes | Assertions fire |
+| apb_avip | ⚠️ AVIP bug | - | Duplicate param connection (PINDUP) |
+| i2s_avip | ✅ Compiles (-Wno-fatal) | Base test passes | 40.91% tx, 75% rx coverage |
+| i3c_avip | ⚠️ ENUMVALUE errors | - | Implicit enum conversion in AVIP |
+| jtag_avip | ✅ Compiles (-Wno-fatal) | - | |
+| spi_avip | ✅ Compiles (-Wno-fatal) | Base test passes | 45.45% master, 53.33% slave |
+| uart_avip | ✅ Compiles (-Wno-fatal) | Runs | Testbench parity issue |
+
+**Summary: 5/8 AVIPs compile successfully with `-Wno-fatal`**
 
 **Summary: 8/9 AVIPs compile successfully. 1 blocked by IEEE violation in testbench code:**
 - **axi4Lite_avip**: Nonblocking assignment to automatic variable (IEEE 1800-2023 6.21 violation)
