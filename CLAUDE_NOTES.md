@@ -482,23 +482,16 @@ Changes:
 | axi4_avip | ✅ Compiles & Runs | Write test passes | 52.94% coverage |
 | axi4Lite_avip | ⚠️ Interface resolution | - | Nested interface member access issues |
 | ahb_avip | ✅ Compiles (-Wno-fatal) | Base test passes | Assertions fire |
-| apb_avip | ⚠️ AVIP bug | - | Duplicate param connection (PINDUP) |
+| apb_avip | ✅ Compiles & Runs | All phases complete | Fixed PINDUP in hdl_top.sv |
 | i2s_avip | ✅ Compiles (-Wno-fatal) | Base test passes | 40.91% tx, 75% rx coverage |
-| i3c_avip | ⚠️ ENUMVALUE errors | - | Implicit enum conversion in AVIP |
+| i3c_avip | ✅ Compiles & Runs | All phases complete | Needs -Wno-ENUMVALUE |
 | jtag_avip | ✅ Compiles (-Wno-fatal) | - | |
-| spi_avip | ✅ Compiles (-Wno-fatal) | Base test passes | 45.45% master, 53.33% slave |
-| uart_avip | ✅ Compiles (-Wno-fatal) | Runs | Testbench parity issue |
+| spi_avip | ✅ Compiles & Runs | All phases complete | 45.45% master, 53.33% slave |
+| uart_avip | ✅ Compiles & Runs | All phases complete | Needs long runtime for 20 packets |
 
-**Summary: 5/8 AVIPs compile successfully with `-Wno-fatal`**
+**Summary: 7/9 AVIPs compile and run successfully with proper main.cpp timing loops**
 
-**Summary: 8/9 AVIPs compile successfully. 1 blocked by IEEE violation in testbench code:**
-- **axi4Lite_avip**: Nonblocking assignment to automatic variable (IEEE 1800-2023 6.21 violation)
-  - Verilator correctly enforces the standard; Xcelium allows this as an extension
-  - The testbench code would need modification to be IEEE-compliant
-
-**Recent fix (commit d4a9f7f37)**: Fixed bind internal error when bind source module not yet visited.
-Bind statements that use module TYPE names (not instance names) and reference signals from
-the enclosing scope now work correctly.
+**Pending**: axi4Lite_avip has nested interface resolution issues (separate from the IEEE violation).
 
 ### ✅ -Wno-ENUMVALUE for UVM Testbenches
 
