@@ -24,27 +24,15 @@
 %Warning-COVERIGN: t/t_covergroup_unsup.v:160:27: Ignoring unsupported: coverage select expression with
   160 |          bins bin_not_e = ! with (a);
       |                           ^
-%Warning-COVERIGN: t/t_covergroup_unsup.v:163:35: Ignoring unsupported: coverage select expression '&&'
-  163 |          bins bin_and = binsof(a) && binsof(b);
-      |                                   ^~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:164:34: Ignoring unsupported: coverage select expression '||'
-  164 |          bins bin_or = binsof(a) || binsof(b);
-      |                                  ^~
 %Warning-COVERIGN: t/t_covergroup_unsup.v:165:36: Ignoring unsupported: coverage select expression with
   165 |          bins bin_with = binsof(a) with (a);
       |                                    ^~~~
 %Warning-COVERIGN: t/t_covergroup_unsup.v:166:52: Ignoring unsupported: coverage select expression with
   166 |          bins bin_or_with = binsof(a) || binsof(a) with (a);
       |                                                    ^~~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:166:39: Ignoring unsupported: coverage select expression '||'
-  166 |          bins bin_or_with = binsof(a) || binsof(a) with (a);
-      |                                       ^~
 %Warning-COVERIGN: t/t_covergroup_unsup.v:167:53: Ignoring unsupported: coverage select expression with
   167 |          bins bin_and_with = binsof(a) && binsof(a) with (a);
       |                                                     ^~~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:167:40: Ignoring unsupported: coverage select expression '&&'
-  167 |          bins bin_and_with = binsof(a) && binsof(a) with (a);
-      |                                        ^~
 %Warning-WIDTHTRUNC: t/t_covergroup_unsup.v:77:7: Logical operator COVERPOINT expects 1 bit on the iff condition, but iff condition's VARREF 'b' generates 32 bits.
                                                 : ... note: In instance 't'
    77 |       coverpoint a iff (b);
@@ -132,4 +120,88 @@
                                                 : ... note: In instance 't'
   179 |       covergroup cov1 @m_z;
       |                        ^~~
+%Warning-UNSIGNED: t/t_covergroup_unsup.v:74:7: Comparison is constant due to unsigned arithmetic
+                                              : ... note: In instance 't'
+   74 |       coverpoint a;
+      |       ^~~~~~~~~~
+                   ... For warning description see https://verilator.org/warn/UNSIGNED?v=latest
+                   ... Use "/* verilator lint_off UNSIGNED */" and lint_on around source to disable this message.
+%Warning-CMPCONST: t/t_covergroup_unsup.v:74:7: Comparison is constant due to limited range
+                                              : ... note: In instance 't'
+   74 |       coverpoint a;
+      |       ^~~~~~~~~~
+                   ... For warning description see https://verilator.org/warn/CMPCONST?v=latest
+                   ... Use "/* verilator lint_off CMPCONST */" and lint_on around source to disable this message.
+%Warning-UNSIGNED: t/t_covergroup_unsup.v:77:7: Comparison is constant due to unsigned arithmetic
+                                              : ... note: In instance 't'
+   77 |       coverpoint a iff (b);
+      |       ^~~~~~~~~~
+%Warning-CMPCONST: t/t_covergroup_unsup.v:77:7: Comparison is constant due to limited range
+                                              : ... note: In instance 't'
+   77 |       coverpoint a iff (b);
+      |       ^~~~~~~~~~
+%Warning-UNSIGNED: t/t_covergroup_unsup.v:80:11: Comparison is constant due to unsigned arithmetic
+                                               : ... note: In instance 't'
+   80 |       id: coverpoint a iff (b);
+      |           ^~~~~~~~~~
+%Warning-CMPCONST: t/t_covergroup_unsup.v:80:11: Comparison is constant due to limited range
+                                               : ... note: In instance 't'
+   80 |       id: coverpoint a iff (b);
+      |           ^~~~~~~~~~
+%Warning-UNSIGNED: t/t_covergroup_unsup.v:83:15: Comparison is constant due to unsigned arithmetic
+                                               : ... note: In instance 't'
+   83 |       int id: coverpoint a iff (b);
+      |               ^~~~~~~~~~
+%Warning-CMPCONST: t/t_covergroup_unsup.v:83:15: Comparison is constant due to limited range
+                                               : ... note: In instance 't'
+   83 |       int id: coverpoint a iff (b);
+      |               ^~~~~~~~~~
+%Warning-UNSIGNED: t/t_covergroup_unsup.v:86:19: Comparison is constant due to unsigned arithmetic
+                                               : ... note: In instance 't'
+   86 |       var int id: coverpoint a iff (b);
+      |                   ^~~~~~~~~~
+%Warning-CMPCONST: t/t_covergroup_unsup.v:86:19: Comparison is constant due to limited range
+                                               : ... note: In instance 't'
+   86 |       var int id: coverpoint a iff (b);
+      |                   ^~~~~~~~~~
+%Warning-UNSIGNED: t/t_covergroup_unsup.v:89:21: Comparison is constant due to unsigned arithmetic
+                                               : ... note: In instance 't'
+   89 |       var [3:0] id: coverpoint a iff (b);
+      |                     ^~~~~~~~~~
+%Warning-CMPCONST: t/t_covergroup_unsup.v:89:21: Comparison is constant due to limited range
+                                               : ... note: In instance 't'
+   89 |       var [3:0] id: coverpoint a iff (b);
+      |                     ^~~~~~~~~~
+%Warning-UNSIGNED: t/t_covergroup_unsup.v:92:17: Comparison is constant due to unsigned arithmetic
+                                               : ... note: In instance 't'
+   92 |       [3:0] id: coverpoint a iff (b);
+      |                 ^~~~~~~~~~
+%Warning-CMPCONST: t/t_covergroup_unsup.v:92:17: Comparison is constant due to limited range
+                                               : ... note: In instance 't'
+   92 |       [3:0] id: coverpoint a iff (b);
+      |                 ^~~~~~~~~~
+%Warning-UNSIGNED: t/t_covergroup_unsup.v:95:18: Comparison is constant due to unsigned arithmetic
+                                               : ... note: In instance 't'
+   95 |       signed id: coverpoint a iff (b);
+      |                  ^~~~~~~~~~
+%Warning-CMPCONST: t/t_covergroup_unsup.v:95:18: Comparison is constant due to limited range
+                                               : ... note: In instance 't'
+   95 |       signed id: coverpoint a iff (b);
+      |                  ^~~~~~~~~~
+%Warning-UNSIGNED: t/t_covergroup_unsup.v:180:10: Comparison is constant due to unsigned arithmetic
+                                                : ... note: In instance 't'
+  180 |          coverpoint m_x;
+      |          ^~~~~~~~~~
+%Warning-CMPCONST: t/t_covergroup_unsup.v:180:10: Comparison is constant due to limited range
+                                                : ... note: In instance 't'
+  180 |          coverpoint m_x;
+      |          ^~~~~~~~~~
+%Warning-UNSIGNED: t/t_covergroup_unsup.v:181:10: Comparison is constant due to unsigned arithmetic
+                                                : ... note: In instance 't'
+  181 |          coverpoint m_y;
+      |          ^~~~~~~~~~
+%Warning-CMPCONST: t/t_covergroup_unsup.v:181:10: Comparison is constant due to limited range
+                                                : ... note: In instance 't'
+  181 |          coverpoint m_y;
+      |          ^~~~~~~~~~
 %Error: Exiting due to

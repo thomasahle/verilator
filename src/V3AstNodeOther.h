@@ -1060,6 +1060,34 @@ public:
         return "??";  // LCOV_EXCL_LINE
     }
 };
+class AstCovSelectAnd final : public AstNode {
+    // binsof() && binsof() expression in cross coverage bin selection
+    // Parents: AstCoverBin (in cross coverage), or another AstCovSelect*
+    // @astgen op1 := lhsp : AstNode  // Left side of &&
+    // @astgen op2 := rhsp : AstNode  // Right side of &&
+public:
+    AstCovSelectAnd(FileLine* fl, AstNode* lhsp, AstNode* rhsp)
+        : ASTGEN_SUPER_CovSelectAnd(fl) {
+        this->lhsp(lhsp);
+        this->rhsp(rhsp);
+    }
+    ASTGEN_MEMBERS_AstCovSelectAnd;
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
+class AstCovSelectOr final : public AstNode {
+    // binsof() || binsof() expression in cross coverage bin selection
+    // Parents: AstCoverBin (in cross coverage), or another AstCovSelect*
+    // @astgen op1 := lhsp : AstNode  // Left side of ||
+    // @astgen op2 := rhsp : AstNode  // Right side of ||
+public:
+    AstCovSelectOr(FileLine* fl, AstNode* lhsp, AstNode* rhsp)
+        : ASTGEN_SUPER_CovSelectOr(fl) {
+        this->lhsp(lhsp);
+        this->rhsp(rhsp);
+    }
+    ASTGEN_MEMBERS_AstCovSelectOr;
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
 class AstCovTransition final : public AstNode {
     // Transition coverage sequence (value1 => value2 => value3)
     // Parents: AstCoverBin (in rangesp)
