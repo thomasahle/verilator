@@ -65,7 +65,52 @@ class CoverageGroupVisitor final : public VNVisitor {
     // Static map from covergroup name to (coverpoint name -> bin names list)
     static std::map<string, std::map<string, std::vector<string>>> s_cgBinInfo;
 
+    // Coverage options extracted from option.* assignments
+    struct CovergroupOptions {
+        bool perInstance = false;
+        string comment;
+        int weight = 1;
+        int atLeast = 1;
+        int goal = 100;
+        int autoBinMax = 64;  // IEEE default
+    };
+
+    // Current covergroup options
+    CovergroupOptions m_options;
+
     // METHODS
+
+    // Extract coverage options from AstCgOptionAssign nodes
+    CovergroupOptions extractOptions(AstClass* classp) {
+        CovergroupOptions opts;
+        // Search for AstCgOptionAssign nodes in the class
+        classp->foreach([&](AstCgOptionAssign* const op) {
+            const string& name = op->name();
+            AstConst* const valp = VN_CAST(op->valuep(), Const);
+            if (name == "per_instance" && valp) {
+                opts.perInstance = valp->toUInt();
+                UINFO(4, "  option.per_instance = " << opts.perInstance << endl);
+            } else if (name == "weight" && valp) {
+                opts.weight = valp->toSInt();
+                UINFO(4, "  option.weight = " << opts.weight << endl);
+            } else if (name == "at_least" && valp) {
+                opts.atLeast = valp->toSInt();
+                UINFO(4, "  option.at_least = " << opts.atLeast << endl);
+            } else if (name == "auto_bin_max" && valp) {
+                opts.autoBinMax = valp->toSInt();
+                UINFO(4, "  option.auto_bin_max = " << opts.autoBinMax << endl);
+            } else if (name == "goal" && valp) {
+                opts.goal = valp->toSInt();
+                UINFO(4, "  option.goal = " << opts.goal << endl);
+            } else if (name == "comment") {
+                if (AstConst* const sp = VN_CAST(op->valuep(), Const)) {
+                    opts.comment = sp->num().toString();
+                    UINFO(4, "  option.comment = " << opts.comment << endl);
+                }
+            }
+        });
+        return opts;
+    }
     string makeVarName(const string& prefix, const string& cpName, const string& binName) {
         string name = prefix + cpName;
         if (!binName.empty()) name += "_" + binName;
@@ -435,6 +480,154 @@ class CoverageGroupVisitor final : public VNVisitor {
         ++m_binCount;
     }
 
+    // Generate automatic bins for a coverpoint without explicit bins
+    // Per IEEE 1800-2017, auto bins are generated based on the expression width
+    void generateAutoBins(AstCoverpoint* cpp, AstNodeExpr* exprp, const string& cpName,
+                          AstNodeExpr* cpIffp) {
+        FileLine* const fl = cpp->fileline();
+        const int width = exprp->width();
+
+        // Use auto_bin_max from options (default 64)
+        const int autoBinMax = m_options.autoBinMax;
+
+        // Calculate number of possible values
+        // For width > 63, limit to avoid overflow
+        uint64_t numValues;
+        if (width >= 64) {
+            numValues = UINT64_MAX;  // Will use ranged bins
+        } else {
+            numValues = 1ULL << width;
+        }
+
+        UINFO(4, "Generating auto bins for " << cpName << " width=" << width
+                                             << " numValues=" << numValues
+                                             << " autoBinMax=" << autoBinMax << endl);
+
+        if (numValues <= (uint64_t)autoBinMax) {
+            // Create one bin per value
+            for (uint64_t i = 0; i < numValues; ++i) {
+                createAutoBinForValue(fl, exprp, cpName, cpIffp, i, width);
+            }
+        } else {
+            // Create ranged bins - divide the value space into autoBinMax bins
+            uint64_t binSize = numValues / autoBinMax;
+            for (int i = 0; i < autoBinMax; ++i) {
+                uint64_t lo = (uint64_t)i * binSize;
+                uint64_t hi = (i == autoBinMax - 1) ? (numValues - 1) : (((uint64_t)i + 1) * binSize - 1);
+                createAutoBinForRange(fl, exprp, cpName, cpIffp, lo, hi, i, width);
+            }
+        }
+    }
+
+    // Create an automatic bin for a single value
+    void createAutoBinForValue(FileLine* fl, AstNodeExpr* exprp, const string& cpName,
+                               AstNodeExpr* cpIffp, uint64_t value, int width) {
+        const string binName = "auto[" + cvtToStr(value) + "]";
+
+        // Create counter and hit flag variables (instance level)
+        const string counterName = makeVarName("__Vcov_cnt_", cpName, "auto_" + cvtToStr(value));
+        const string hitName = makeVarName("__Vcov_hit_", cpName, "auto_" + cvtToStr(value));
+        AstVar* const counterVarp = createCounterVar(fl, counterName);
+        AstVar* const hitVarp = createHitVar(fl, hitName);
+
+        // Create static hit flag for type-level coverage
+        AstVar* const staticHitVarp = createStaticHitVar(fl, hitName);
+
+        // Condition: exprp == value
+        AstConst* const valuep = new AstConst{fl, AstConst::Unsized64{}, value};
+        valuep->dtypeSetBitSized(width, VSigning::UNSIGNED);
+        AstNodeExpr* condp
+            = new AstEq{fl, cloneWithTransforms(exprp), valuep};
+
+        // Apply coverpoint-level iff condition if present
+        if (cpIffp) {
+            condp = new AstLogAnd{fl, cpIffp->cloneTree(false), condp};
+        }
+
+        // Generate: if (condp) { counter++; hit = 1; staticHit = 1; }
+        AstVarRef* const counterRefW = new AstVarRef{fl, counterVarp, VAccess::WRITE};
+        AstVarRef* const counterRefR = new AstVarRef{fl, counterVarp, VAccess::READ};
+        AstAssign* const incCounterp = new AstAssign{
+            fl, counterRefW, new AstAdd{fl, counterRefR, new AstConst{fl, 1}}};
+
+        AstVarRef* const hitRefW = new AstVarRef{fl, hitVarp, VAccess::WRITE};
+        AstAssign* const setHitp
+            = new AstAssign{fl, hitRefW, new AstConst{fl, AstConst::BitTrue{}}};
+
+        AstVarRef* const staticHitRefW = new AstVarRef{fl, staticHitVarp, VAccess::WRITE};
+        AstAssign* const setStaticHitp
+            = new AstAssign{fl, staticHitRefW, new AstConst{fl, AstConst::BitTrue{}}};
+
+        AstIf* const ifp = new AstIf{fl, condp, incCounterp, nullptr};
+        ifp->addThensp(setHitp);
+        ifp->addThensp(setStaticHitp);
+        m_sampleFuncp->addStmtsp(ifp);
+
+        // Track for coverage calculations
+        m_hitVars.push_back(hitVarp);
+        m_staticHitVars.push_back(staticHitVarp);
+        m_cpBinHitVars[cpName].push_back({binName, hitVarp});
+
+        ++m_binCount;
+    }
+
+    // Create an automatic bin for a range of values
+    void createAutoBinForRange(FileLine* fl, AstNodeExpr* exprp, const string& cpName,
+                               AstNodeExpr* cpIffp, uint64_t lo, uint64_t hi, int binIdx,
+                               int width) {
+        const string binName = "auto[" + cvtToStr(lo) + ":" + cvtToStr(hi) + "]";
+
+        // Create counter and hit flag variables
+        const string counterName = makeVarName("__Vcov_cnt_", cpName, "auto_" + cvtToStr(binIdx));
+        const string hitName = makeVarName("__Vcov_hit_", cpName, "auto_" + cvtToStr(binIdx));
+        AstVar* const counterVarp = createCounterVar(fl, counterName);
+        AstVar* const hitVarp = createHitVar(fl, hitName);
+
+        // Create static hit flag for type-level coverage
+        AstVar* const staticHitVarp = createStaticHitVar(fl, hitName);
+
+        // Condition: exprp >= lo && exprp <= hi
+        AstConst* const lop = new AstConst{fl, AstConst::Unsized64{}, lo};
+        AstConst* const hip = new AstConst{fl, AstConst::Unsized64{}, hi};
+        lop->dtypeSetBitSized(width, VSigning::UNSIGNED);
+        hip->dtypeSetBitSized(width, VSigning::UNSIGNED);
+
+        AstNodeExpr* const geq = new AstGte{fl, cloneWithTransforms(exprp), lop};
+        AstNodeExpr* const leq = new AstLte{fl, cloneWithTransforms(exprp), hip};
+        AstNodeExpr* condp = new AstLogAnd{fl, geq, leq};
+
+        // Apply coverpoint-level iff condition if present
+        if (cpIffp) {
+            condp = new AstLogAnd{fl, cpIffp->cloneTree(false), condp};
+        }
+
+        // Generate: if (condp) { counter++; hit = 1; staticHit = 1; }
+        AstVarRef* const counterRefW = new AstVarRef{fl, counterVarp, VAccess::WRITE};
+        AstVarRef* const counterRefR = new AstVarRef{fl, counterVarp, VAccess::READ};
+        AstAssign* const incCounterp = new AstAssign{
+            fl, counterRefW, new AstAdd{fl, counterRefR, new AstConst{fl, 1}}};
+
+        AstVarRef* const hitRefW = new AstVarRef{fl, hitVarp, VAccess::WRITE};
+        AstAssign* const setHitp
+            = new AstAssign{fl, hitRefW, new AstConst{fl, AstConst::BitTrue{}}};
+
+        AstVarRef* const staticHitRefW = new AstVarRef{fl, staticHitVarp, VAccess::WRITE};
+        AstAssign* const setStaticHitp
+            = new AstAssign{fl, staticHitRefW, new AstConst{fl, AstConst::BitTrue{}}};
+
+        AstIf* const ifp = new AstIf{fl, condp, incCounterp, nullptr};
+        ifp->addThensp(setHitp);
+        ifp->addThensp(setStaticHitp);
+        m_sampleFuncp->addStmtsp(ifp);
+
+        // Track for coverage calculations
+        m_hitVars.push_back(hitVarp);
+        m_staticHitVars.push_back(staticHitVarp);
+        m_cpBinHitVars[cpName].push_back({binName, hitVarp});
+
+        ++m_binCount;
+    }
+
     // Process a coverpoint
     void processCoverpoint(AstCoverpoint* cpp) {
         FileLine* const fl = cpp->fileline();
@@ -448,11 +641,40 @@ class CoverageGroupVisitor final : public VNVisitor {
         // Must use cloneWithTransforms to resolve sample arguments correctly
         AstNodeExpr* cpIffp = cpp->iffp() ? cloneWithTransforms(cpp->iffp()) : nullptr;
 
-        // Process each bin, passing the coverpoint-level iff condition
+        // Check if there are any explicit bins (excluding default bins)
+        bool hasExplicitBins = false;
+        AstCoverBin* defaultBinp = nullptr;
         for (AstNode* nodep = cpp->binsp(); nodep; nodep = nodep->nextp()) {
             if (AstCoverBin* const binp = VN_CAST(nodep, CoverBin)) {
-                processBin(binp, exprp, cpName, cpIffp);
+                if (binp->isDefault()) {
+                    defaultBinp = binp;
+                } else {
+                    hasExplicitBins = true;
+                }
             }
+        }
+
+        if (!hasExplicitBins) {
+            // No explicit bins - generate automatic bins
+            UINFO(4, "Coverpoint " << cpName << " has no explicit bins, generating auto bins"
+                                   << endl);
+            generateAutoBins(cpp, exprp, cpName, cpIffp);
+            return;
+        }
+
+        // Process each explicit bin, passing the coverpoint-level iff condition
+        for (AstNode* nodep = cpp->binsp(); nodep; nodep = nodep->nextp()) {
+            if (AstCoverBin* const binp = VN_CAST(nodep, CoverBin)) {
+                if (!binp->isDefault()) {
+                    processBin(binp, exprp, cpName, cpIffp);
+                }
+            }
+        }
+
+        // TODO: Process default bin last (Phase 5)
+        // Default bins need special handling - they should match when no other bin matches
+        if (defaultBinp) {
+            defaultBinp->v3warn(COVERIGN, "Default bins are parsed but not yet implemented");
         }
     }
 
@@ -711,6 +933,9 @@ class CoverageGroupVisitor final : public VNVisitor {
         m_enclosingClassp = nullptr;
         m_parentPtrVarp = nullptr;
 
+        // Extract coverage options from the covergroup
+        m_options = extractOptions(nodep);
+
         // Find sample(), get_coverage(), and get_inst_coverage() functions
         for (AstNode* memberp = nodep->membersp(); memberp; memberp = memberp->nextp()) {
             if (AstFunc* const funcp = VN_CAST(memberp, Func)) {
@@ -829,6 +1054,16 @@ class CoverageGroupVisitor final : public VNVisitor {
         // Clean up - remove AstCoverCross nodes after processing
         for (AstCoverCross* xp : crosses) {
             VL_DO_DANGLING(xp->unlinkFrBack()->deleteTree(), xp);
+        }
+
+        // Clean up - remove AstCgOptionAssign nodes after processing
+        // These nodes were processed in extractOptions() and are no longer needed
+        std::vector<AstCgOptionAssign*> optionsToDelete;
+        nodep->foreach([&](AstCgOptionAssign* const op) {
+            optionsToDelete.push_back(op);
+        });
+        for (AstCgOptionAssign* op : optionsToDelete) {
+            VL_DO_DANGLING(op->unlinkFrBack()->deleteTree(), op);
         }
 
         // Initialize __Vparentp in the enclosing class if we have enclosing class references
