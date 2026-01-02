@@ -1091,16 +1091,18 @@ class AstCoverBin final : public AstNode {
     bool m_isArray;  // bins b[] = ...
     bool m_isDefault;  // default bin
     bool m_isDefaultSeq;  // default sequence bin
+    bool m_isWildcard;  // wildcard bins (use mask-based matching)
 public:
     AstCoverBin(FileLine* fl, const string& name, VCoverBinType type, AstNode* rangesp,
                 AstNodeExpr* iffp, bool isArray = false, bool isDefault = false,
-                bool isDefaultSeq = false)
+                bool isDefaultSeq = false, bool isWildcard = false)
         : ASTGEN_SUPER_CoverBin(fl)
         , m_name{name}
         , m_type{type}
         , m_isArray{isArray}
         , m_isDefault{isDefault}
-        , m_isDefaultSeq{isDefaultSeq} {
+        , m_isDefaultSeq{isDefaultSeq}
+        , m_isWildcard{isWildcard} {
         addRangesp(rangesp);
         this->iffp(iffp);
     }
@@ -1113,6 +1115,7 @@ public:
     bool isArray() const { return m_isArray; }
     bool isDefault() const { return m_isDefault; }
     bool isDefaultSeq() const { return m_isDefaultSeq; }
+    bool isWildcard() const { return m_isWildcard; }
 };
 class AstCoverCross final : public AstNode {
     // Cross coverage inside a covergroup

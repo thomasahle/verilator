@@ -11,9 +11,8 @@ import vltest_bootstrap
 
 test.scenarios('simulator')
 
-# Note: wildcard bins with ? syntax not yet fully implemented
-# The ? characters are treated as 0 bits instead of wildcards
-# Test passes but coverage is 0% - documenting current limitation
+# Test wildcard bins with ? syntax
+# Uses mask-based comparison: (value & mask) == expected
 test.compile(
     verilator_flags2=["--timing"],
 )
