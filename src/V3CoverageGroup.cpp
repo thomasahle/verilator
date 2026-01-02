@@ -347,6 +347,159 @@ class CoverageGroupVisitor final : public VNVisitor {
         return clonep;
     }
 
+    // Create condition checking if expr matches a transition step value/range
+    AstNodeExpr* createStepMatch(FileLine* fl, AstNodeExpr* exprp, AstNode* stepp) {
+        if (AstInsideRange* const irp = VN_CAST(stepp, InsideRange)) {
+            return irp->newAndFromInside(exprp, irp->lhsp()->cloneTree(false),
+                                         irp->rhsp()->cloneTree(false));
+        } else if (AstRange* const rp = VN_CAST(stepp, Range)) {
+            AstNodeExpr* const geq = new AstGte{fl, exprp, rp->leftp()->cloneTree(false)};
+            AstNodeExpr* const leq
+                = new AstLte{fl, exprp->cloneTree(false), rp->rightp()->cloneTree(false)};
+            return new AstLogAnd{fl, geq, leq};
+        } else if (AstConst* const cp = VN_CAST(stepp, Const)) {
+            return new AstEq{fl, exprp, cp->cloneTree(false)};
+        } else if (AstNodeExpr* const ep = VN_CAST(stepp, NodeExpr)) {
+            return new AstEq{fl, exprp, ep->cloneTree(false)};
+        }
+        return nullptr;
+    }
+
+    // Process a transition bin (e.g., bins x = (0 => 1 => 2))
+    // Returns true if transition was processed, false if it should be skipped
+    bool processTransitionBin(AstCoverBin* binp, AstCovTransition* transp, AstNodeExpr* cpExprp,
+                              const string& cpName, AstNodeExpr* cpIffp, AstVar* anyMatchedVarp) {
+        FileLine* const fl = binp->fileline();
+        const string binName = binp->name().empty() ? "trans" + cvtToStr(m_binCount) : binp->name();
+
+        // Count transition steps
+        int numSteps = 0;
+        for (AstNode* stepp = transp->stepsp(); stepp; stepp = stepp->nextp()) { ++numSteps; }
+
+        if (numSteps < 2) {
+            transp->v3warn(COVERIGN, "Transition coverage requires at least 2 values");
+            return false;
+        }
+
+        UINFO(4, "Processing transition bin '" << binName << "' with " << numSteps
+                                               << " steps" << endl);
+
+        // Now create the state variable and other tracking variables
+        const string stateName = makeVarName("__Vcov_trans_state_", cpName, binName);
+        AstVar* const stateVarp
+            = new AstVar{fl, VVarType::MEMBER, stateName, m_classp->findUInt32DType()};
+        stateVarp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
+        stateVarp->valuep(new AstConst{fl, 0});
+        m_classp->addMembersp(stateVarp);
+
+        // Create counter and hit flag variables
+        const string counterName = makeVarName("__Vcov_cnt_", cpName, binName);
+        const string hitName = makeVarName("__Vcov_hit_", cpName, binName);
+        AstVar* const counterVarp = createCounterVar(fl, counterName);
+        AstVar* const hitVarp = createHitVar(fl, hitName);
+        AstVar* const staticHitVarp = createStaticHitVar(fl, hitName);
+
+        // Collect steps into a vector (don't clone yet)
+        std::vector<AstNode*> steps;
+        for (AstNode* stepp = transp->stepsp(); stepp; stepp = stepp->nextp()) {
+            steps.push_back(stepp);
+        }
+
+        // Build state machine logic
+        // For n steps: states 0..n-1, where state i means we've matched steps 0..i-1
+        // When in state i and value matches step[i]:
+        //   - If i == n-1: bin hit, reset to state 0
+        //   - Else: advance to state i+1
+        // When value doesn't match: reset to 0 (but check if matches step[0])
+
+        // Default action: reset state to 0
+        AstNode* defaultActionp
+            = new AstAssign{fl, new AstVarRef{fl, stateVarp, VAccess::WRITE}, new AstConst{fl, 0}};
+
+        // If current value matches step[0], set state to 1 (start new sequence)
+        // Otherwise, reset to 0
+        // Note: Use cloneWithTransforms to properly handle sample args and enclosing class refs
+        AstNodeExpr* step0Matchp
+            = createStepMatch(fl, cloneWithTransforms(cpExprp), steps[0]->cloneTree(false));
+        if (!step0Matchp) {
+            transp->v3warn(COVERIGN, "Transition coverage step 0 cannot be matched");
+            return false;
+        }
+        AstIf* resetIfp = new AstIf{
+            fl, step0Matchp,
+            new AstAssign{fl, new AstVarRef{fl, stateVarp, VAccess::WRITE}, new AstConst{fl, 1}},
+            defaultActionp};
+
+        AstIf* outerIfp = resetIfp;
+
+        // Build from state n-1 down to state 0
+        for (int i = numSteps - 1; i >= 0; --i) {
+            // Condition: state == i && value matches step[i]
+            AstNodeExpr* stateEqp = new AstEq{fl, new AstVarRef{fl, stateVarp, VAccess::READ},
+                                              new AstConst{fl, static_cast<uint32_t>(i)}};
+            // Create a fresh step match each time
+            // Note: Use cloneWithTransforms to properly handle sample args and enclosing class refs
+            AstNodeExpr* stepMatchp
+                = createStepMatch(fl, cloneWithTransforms(cpExprp), steps[i]->cloneTree(false));
+            if (!stepMatchp) continue;
+            AstNodeExpr* condp = new AstLogAnd{fl, stateEqp, stepMatchp};
+
+            // Apply iff conditions
+            if (cpIffp) { condp = new AstLogAnd{fl, cpIffp->cloneTree(false), condp}; }
+            if (binp->iffp()) {
+                condp = new AstLogAnd{fl, cloneWithTransforms(binp->iffp()), condp};
+            }
+
+            AstIf* ifp;
+            if (i == numSteps - 1) {
+                // Last step - bin is hit!
+                AstAssign* const incCounterp = new AstAssign{
+                    fl, new AstVarRef{fl, counterVarp, VAccess::WRITE},
+                    new AstAdd{fl, new AstVarRef{fl, counterVarp, VAccess::READ},
+                               new AstConst{fl, 1}}};
+                AstAssign* const setHitp = new AstAssign{
+                    fl, new AstVarRef{fl, hitVarp, VAccess::WRITE},
+                    new AstConst{fl, AstConst::BitTrue{}}};
+                AstAssign* const setStaticHitp = new AstAssign{
+                    fl, new AstVarRef{fl, staticHitVarp, VAccess::WRITE},
+                    new AstConst{fl, AstConst::BitTrue{}}};
+                AstAssign* const resetStatep = new AstAssign{
+                    fl, new AstVarRef{fl, stateVarp, VAccess::WRITE}, new AstConst{fl, 0}};
+
+                ifp = new AstIf{fl, condp, incCounterp, outerIfp};
+                ifp->addThensp(setHitp);
+                ifp->addThensp(setStaticHitp);
+                ifp->addThensp(resetStatep);
+
+                if (anyMatchedVarp) {
+                    AstAssign* const setAnyMatchedp = new AstAssign{
+                        fl, new AstVarRef{fl, anyMatchedVarp, VAccess::WRITE},
+                        new AstConst{fl, AstConst::BitTrue{}}};
+                    ifp->addThensp(setAnyMatchedp);
+                }
+            } else {
+                // Intermediate step - advance state
+                AstAssign* const advanceStatep = new AstAssign{
+                    fl, new AstVarRef{fl, stateVarp, VAccess::WRITE},
+                    new AstConst{fl, static_cast<uint32_t>(i + 1)}};
+                ifp = new AstIf{fl, condp, advanceStatep, outerIfp};
+            }
+
+            outerIfp = ifp;
+        }
+
+        m_sampleFuncp->addStmtsp(outerIfp);
+
+        // Track for coverage calculations
+        m_hitVars.push_back(hitVarp);
+        m_counterVars.push_back(counterVarp);
+        m_staticHitVars.push_back(staticHitVarp);
+        m_cpBinHitVars[cpName].push_back({binName, hitVarp});
+
+        ++m_binCount;
+        return true;
+    }
+
     // Create condition: expr >= lo && expr <= hi
     // Note: exprp is consumed (not cloned here), caller must provide a fresh clone
     AstNodeExpr* createRangeCheck(FileLine* fl, AstNodeExpr* exprp, AstNodeExpr* lop,
@@ -371,6 +524,19 @@ class CoverageGroupVisitor final : public VNVisitor {
         // Skip ignore_bins from coverage calculation
         if (binp->binType().m_e == VCoverBinType::IGNORE_BINS) return;
 
+        // Check for transition bins FIRST before creating variables
+        // This avoids creating duplicate variables when processTransitionBin also creates them
+        for (AstNode* rangep = binp->rangesp(); rangep; rangep = rangep->nextp()) {
+            if (AstCovTransition* const transp = VN_CAST(rangep, CovTransition)) {
+                // Transition coverage - process via state machine
+                // processTransitionBin creates its own counter/hit/state variables
+                if (processTransitionBin(binp, transp, cpExprp, cpName, cpIffp, anyMatchedVarp)) {
+                    return;  // Successfully processed transition bin
+                }
+                // Failed to process, fall through to try regular processing
+            }
+        }
+
         // Create counter and hit flag variables (instance level)
         const string counterName = makeVarName("__Vcov_cnt_", cpName, binName);
         const string hitName = makeVarName("__Vcov_hit_", cpName, binName);
@@ -386,11 +552,8 @@ class CoverageGroupVisitor final : public VNVisitor {
         for (AstNode* rangep = binp->rangesp(); rangep; rangep = rangep->nextp()) {
             AstNodeExpr* rangeCondp = nullptr;
 
-            if (AstCovTransition* const transp = VN_CAST(rangep, CovTransition)) {
-                // Transition coverage - warn and skip for now
-                transp->v3warn(COVERIGN,
-                               "Transition coverage (=>) is parsed but not yet "
-                               "fully implemented; bin '" + binName + "' will not be tracked");
+            if (VN_IS(rangep, CovTransition)) {
+                // Already handled above, skip
                 continue;
             } else if (VN_IS(rangep, CovRepetition)) {
                 // Coverage repetition - already warned in V3Width, skip
