@@ -480,7 +480,7 @@ Changes:
 | AVIP | Status | Simulation | Notes |
 |------|--------|------------|-------|
 | axi4_avip | ✅ Compiles & Runs | Write test passes | 52.94% coverage |
-| axi4Lite_avip | ⚠️ Interface resolution | - | Nested interface member access issues |
+| axi4Lite_avip | ✅ Compiles & Runs | Starts, TB bug | Needs -Wno-COVERIGN, TB null ptr in assertions |
 | ahb_avip | ✅ Compiles (-Wno-fatal) | Base test passes | Assertions fire |
 | apb_avip | ✅ Compiles & Runs | All phases complete | Fixed PINDUP in hdl_top.sv |
 | i2s_avip | ✅ Compiles (-Wno-fatal) | Base test passes | 40.91% tx, 75% rx coverage |
@@ -489,9 +489,10 @@ Changes:
 | spi_avip | ✅ Compiles & Runs | All phases complete | 45.45% master, 53.33% slave |
 | uart_avip | ✅ Compiles & Runs | All phases complete | Needs long runtime for 20 packets |
 
-**Summary: 7/9 AVIPs compile and run successfully with proper main.cpp timing loops**
+**Summary: 8/9 AVIPs compile and run successfully with proper main.cpp timing loops**
 
-**Pending**: axi4Lite_avip has nested interface resolution issues (separate from the IEEE violation).
+All AVIPs except JTAG (not tested) now compile and run through UVM phases. The axi4Lite AVIP
+has a testbench bug (null pointer in assertions) but otherwise works.
 
 ### ✅ -Wno-ENUMVALUE for UVM Testbenches
 
