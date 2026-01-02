@@ -54,8 +54,21 @@ class CoverageGroupVisitor final : public VNVisitor {
     // List of static hit flags for get_coverage() (type level)
     std::vector<AstVar*> m_staticHitVars;
 
-    // Cross coverage support: map coverpoint name -> list of (bin name, hit var)
-    std::map<string, std::vector<std::pair<string, AstVar*>>> m_cpBinHitVars;
+    // Cross coverage support: bin info including value ranges for intersect
+    struct CovBinInfo {
+        string name;
+        AstVar* hitVar;
+        std::vector<std::pair<int64_t, int64_t>> valueRanges;  // (lo, hi) pairs
+        CovBinInfo(const string& n, AstVar* v)
+            : name{n}
+            , hitVar{v} {}
+        CovBinInfo(const string& n, AstVar* v, int64_t lo, int64_t hi)
+            : name{n}
+            , hitVar{v}
+            , valueRanges{{lo, hi}} {}
+        void addRange(int64_t lo, int64_t hi) { valueRanges.push_back({lo, hi}); }
+    };
+    std::map<string, std::vector<CovBinInfo>> m_cpBinHitVars;
 
     // Sample arg support: map arg name -> function argument AstVar
     std::map<string, AstVar*> m_sampleArgs;
@@ -494,7 +507,8 @@ class CoverageGroupVisitor final : public VNVisitor {
         m_hitVars.push_back(hitVarp);
         m_counterVars.push_back(counterVarp);
         m_staticHitVars.push_back(staticHitVarp);
-        m_cpBinHitVars[cpName].push_back({binName, hitVarp});
+        // Transition bins don't have simple value ranges for intersect
+        m_cpBinHitVars[cpName].push_back(CovBinInfo{binName, hitVarp});
 
         ++m_binCount;
         return true;
@@ -678,7 +692,35 @@ class CoverageGroupVisitor final : public VNVisitor {
         m_staticHitVars.push_back(staticHitVarp);
 
         // Track for cross coverage (map coverpoint name -> bin name + hit var)
-        m_cpBinHitVars[cpName].push_back({binName, hitVarp});
+        // Extract value ranges from rangesp for intersect support
+        CovBinInfo binInfo{binName, hitVarp};
+        for (AstNode* rangep = binp->rangesp(); rangep; rangep = rangep->nextp()) {
+            if (AstRange* const rp = VN_CAST(rangep, Range)) {
+                // Range [lo:hi] (legacy format)
+                if (AstConst* const lop = VN_CAST(rp->leftp(), Const)) {
+                    if (AstConst* const hip = VN_CAST(rp->rightp(), Const)) {
+                        if (!lop->num().isFourState() && !hip->num().isFourState()) {
+                            binInfo.addRange(lop->num().toSQuad(), hip->num().toSQuad());
+                        }
+                    }
+                }
+            } else if (AstInsideRange* const irp = VN_CAST(rangep, InsideRange)) {
+                // InsideRange [lo:hi] (from value_range in grammar)
+                if (AstConst* const lop = VN_CAST(irp->lhsp(), Const)) {
+                    if (AstConst* const hip = VN_CAST(irp->rhsp(), Const)) {
+                        if (!lop->num().isFourState() && !hip->num().isFourState()) {
+                            binInfo.addRange(lop->num().toSQuad(), hip->num().toSQuad());
+                        }
+                    }
+                }
+            } else if (AstConst* const cp = VN_CAST(rangep, Const)) {
+                // Single value - skip if 4-state (wildcard bins with x/z)
+                if (!cp->num().isFourState()) {
+                    binInfo.addRange(cp->num().toSQuad(), cp->num().toSQuad());
+                }
+            }
+        }
+        m_cpBinHitVars[cpName].push_back(binInfo);
 
         ++m_binCount;
     }
@@ -743,7 +785,8 @@ class CoverageGroupVisitor final : public VNVisitor {
         m_staticHitVars.push_back(staticHitVarp);
 
         // Track for cross coverage (map coverpoint name -> bin name + hit var)
-        m_cpBinHitVars[cpName].push_back({binName, hitVarp});
+        // Default bins cover "everything else" - no simple value ranges for intersect
+        m_cpBinHitVars[cpName].push_back(CovBinInfo{binName, hitVarp});
 
         ++m_binCount;
     }
@@ -835,7 +878,7 @@ class CoverageGroupVisitor final : public VNVisitor {
         m_hitVars.push_back(hitVarp);
         m_counterVars.push_back(counterVarp);
         m_staticHitVars.push_back(staticHitVarp);
-        m_cpBinHitVars[cpName].push_back({binName, hitVarp});
+        m_cpBinHitVars[cpName].push_back(CovBinInfo{binName, hitVarp, (int64_t)value, (int64_t)value});
 
         ++m_binCount;
     }
@@ -893,7 +936,7 @@ class CoverageGroupVisitor final : public VNVisitor {
         m_hitVars.push_back(hitVarp);
         m_counterVars.push_back(counterVarp);
         m_staticHitVars.push_back(staticHitVarp);
-        m_cpBinHitVars[cpName].push_back({binName, hitVarp});
+        m_cpBinHitVars[cpName].push_back(CovBinInfo{binName, hitVarp, (int64_t)lo, (int64_t)hi});
 
         ++m_binCount;
     }
@@ -965,15 +1008,60 @@ class CoverageGroupVisitor final : public VNVisitor {
         }
     }
 
+    // Helper to check if a bin's value ranges overlap with intersect values
+    static bool binValuesOverlap(const CovBinInfo& binInfo, AstNode* intersectp) {
+        if (!intersectp) return true;  // No intersect means match everything
+        if (binInfo.valueRanges.empty()) return true;  // No ranges tracked means unknown, assume match
+
+        // Check each intersect value/range against bin's value ranges
+        for (AstNode* rangep = intersectp; rangep; rangep = rangep->nextp()) {
+            int64_t intLo = 0, intHi = 0;
+            if (AstConst* const cp = VN_CAST(rangep, Const)) {
+                intLo = intHi = cp->num().toSQuad();
+            } else if (AstRange* const rp = VN_CAST(rangep, Range)) {
+                if (AstConst* const lop = VN_CAST(rp->leftp(), Const)) {
+                    if (AstConst* const hip = VN_CAST(rp->rightp(), Const)) {
+                        intLo = lop->num().toSQuad();
+                        intHi = hip->num().toSQuad();
+                    } else {
+                        continue;  // Skip non-constant ranges
+                    }
+                } else {
+                    continue;
+                }
+            } else if (AstInsideRange* const irp = VN_CAST(rangep, InsideRange)) {
+                // InsideRange [lo:hi] (from covergroup_value_range in grammar)
+                if (AstConst* const lop = VN_CAST(irp->lhsp(), Const)) {
+                    if (AstConst* const hip = VN_CAST(irp->rhsp(), Const)) {
+                        intLo = lop->num().toSQuad();
+                        intHi = hip->num().toSQuad();
+                    } else {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+
+            // Check if intersect range [intLo:intHi] overlaps with any bin range
+            for (const auto& binRange : binInfo.valueRanges) {
+                // Ranges overlap if: binLo <= intHi && intLo <= binHi
+                if (binRange.first <= intHi && intLo <= binRange.second) { return true; }
+            }
+        }
+        return false;
+    }
+
     // Helper to evaluate a binsof expression against a specific cross bin combination
     // Returns true if the binsof expression matches the current combination
     // cpNames: list of coverpoint names in the cross
     // indices: current bin indices for each coverpoint
-    // cpBinLists: list of (bin_name, hit_var) pairs for each coverpoint
+    // cpBinLists: list of CovBinInfo for each coverpoint
     bool evaluateBinsofExpr(AstNode* exprp, const std::vector<string>& cpNames,
                             const std::vector<size_t>& indices,
-                            const std::vector<const std::vector<std::pair<string, AstVar*>>*>&
-                                cpBinLists) {
+                            const std::vector<const std::vector<CovBinInfo>*>& cpBinLists) {
         if (!exprp) return false;
 
         // Handle && operator
@@ -1009,14 +1097,22 @@ class CoverageGroupVisitor final : public VNVisitor {
             // Find which coverpoint index this refers to
             for (size_t i = 0; i < cpNames.size(); ++i) {
                 if (cpNames[i] == cpName) {
-                    // Found the coverpoint - check if current bin matches
+                    const CovBinInfo& currentBin = (*cpBinLists[i])[indices[i]];
+
+                    // Check if there's an intersect clause
+                    if (binsofp->intersectp()) {
+                        // binsof(cp) intersect {values} - check if bin values overlap
+                        bool overlaps = binValuesOverlap(currentBin, binsofp->intersectp());
+                        return binsofp->negate() ? !overlaps : overlaps;
+                    }
+
+                    // No intersect clause
                     if (binName.empty()) {
                         // Match any bin in this coverpoint - always true
                         return !binsofp->negate();
                     }
                     // Check if current bin name matches
-                    const string& currentBinName = (*cpBinLists[i])[indices[i]].first;
-                    bool matches = (currentBinName == binName);
+                    bool matches = (currentBin.name == binName);
                     return binsofp->negate() ? !matches : matches;
                 }
             }
@@ -1046,8 +1142,8 @@ class CoverageGroupVisitor final : public VNVisitor {
             return;
         }
 
-        // Look up bin hit vars for each coverpoint
-        std::vector<const std::vector<std::pair<string, AstVar*>>*> cpBinLists;
+        // Look up bin info for each coverpoint
+        std::vector<const std::vector<CovBinInfo>*> cpBinLists;
         for (const string& cpName : cpNames) {
             auto it = m_cpBinHitVars.find(cpName);
             if (it == m_cpBinHitVars.end()) {
@@ -1114,9 +1210,9 @@ class CoverageGroupVisitor final : public VNVisitor {
             string crossBinName = crossName;
             std::vector<AstVar*> hitVars;
             for (size_t i = 0; i < cpNames.size(); ++i) {
-                const auto& binPair = (*cpBinLists[i])[indices[i]];
-                crossBinName += "_" + binPair.first;
-                hitVars.push_back(binPair.second);
+                const CovBinInfo& binInfo = (*cpBinLists[i])[indices[i]];
+                crossBinName += "_" + binInfo.name;
+                hitVars.push_back(binInfo.hitVar);
             }
 
             // Check if this combination should be ignored due to ignore_bins
