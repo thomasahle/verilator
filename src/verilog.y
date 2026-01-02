@@ -7039,15 +7039,15 @@ bins_or_options<nodep>:  // ==IEEE: bins_or_options
         |       bins_keyword idAny/*bin_identifier*/ bins_orBraE '=' '{' range_list '}' yWITH__PAREN '(' cgexpr ')' iffE
                         { $$ = new AstCoverBin{$<fl>8, *$2, $1, $6, $12, $3 != nullptr}; DEL($3, $10); }
         |       yWILDCARD bins_keyword idAny/*bin_identifier*/ bins_orBraE '=' '{' range_list '}' iffE
-                        { $$ = new AstCoverBin{$<fl>5, *$3, $2, $7, $9, $4 != nullptr}; DEL($4); }
+                        { $$ = new AstCoverBin{$<fl>5, *$3, $2, $7, $9, $4 != nullptr, false, false, true}; DEL($4); }
         |       yWILDCARD bins_keyword idAny/*bin_identifier*/ bins_orBraE '=' '{' range_list '}' yWITH__PAREN '(' cgexpr ')' iffE
-                        { $$ = new AstCoverBin{$<fl>9, *$3, $2, $7, $13, $4 != nullptr}; DEL($4, $11); }
+                        { $$ = new AstCoverBin{$<fl>9, *$3, $2, $7, $13, $4 != nullptr, false, false, true}; DEL($4, $11); }
         //
         //                      // cgexpr part of trans_list
         |       bins_keyword idAny/*bin_identifier*/ bins_orBraE '=' trans_list iffE
                         { $$ = new AstCoverBin{$<fl>4, *$2, $1, $5, $6, $3 != nullptr}; DEL($3); }
         |       yWILDCARD bins_keyword idAny/*bin_identifier*/ bins_orBraE '=' trans_list iffE
-                        { $$ = new AstCoverBin{$<fl>5, *$3, $2, $6, $7, $4 != nullptr}; DEL($4); }
+                        { $$ = new AstCoverBin{$<fl>5, *$3, $2, $6, $7, $4 != nullptr, false, false, true}; DEL($4); }
         //
         |       bins_keyword idAny/*bin_identifier*/ bins_orBraE '=' yDEFAULT iffE
                         { $$ = new AstCoverBin{$<fl>5, *$2, $1, nullptr, $6, $3 != nullptr, true, false};

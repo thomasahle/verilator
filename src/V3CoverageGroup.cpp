@@ -569,7 +569,33 @@ class CoverageGroupVisitor final : public VNVisitor {
                                               rp->leftp(), rp->rightp());
             } else if (AstConst* const cp = VN_CAST(rangep, Const)) {
                 // Single value
-                rangeCondp = new AstEq{fl, cloneWithTransforms(cpExprp), cp->cloneTree(false)};
+                if (binp->isWildcard() && cp->num().isAnyXZ()) {
+                    // Wildcard bin with X/Z bits - use mask-based comparison
+                    // For value like 4'b01??: mask=4'b1100, expected=4'b0100
+                    // Comparison: (cpExpr & mask) == expected
+                    const int width = cp->width();
+                    V3Number maskNum{cp, width};
+                    V3Number valueNum{cp, width};
+                    for (int i = 0; i < width; i++) {
+                        if (cp->num().bitIsXZ(i)) {
+                            // X or Z bit - mask bit is 0 (don't care)
+                            maskNum.setBit(i, '0');
+                            valueNum.setBit(i, '0');
+                        } else {
+                            // Defined bit - mask bit is 1, value from const
+                            maskNum.setBit(i, '1');
+                            valueNum.setBit(i, cp->num().bitIs1(i) ? '1' : '0');
+                        }
+                    }
+                    AstNodeExpr* const cpExprClonep = cloneWithTransforms(cpExprp);
+                    AstConst* const maskConstp = new AstConst{fl, maskNum};
+                    AstAnd* const maskedValuep = new AstAnd{fl, cpExprClonep, maskConstp};
+                    AstConst* const expectedConstp = new AstConst{fl, valueNum};
+                    rangeCondp = new AstEq{fl, maskedValuep, expectedConstp};
+                } else {
+                    rangeCondp
+                        = new AstEq{fl, cloneWithTransforms(cpExprp), cp->cloneTree(false)};
+                }
             } else if (AstNodeExpr* const ep = VN_CAST(rangep, NodeExpr)) {
                 // Expression value
                 rangeCondp = new AstEq{fl, cloneWithTransforms(cpExprp), ep->cloneTree(false)};

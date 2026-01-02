@@ -41,13 +41,13 @@ module t;
         cg_inst.sample();
         $display("After val=10: coverage=%0.2f%%", cg_inst.get_inst_coverage());
 
-        // Note: wildcard bins with ? syntax not yet implemented
-        // Currently, ? characters are treated as 0 bits
-        // So coverage is 0% because we sample 2, 5, 10 but bins only match 0, 4, 8
-        // This test documents current behavior - to be fixed in future
-        $display("Note: wildcard bins with ? not yet fully implemented");
-        $display("Current coverage: %0.2f%% (expected 0%% until feature implemented)",
-                 cg_inst.get_inst_coverage());
+        // Wildcard bins now work with mask-based matching
+        // All 3 bins should be hit: val=2 matches 4'b00??, val=5 matches 4'b01??, val=10 matches 4'b1???
+        if (cg_inst.get_inst_coverage() >= 99.0) begin
+            $display("PASS: All wildcard bins hit, coverage=100%%");
+        end else begin
+            $display("FAIL: Expected 100%% coverage, got %0.2f%%", cg_inst.get_inst_coverage());
+        end
 
         $write("*-* All Finished *-*\n");
         $finish;
