@@ -6382,6 +6382,16 @@ class WidthVisitor final : public VNVisitor {
         // binsof() expression - intersect ranges need width context
         userIterateAndNext(nodep->intersectp(), WidthVP{SELF, BOTH}.p());
     }
+    void visit(AstCovSelectAnd* nodep) override {
+        // binsof() && binsof() expression in cross coverage
+        userIterateAndNext(nodep->lhsp(), WidthVP{SELF, BOTH}.p());
+        userIterateAndNext(nodep->rhsp(), WidthVP{SELF, BOTH}.p());
+    }
+    void visit(AstCovSelectOr* nodep) override {
+        // binsof() || binsof() expression in cross coverage
+        userIterateAndNext(nodep->lhsp(), WidthVP{SELF, BOTH}.p());
+        userIterateAndNext(nodep->rhsp(), WidthVP{SELF, BOTH}.p());
+    }
     void visit(AstCovRepetition* nodep) override {
         // Coverage repetition - item and counts need width context
         userIterateAndNext(nodep->itemp(), WidthVP{SELF, BOTH}.p());

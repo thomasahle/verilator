@@ -7172,9 +7172,11 @@ select_expression<nodep>:  // ==IEEE: select_expression
                 select_expression_r
                         { $$ = $1; }
         |       select_expression yP_ANDAND select_expression
-                        { $$ = nullptr; BBCOVERIGN($2, "Ignoring unsupported: coverage select expression '&&'"); DEL($1, $3); }
+                        { if ($1 && $3) { $$ = new AstCovSelectAnd{$2, $1, $3}; }
+                          else { $$ = nullptr; DEL($1); DEL($3); } }
         |       select_expression yP_OROR   select_expression
-                        { $$ = nullptr; BBCOVERIGN($2, "Ignoring unsupported: coverage select expression '||'"); DEL($1, $3); }
+                        { if ($1 && $3) { $$ = new AstCovSelectOr{$2, $1, $3}; }
+                          else { $$ = nullptr; DEL($1); DEL($3); } }
         ;
 
 // This non-terminal exists to disambiguate select_expression and make "with" bind tighter

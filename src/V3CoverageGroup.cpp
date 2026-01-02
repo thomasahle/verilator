@@ -965,6 +965,69 @@ class CoverageGroupVisitor final : public VNVisitor {
         }
     }
 
+    // Helper to evaluate a binsof expression against a specific cross bin combination
+    // Returns true if the binsof expression matches the current combination
+    // cpNames: list of coverpoint names in the cross
+    // indices: current bin indices for each coverpoint
+    // cpBinLists: list of (bin_name, hit_var) pairs for each coverpoint
+    bool evaluateBinsofExpr(AstNode* exprp, const std::vector<string>& cpNames,
+                            const std::vector<size_t>& indices,
+                            const std::vector<const std::vector<std::pair<string, AstVar*>>*>&
+                                cpBinLists) {
+        if (!exprp) return false;
+
+        // Handle && operator
+        if (AstCovSelectAnd* const andp = VN_CAST(exprp, CovSelectAnd)) {
+            bool lhsMatch = evaluateBinsofExpr(andp->lhsp(), cpNames, indices, cpBinLists);
+            bool rhsMatch = evaluateBinsofExpr(andp->rhsp(), cpNames, indices, cpBinLists);
+            return lhsMatch && rhsMatch;
+        }
+
+        // Handle || operator
+        if (AstCovSelectOr* const orp = VN_CAST(exprp, CovSelectOr)) {
+            bool lhsMatch = evaluateBinsofExpr(orp->lhsp(), cpNames, indices, cpBinLists);
+            bool rhsMatch = evaluateBinsofExpr(orp->rhsp(), cpNames, indices, cpBinLists);
+            return lhsMatch || rhsMatch;
+        }
+
+        // Handle binsof() expression
+        if (AstCovBinsof* const binsofp = VN_CAST(exprp, CovBinsof)) {
+            const string& cpBinRef = binsofp->coverpointName();  // e.g., "cp_a.low"
+
+            // Parse coverpoint.bin reference
+            string cpName, binName;
+            size_t dotPos = cpBinRef.find('.');
+            if (dotPos != string::npos) {
+                cpName = cpBinRef.substr(0, dotPos);
+                binName = cpBinRef.substr(dotPos + 1);
+            } else {
+                // Just coverpoint name without bin - matches any bin in that coverpoint
+                cpName = cpBinRef;
+                binName = "";  // Empty means match any bin
+            }
+
+            // Find which coverpoint index this refers to
+            for (size_t i = 0; i < cpNames.size(); ++i) {
+                if (cpNames[i] == cpName) {
+                    // Found the coverpoint - check if current bin matches
+                    if (binName.empty()) {
+                        // Match any bin in this coverpoint - always true
+                        return !binsofp->negate();
+                    }
+                    // Check if current bin name matches
+                    const string& currentBinName = (*cpBinLists[i])[indices[i]].first;
+                    bool matches = (currentBinName == binName);
+                    return binsofp->negate() ? !matches : matches;
+                }
+            }
+            // Coverpoint not found in cross - no match
+            return false;
+        }
+
+        // Unknown expression type
+        return false;
+    }
+
     // Process cross coverage
     void processCross(AstCoverCross* xp) {
         FileLine* const fl = xp->fileline();
@@ -1012,17 +1075,29 @@ class CoverageGroupVisitor final : public VNVisitor {
         UINFO(4, "Processing cross " << crossName << " of " << crossDesc.str()
                                      << " = " << totalCrossBins << " cross bins" << endl);
 
-        // Check for explicit cross bins with binsof() expressions
+        // Collect ignore_bins and illegal_bins expressions for cross bin filtering
+        // These use binsof() expressions to specify which combinations to skip
+        std::vector<AstNode*> ignoreBinsExprs;
+        std::vector<AstNode*> illegalBinsExprs;
         if (xp->binsp()) {
-            // Cross has explicit bins - check for binsof expressions
             for (AstNode* binp = xp->binsp(); binp; binp = binp->nextp()) {
                 if (AstCoverBin* const cbinp = VN_CAST(binp, CoverBin)) {
-                    // Check if this bin uses binsof() (has AstCovBinsof in rangesp)
-                    for (AstNode* rangep = cbinp->rangesp(); rangep; rangep = rangep->nextp()) {
-                        if (AstCovBinsof* const binsofp = VN_CAST(rangep, CovBinsof)) {
-                            binsofp->v3warn(
-                                COVERIGN, "Cross bin selection with binsof() is parsed but "
-                                          "not yet fully implemented; generating all cross bins");
+                    // Get the binsof expression from rangesp
+                    AstNode* binsofExpr = cbinp->rangesp();
+                    if (binsofExpr) {
+                        // Check if this is a binsof-based expression (CovBinsof, CovSelectAnd, or
+                        // CovSelectOr)
+                        if (VN_IS(binsofExpr, CovBinsof) || VN_IS(binsofExpr, CovSelectAnd)
+                            || VN_IS(binsofExpr, CovSelectOr)) {
+                            if (cbinp->binType().m_e == VCoverBinType::IGNORE_BINS) {
+                                ignoreBinsExprs.push_back(binsofExpr);
+                                UINFO(4, "  Found ignore_bins with binsof expression: "
+                                             << cbinp->name() << endl);
+                            } else if (cbinp->binType().m_e == VCoverBinType::ILLEGAL_BINS) {
+                                illegalBinsExprs.push_back(binsofExpr);
+                                UINFO(4, "  Found illegal_bins with binsof expression: "
+                                             << cbinp->name() << endl);
+                            }
                         }
                     }
                 }
@@ -1032,6 +1107,7 @@ class CoverageGroupVisitor final : public VNVisitor {
         // Generate N-way cross product bins using iterative approach
         // Use indices to iterate through all combinations
         std::vector<size_t> indices(cpNames.size(), 0);
+        size_t ignoredCount = 0;
 
         while (true) {
             // Build cross bin name and collect hit vars for current combination
@@ -1041,6 +1117,42 @@ class CoverageGroupVisitor final : public VNVisitor {
                 const auto& binPair = (*cpBinLists[i])[indices[i]];
                 crossBinName += "_" + binPair.first;
                 hitVars.push_back(binPair.second);
+            }
+
+            // Check if this combination should be ignored due to ignore_bins
+            bool shouldIgnore = false;
+            for (AstNode* exprp : ignoreBinsExprs) {
+                if (evaluateBinsofExpr(exprp, cpNames, indices, cpBinLists)) {
+                    shouldIgnore = true;
+                    UINFO(5, "    Skipping cross bin '" << crossBinName
+                                                        << "' due to ignore_bins" << endl);
+                    break;
+                }
+            }
+            // Also check illegal_bins (treated same as ignore_bins for coverage purposes)
+            if (!shouldIgnore) {
+                for (AstNode* exprp : illegalBinsExprs) {
+                    if (evaluateBinsofExpr(exprp, cpNames, indices, cpBinLists)) {
+                        shouldIgnore = true;
+                        UINFO(5, "    Skipping cross bin '" << crossBinName
+                                                            << "' due to illegal_bins" << endl);
+                        break;
+                    }
+                }
+            }
+
+            if (shouldIgnore) {
+                ++ignoredCount;
+                // Skip to next combination
+                size_t pos = cpNames.size() - 1;
+                while (true) {
+                    indices[pos]++;
+                    if (indices[pos] < cpBinLists[pos]->size()) break;
+                    indices[pos] = 0;
+                    if (pos == 0) goto done;
+                    --pos;
+                }
+                continue;
             }
 
             // Create cross bin hit flag
@@ -1082,7 +1194,12 @@ class CoverageGroupVisitor final : public VNVisitor {
                 --pos;
             }
         }
-    done:;
+    done:
+        if (ignoredCount > 0) {
+            UINFO(4, "  Cross " << crossName << ": ignored " << ignoredCount << " of "
+                                << totalCrossBins << " cross bins due to ignore_bins/illegal_bins"
+                                << endl);
+        }
     }
 
     // Generate coverage percentage calculation expression
