@@ -48,6 +48,9 @@ class CoverageGroupVisitor final : public VNVisitor {
     // List of hit flags for get_coverage calculation (instance level)
     std::vector<AstVar*> m_hitVars;
 
+    // List of counter variables for at_least support (parallel to m_hitVars)
+    std::vector<AstVar*> m_counterVars;
+
     // List of static hit flags for get_coverage() (type level)
     std::vector<AstVar*> m_staticHitVars;
 
@@ -478,8 +481,9 @@ class CoverageGroupVisitor final : public VNVisitor {
 
         m_sampleFuncp->addStmtsp(ifp);
 
-        // Track for get_inst_coverage()
+        // Track for get_inst_coverage() (counter for at_least, hit for legacy)
         m_hitVars.push_back(hitVarp);
+        m_counterVars.push_back(counterVarp);
 
         // Track for get_coverage() (static)
         m_staticHitVars.push_back(staticHitVarp);
@@ -542,8 +546,9 @@ class CoverageGroupVisitor final : public VNVisitor {
         ifp->addThensp(setStaticHitp);
         m_sampleFuncp->addStmtsp(ifp);
 
-        // Track for get_inst_coverage()
+        // Track for get_inst_coverage() (counter for at_least, hit for legacy)
         m_hitVars.push_back(hitVarp);
+        m_counterVars.push_back(counterVarp);
 
         // Track for get_coverage() (static)
         m_staticHitVars.push_back(staticHitVarp);
@@ -637,8 +642,9 @@ class CoverageGroupVisitor final : public VNVisitor {
         ifp->addThensp(setStaticHitp);
         m_sampleFuncp->addStmtsp(ifp);
 
-        // Track for coverage calculations
+        // Track for coverage calculations (counter for at_least, hit for legacy)
         m_hitVars.push_back(hitVarp);
+        m_counterVars.push_back(counterVarp);
         m_staticHitVars.push_back(staticHitVarp);
         m_cpBinHitVars[cpName].push_back({binName, hitVarp});
 
@@ -694,8 +700,9 @@ class CoverageGroupVisitor final : public VNVisitor {
         ifp->addThensp(setStaticHitp);
         m_sampleFuncp->addStmtsp(ifp);
 
-        // Track for coverage calculations
+        // Track for coverage calculations (counter for at_least, hit for legacy)
         m_hitVars.push_back(hitVarp);
+        m_counterVars.push_back(counterVarp);
         m_staticHitVars.push_back(staticHitVarp);
         m_cpBinHitVars[cpName].push_back({binName, hitVarp});
 
@@ -890,19 +897,45 @@ class CoverageGroupVisitor final : public VNVisitor {
     }
 
     // Generate coverage percentage calculation expression
+    // Uses option.at_least to determine coverage threshold
+    // Uses option.weight to scale the result (weight=0 means don't count)
     AstNodeExpr* generateCoverageExpr(FileLine* fl, AstFunc* funcp) {
-        if (m_hitVars.empty()) {
-            // No bins, return 0.0
+        if (m_hitVars.empty() || m_options.weight == 0) {
+            // No bins or weight=0 means 0% coverage contribution
             V3Number zeroNum{funcp, V3Number::Double{}, 0.0};
             return new AstConst{fl, zeroNum};
         }
 
-        // Build expression: (hit1 + hit2 + ... + hitN)
+        // Build expression: sum of bins that meet coverage threshold
+        // For at_least=1: use hit flags directly (hit1 + hit2 + ...)
+        // For at_least>1: use (counter1 >= at_least) + (counter2 >= at_least) + ...
         AstNodeExpr* sumExprp = nullptr;
-        for (AstVar* hitVarp : m_hitVars) {
-            AstVarRef* const hitRefp = new AstVarRef{fl, hitVarp, VAccess::READ};
-            // Cast bit to 32-bit int for proper arithmetic
-            AstNodeExpr* const extendedp = new AstExtend{fl, hitRefp, 32};
+        const int atLeast = m_options.atLeast;
+
+        for (size_t i = 0; i < m_hitVars.size(); ++i) {
+            AstNodeExpr* coveredp;
+            if (atLeast <= 1) {
+                // Use hit flag directly (optimization for default case)
+                AstVarRef* const hitRefp = new AstVarRef{fl, m_hitVars[i], VAccess::READ};
+                coveredp = hitRefp;
+            } else {
+                // Use counter >= atLeast
+                // Note: counterVars may be shorter if cross coverage bins were added
+                // Cross bins don't have counters, they just use hit flags
+                if (i < m_counterVars.size()) {
+                    AstVarRef* const counterRefp
+                        = new AstVarRef{fl, m_counterVars[i], VAccess::READ};
+                    AstConst* const atLeastp = new AstConst{fl, static_cast<uint32_t>(atLeast)};
+                    coveredp = new AstGte{fl, counterRefp, atLeastp};
+                } else {
+                    // Fall back to hit flag for cross bins
+                    AstVarRef* const hitRefp = new AstVarRef{fl, m_hitVars[i], VAccess::READ};
+                    coveredp = hitRefp;
+                }
+            }
+
+            // Cast to 32-bit int for proper arithmetic
+            AstNodeExpr* const extendedp = new AstExtend{fl, coveredp, 32};
             if (sumExprp) {
                 sumExprp = new AstAdd{fl, sumExprp, extendedp};
             } else {
@@ -946,9 +979,10 @@ class CoverageGroupVisitor final : public VNVisitor {
     }
 
     // Generate static coverage percentage expression from static hit flags
+    // Uses option.weight to scale the result (weight=0 means don't count)
     AstNodeExpr* generateStaticCoverageExpr(FileLine* fl, AstFunc* funcp) {
-        if (m_staticHitVars.empty()) {
-            // No bins, return 0.0
+        if (m_staticHitVars.empty() || m_options.weight == 0) {
+            // No bins or weight=0 means 0% coverage contribution
             V3Number zeroNum{funcp, V3Number::Double{}, 0.0};
             return new AstConst{fl, zeroNum};
         }
@@ -1018,6 +1052,7 @@ class CoverageGroupVisitor final : public VNVisitor {
         m_getInstCoverageFuncp = nullptr;
         m_binCount = 0;
         m_hitVars.clear();
+        m_counterVars.clear();
         m_staticHitVars.clear();
         m_cpBinHitVars.clear();
         m_sampleArgs.clear();
