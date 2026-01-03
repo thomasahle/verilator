@@ -14,6 +14,7 @@ test.scenarios('simulator')
 test.compile(
     verilator_flags2=[
         '--timing',
+        '-Wno-WIDTHTRUNC',  # UVM packer has width truncation
         '+incdir+' + test.obj_dir + '/../../../include',
         test.obj_dir + '/../../../include/uvm_pkg.sv',
     ],
