@@ -7188,11 +7188,18 @@ select_expression_r<nodep>:
         |       '!' yBINSOF '(' bins_expression ')' yINTERSECT '{' covergroup_range_list '}'
                         { $$ = new AstCovBinsof{$2, $4, $8, true}; }
         |       yWITH__PAREN '(' cgexpr ')'
-                        { $$ = nullptr; BBCOVERIGN($1, "Ignoring unsupported: coverage select expression with"); DEL($3); }
+                        { $$ = nullptr; BBCOVERIGN($1, "Ignoring unsupported: coverage select expression with (standalone)"); DEL($3); }
         |       '!' yWITH__PAREN '(' cgexpr ')'
-                        { $$ = nullptr; BBCOVERIGN($1, "Ignoring unsupported: coverage select expression with"); DEL($4); }
+                        { $$ = nullptr; BBCOVERIGN($1, "Ignoring unsupported: coverage select expression with (negated standalone)"); DEL($4); }
         |       select_expression_r yWITH__PAREN '(' cgexpr ')'
-                        { $$ = nullptr; BBCOVERIGN($2, "Ignoring unsupported: coverage select expression with"); DEL($1, $4); }
+                        { // Handle binsof() with (expr) by attaching with expression to AstCovBinsof
+                          if (AstCovBinsof* binsofp = VN_CAST($1, CovBinsof)) {
+                              binsofp->withp($4);
+                              $$ = binsofp;
+                          } else {
+                              $$ = nullptr; BBCOVERIGN($2, "Ignoring unsupported: coverage select expression with (chained)"); DEL($1, $4);
+                          }
+                        }
         //                      // IEEE-2012: Need clarification as to precedence
         //UNSUP yWITH__PAREN '(' cgexpr ')' yMATCHES cgexpr    { }
         //                      // IEEE-2012: Need clarification as to precedence
