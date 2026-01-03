@@ -1058,6 +1058,141 @@ class CoverageGroupVisitor final : public VNVisitor {
         return false;
     }
 
+    // Helper to check if any bin value satisfies a comparison expression
+    // withExpr is expected to be a comparison like: cp > 5, item == 3, etc.
+    // cpName is the coverpoint name being referenced
+    // Returns true if any value in the bin's ranges satisfies the expression
+    static bool binValuesSatisfyWithExpr(const CovBinInfo& binInfo, AstNodeExpr* withExpr,
+                                         const string& cpName) {
+        if (!withExpr) return true;
+        if (binInfo.valueRanges.empty()) return true;  // No ranges tracked, assume match
+
+        // Try to extract a simple comparison: varref <op> const or const <op> varref
+        int64_t constVal = 0;
+        bool constOnRight = false;
+        bool foundComparison = false;
+        enum CompareOp { OP_EQ, OP_NE, OP_LT, OP_GT, OP_LE, OP_GE };
+        CompareOp op = OP_EQ;
+
+        // Check for different comparison types
+        if (AstEq* const eqp = VN_CAST(withExpr, Eq)) {
+            op = OP_EQ;
+            if (AstConst* const cp = VN_CAST(eqp->rhsp(), Const)) {
+                constVal = cp->num().toSQuad();
+                constOnRight = true;
+                foundComparison = true;
+            } else if (AstConst* const cp = VN_CAST(eqp->lhsp(), Const)) {
+                constVal = cp->num().toSQuad();
+                constOnRight = false;
+                foundComparison = true;
+            }
+        } else if (AstNeq* const neqp = VN_CAST(withExpr, Neq)) {
+            op = OP_NE;
+            if (AstConst* const cp = VN_CAST(neqp->rhsp(), Const)) {
+                constVal = cp->num().toSQuad();
+                constOnRight = true;
+                foundComparison = true;
+            } else if (AstConst* const cp = VN_CAST(neqp->lhsp(), Const)) {
+                constVal = cp->num().toSQuad();
+                constOnRight = false;
+                foundComparison = true;
+            }
+        } else if (AstLt* const ltp = VN_CAST(withExpr, Lt)) {
+            if (AstConst* const cp = VN_CAST(ltp->rhsp(), Const)) {
+                constVal = cp->num().toSQuad();
+                constOnRight = true;
+                op = OP_LT;  // var < const
+                foundComparison = true;
+            } else if (AstConst* const cp = VN_CAST(ltp->lhsp(), Const)) {
+                constVal = cp->num().toSQuad();
+                constOnRight = false;
+                op = OP_GT;  // const < var means var > const
+                foundComparison = true;
+            }
+        } else if (AstGt* const gtp = VN_CAST(withExpr, Gt)) {
+            if (AstConst* const cp = VN_CAST(gtp->rhsp(), Const)) {
+                constVal = cp->num().toSQuad();
+                constOnRight = true;
+                op = OP_GT;  // var > const
+                foundComparison = true;
+            } else if (AstConst* const cp = VN_CAST(gtp->lhsp(), Const)) {
+                constVal = cp->num().toSQuad();
+                constOnRight = false;
+                op = OP_LT;  // const > var means var < const
+                foundComparison = true;
+            }
+        } else if (AstLte* const ltep = VN_CAST(withExpr, Lte)) {
+            if (AstConst* const cp = VN_CAST(ltep->rhsp(), Const)) {
+                constVal = cp->num().toSQuad();
+                constOnRight = true;
+                op = OP_LE;  // var <= const
+                foundComparison = true;
+            } else if (AstConst* const cp = VN_CAST(ltep->lhsp(), Const)) {
+                constVal = cp->num().toSQuad();
+                constOnRight = false;
+                op = OP_GE;  // const <= var means var >= const
+                foundComparison = true;
+            }
+        } else if (AstGte* const gtep = VN_CAST(withExpr, Gte)) {
+            if (AstConst* const cp = VN_CAST(gtep->rhsp(), Const)) {
+                constVal = cp->num().toSQuad();
+                constOnRight = true;
+                op = OP_GE;  // var >= const
+                foundComparison = true;
+            } else if (AstConst* const cp = VN_CAST(gtep->lhsp(), Const)) {
+                constVal = cp->num().toSQuad();
+                constOnRight = false;
+                op = OP_LE;  // const >= var means var <= const
+                foundComparison = true;
+            }
+        }
+
+        if (!foundComparison) {
+            // Complex expression we can't evaluate at compile time - assume match
+            return true;
+        }
+
+        // Check if any value in the bin's ranges satisfies the comparison
+        for (const auto& range : binInfo.valueRanges) {
+            int64_t lo = range.first;
+            int64_t hi = range.second;
+
+            // For each value in [lo, hi], check if it satisfies the comparison
+            // For efficiency, we check range endpoints and boundaries
+            bool satisfies = false;
+            switch (op) {
+            case OP_EQ:
+                // constVal must be within [lo, hi]
+                satisfies = (constVal >= lo && constVal <= hi);
+                break;
+            case OP_NE:
+                // Any value != constVal exists in [lo, hi] if range has more than one value
+                // or if constVal is outside the range
+                satisfies = (lo < hi) || (lo != constVal);
+                break;
+            case OP_LT:
+                // Any value < constVal exists if lo < constVal
+                satisfies = (lo < constVal);
+                break;
+            case OP_GT:
+                // Any value > constVal exists if hi > constVal
+                satisfies = (hi > constVal);
+                break;
+            case OP_LE:
+                // Any value <= constVal exists if lo <= constVal
+                satisfies = (lo <= constVal);
+                break;
+            case OP_GE:
+                // Any value >= constVal exists if hi >= constVal
+                satisfies = (hi >= constVal);
+                break;
+            }
+
+            if (satisfies) return true;
+        }
+        return false;
+    }
+
     // Helper to evaluate a binsof expression against a specific cross bin combination
     // Returns true if the binsof expression matches the current combination
     // cpNames: list of coverpoint names in the cross
@@ -1110,7 +1245,15 @@ class CoverageGroupVisitor final : public VNVisitor {
                         return binsofp->negate() ? !overlaps : overlaps;
                     }
 
-                    // No intersect clause
+                    // Check if there's a with clause
+                    if (binsofp->withp()) {
+                        // binsof(cp) with (expr) - check if bin values satisfy the expression
+                        bool satisfies
+                            = binValuesSatisfyWithExpr(currentBin, binsofp->withp(), cpName);
+                        return binsofp->negate() ? !satisfies : satisfies;
+                    }
+
+                    // No intersect or with clause
                     if (binName.empty()) {
                         // Match any bin in this coverpoint - always true
                         return !binsofp->negate();

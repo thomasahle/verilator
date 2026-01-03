@@ -1005,16 +1005,19 @@ class AstCovBinsof final : public AstNode {
     // binsof() expression in cross coverage bin selection
     // Parents: AstCoverBin (in cross coverage)
     // @astgen op1 := intersectp : List[AstNode]  // Intersect ranges (optional)
+    // @astgen op2 := withp : Optional[AstNodeExpr]  // With expression (optional)
     string m_coverpointName;  // Coverpoint name (may include bin: "cp.binname")
     bool m_negate;  // Negated (!binsof)
     // Helper to extract name from idDotted expression and delete it
     static string extractNameAndDelete(AstNodeExpr* refp);
 public:
-    AstCovBinsof(FileLine* fl, AstNodeExpr* refp, AstNode* intersectp, bool negate = false)
+    AstCovBinsof(FileLine* fl, AstNodeExpr* refp, AstNode* intersectp, bool negate = false,
+                 AstNodeExpr* withExpr = nullptr)
         : ASTGEN_SUPER_CovBinsof(fl)
         , m_coverpointName{extractNameAndDelete(refp)}
         , m_negate{negate} {
         addIntersectp(intersectp);
+        this->withp(withExpr);
     }
     ASTGEN_MEMBERS_AstCovBinsof;
     void dump(std::ostream& str) const override;
