@@ -7056,7 +7056,7 @@ bins_or_options<nodep>:  // ==IEEE: bins_or_options
 
 bins_orBraE<nodep>:  // IEEE: part of bins_or_options:
                 /* empty */                             { $$ = nullptr; }
-        |       '[' ']'                                 { $$ = nullptr; /*UNSUP*/ }
+        |       '[' ']'                                 { $$ = new AstText{$1, "[]"}; }  // Array bin indicator
         |       '[' cgexpr ']'                          { $$ = nullptr; /*UNSUP*/ DEL($2); }
         ;
 

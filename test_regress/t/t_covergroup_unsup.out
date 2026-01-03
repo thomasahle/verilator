@@ -18,21 +18,12 @@
 %Warning-COVERIGN: t/t_covergroup_unsup.v:137:59: Ignoring unsupported: covergroup value range
   137 |       { bins bts2 = ( 2, 3 ), ( [5:6] ), ( [5 +/- 2] ), ( [ 5 +%- 20.0] ) ; }
       |                                                           ^
-%Warning-COVERIGN: t/t_covergroup_unsup.v:159:23: Ignoring unsupported: coverage select expression with
+%Warning-COVERIGN: t/t_covergroup_unsup.v:159:23: Ignoring unsupported: coverage select expression with (standalone)
   159 |          bins bin_e = with (a);
       |                       ^~~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:160:27: Ignoring unsupported: coverage select expression with
+%Warning-COVERIGN: t/t_covergroup_unsup.v:160:27: Ignoring unsupported: coverage select expression with (negated standalone)
   160 |          bins bin_not_e = ! with (a);
       |                           ^
-%Warning-COVERIGN: t/t_covergroup_unsup.v:165:36: Ignoring unsupported: coverage select expression with
-  165 |          bins bin_with = binsof(a) with (a);
-      |                                    ^~~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:166:52: Ignoring unsupported: coverage select expression with
-  166 |          bins bin_or_with = binsof(a) || binsof(a) with (a);
-      |                                                    ^~~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:167:53: Ignoring unsupported: coverage select expression with
-  167 |          bins bin_and_with = binsof(a) && binsof(a) with (a);
-      |                                                     ^~~~
 %Warning-WIDTHTRUNC: t/t_covergroup_unsup.v:77:7: Logical operator COVERPOINT expects 1 bit on the iff condition, but iff condition's VARREF 'b' generates 32 bits.
                                                 : ... note: In instance 't'
    77 |       coverpoint a iff (b);

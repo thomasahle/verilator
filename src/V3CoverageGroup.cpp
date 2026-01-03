@@ -134,6 +134,10 @@ class CoverageGroupVisitor final : public VNVisitor {
     string makeVarName(const string& prefix, const string& cpName, const string& binName) {
         string name = prefix + cpName;
         if (!binName.empty()) name += "_" + binName;
+        // Sanitize: replace [] with _ for C++ identifier compatibility
+        for (size_t i = 0; i < name.size(); ++i) {
+            if (name[i] == '[' || name[i] == ']') name[i] = '_';
+        }
         return name;
     }
 
@@ -534,6 +538,130 @@ class CoverageGroupVisitor final : public VNVisitor {
     // Process a single bin within a coverpoint
     // cpIffp is the optional coverpoint-level iff condition (already transformed)
     // anyMatchedVarp is optional - if provided, set to 1 when this bin matches (for default bins)
+    // Process a single value as a bin (used by bin array expansion)
+    void processSingleValueBin(AstCoverBin* binp, AstNodeExpr* cpExprp, const string& cpName,
+                               const string& indexedBinName, int64_t value,
+                               AstNodeExpr* cpIffp = nullptr, AstVar* anyMatchedVarp = nullptr) {
+        FileLine* const fl = binp->fileline();
+
+        // Create counter and hit flag variables (instance level)
+        const string counterName = makeVarName("__Vcov_cnt_", cpName, indexedBinName);
+        const string hitName = makeVarName("__Vcov_hit_", cpName, indexedBinName);
+        AstVar* const counterVarp = createCounterVar(fl, counterName);
+        AstVar* const hitVarp = createHitVar(fl, hitName);
+
+        // Create static hit flag for type-level coverage (get_coverage())
+        AstVar* const staticHitVarp = createStaticHitVar(fl, hitName);
+
+        // Track this bin for coverage
+        ++m_binCount;
+        m_hitVars.push_back(hitVarp);
+        m_staticHitVars.push_back(staticHitVarp);
+
+        // Register bin for cross coverage lookup
+        m_cpBinHitVars[cpName].push_back(CovBinInfo{indexedBinName, hitVarp, value, value});
+
+        // Build condition: cpExpr == value
+        V3Number valNum{cpExprp, cpExprp->width()};
+        valNum.setQuad(value);
+        AstNodeExpr* condp = new AstEq{fl, cloneWithTransforms(cpExprp),
+                                        new AstConst{fl, valNum}};
+
+        // Apply bin-level iff condition if present
+        if (binp->iffp()) {
+            condp = new AstLogAnd{fl, cloneWithTransforms(binp->iffp()), condp};
+        }
+
+        // Apply coverpoint-level iff condition if present
+        if (cpIffp) {
+            condp = new AstLogAnd{fl, cpIffp->cloneTree(false), condp};
+        }
+
+        // Generate: if (condp) { counter++; hit = 1; staticHit = 1; }
+        AstVarRef* const counterRefW = new AstVarRef{fl, counterVarp, VAccess::WRITE};
+        AstVarRef* const counterRefR = new AstVarRef{fl, counterVarp, VAccess::READ};
+        AstAssign* const incCounterp = new AstAssign{
+            fl, counterRefW, new AstAdd{fl, counterRefR, new AstConst{fl, 1}}};
+
+        AstVarRef* const hitRefW = new AstVarRef{fl, hitVarp, VAccess::WRITE};
+        AstAssign* const setHitp = new AstAssign{fl, hitRefW, new AstConst{fl, AstConst::BitTrue{}}};
+
+        AstVarRef* const staticHitRefW = new AstVarRef{fl, staticHitVarp, VAccess::WRITE};
+        AstAssign* const setStaticHitp
+            = new AstAssign{fl, staticHitRefW, new AstConst{fl, AstConst::BitTrue{}}};
+
+        AstIf* const ifp = new AstIf{fl, condp, incCounterp, nullptr};
+        ifp->addThensp(setHitp);
+        ifp->addThensp(setStaticHitp);
+
+        // If tracking matches for default bin, set the anyMatched flag
+        if (anyMatchedVarp) {
+            AstVarRef* const anyMatchedRefW = new AstVarRef{fl, anyMatchedVarp, VAccess::WRITE};
+            AstAssign* const setAnyMatchedp
+                = new AstAssign{fl, anyMatchedRefW, new AstConst{fl, AstConst::BitTrue{}}};
+            ifp->addThensp(setAnyMatchedp);
+        }
+
+        m_sampleFuncp->addStmtsp(ifp);
+    }
+
+    // Process bin array: bins arr[] = {[lo:hi]} expands to arr[0], arr[1], etc.
+    // Returns true if handled as array, false if should be processed normally
+    bool processBinArray(AstCoverBin* binp, AstNodeExpr* cpExprp, const string& cpName,
+                         AstNodeExpr* cpIffp = nullptr, AstVar* anyMatchedVarp = nullptr) {
+        if (!binp->isArray()) return false;
+
+        const string binName = binp->name().empty() ? "bin" + cvtToStr(m_binCount) : binp->name();
+        int arrayIndex = 0;
+
+        // Iterate through ranges and expand each value
+        for (AstNode* rangep = binp->rangesp(); rangep; rangep = rangep->nextp()) {
+            if (AstInsideRange* const irp = VN_CAST(rangep, InsideRange)) {
+                // InsideRange [lo:hi]
+                AstConst* const lop = VN_CAST(irp->lhsp(), Const);
+                AstConst* const hip = VN_CAST(irp->rhsp(), Const);
+                if (lop && hip) {
+                    const int64_t lo = lop->num().toSQuad();
+                    const int64_t hi = hip->num().toSQuad();
+                    for (int64_t v = lo; v <= hi; ++v) {
+                        const string indexedName = binName + "[" + cvtToStr(arrayIndex++) + "]";
+                        processSingleValueBin(binp, cpExprp, cpName, indexedName, v,
+                                              cpIffp, anyMatchedVarp);
+                    }
+                } else {
+                    // Non-constant range, fall back to single bin
+                    return false;
+                }
+            } else if (AstRange* const rp = VN_CAST(rangep, Range)) {
+                // Range [lo:hi]
+                AstConst* const lop = VN_CAST(rp->leftp(), Const);
+                AstConst* const hip = VN_CAST(rp->rightp(), Const);
+                if (lop && hip) {
+                    const int64_t lo = lop->num().toSQuad();
+                    const int64_t hi = hip->num().toSQuad();
+                    for (int64_t v = lo; v <= hi; ++v) {
+                        const string indexedName = binName + "[" + cvtToStr(arrayIndex++) + "]";
+                        processSingleValueBin(binp, cpExprp, cpName, indexedName, v,
+                                              cpIffp, anyMatchedVarp);
+                    }
+                } else {
+                    return false;
+                }
+            } else if (AstConst* const cp = VN_CAST(rangep, Const)) {
+                // Single value
+                const int64_t v = cp->num().toSQuad();
+                const string indexedName = binName + "[" + cvtToStr(arrayIndex++) + "]";
+                processSingleValueBin(binp, cpExprp, cpName, indexedName, v,
+                                      cpIffp, anyMatchedVarp);
+            } else if (AstNodeExpr* const ep = VN_CAST(rangep, NodeExpr)) {
+                // Non-constant expression - cannot expand at compile time
+                return false;
+            }
+        }
+
+        return arrayIndex > 0;  // Return true if we created at least one bin
+    }
+
     void processBin(AstCoverBin* binp, AstNodeExpr* cpExprp, const string& cpName,
                     AstNodeExpr* cpIffp = nullptr, AstVar* anyMatchedVarp = nullptr) {
         FileLine* const fl = binp->fileline();
@@ -541,6 +669,9 @@ class CoverageGroupVisitor final : public VNVisitor {
 
         // Skip ignore_bins from coverage calculation
         if (binp->binType().m_e == VCoverBinType::IGNORE_BINS) return;
+
+        // Handle bin arrays: bins arr[] = {[0:3]} expands to arr[0], arr[1], arr[2], arr[3]
+        if (processBinArray(binp, cpExprp, cpName, cpIffp, anyMatchedVarp)) return;
 
         // Check for transition bins FIRST before creating variables
         // This avoids creating duplicate variables when processTransitionBin also creates them
