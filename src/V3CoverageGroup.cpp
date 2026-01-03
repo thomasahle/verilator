@@ -1502,9 +1502,11 @@ class CoverageGroupVisitor final : public VNVisitor {
             }
         }
 
-        // Calculate: (sum / binCount) * 100.0
-        // Convert to real: real'(sum) / real'(binCount) * 100.0
+        // Calculate: min((sum / binCount) * 100.0 * (100.0 / goal), 100.0)
+        // For goal < 100, scale up so hitting 'goal' percent gives 100%
+        // Convert to real: real'(sum) / real'(binCount) * 100.0 * (100.0 / goal)
         const int totalBins = static_cast<int>(m_hitVars.size());
+        const int goal = m_options.goal;
 
         // Cast sum to real
         AstNodeExpr* const sumRealp = new AstIToRD{fl, sumExprp};
@@ -1519,7 +1521,26 @@ class CoverageGroupVisitor final : public VNVisitor {
         // Multiply by 100.0
         V3Number hundredNum{funcp, V3Number::Double{}, 100.0};
         AstConst* const hundredp = new AstConst{fl, hundredNum};
-        return new AstMulD{fl, dividep, hundredp};
+        AstNodeExpr* rawPercentp = new AstMulD{fl, dividep, hundredp};
+
+        // Apply option.goal scaling: (raw_percent / goal) * 100.0
+        // If goal < 100, this scales up so hitting 'goal' percent gives 100%
+        if (goal != 100 && goal > 0) {
+            V3Number goalNum{funcp, V3Number::Double{}, static_cast<double>(goal)};
+            AstConst* const goalp = new AstConst{fl, goalNum};
+            rawPercentp = new AstDivD{fl, rawPercentp, goalp};
+            AstConst* const hundred2p = new AstConst{fl, hundredNum};
+            rawPercentp = new AstMulD{fl, rawPercentp, hundred2p};
+
+            // Cap at 100.0%: (rawPercent > 100.0) ? 100.0 : rawPercent
+            V3Number hundredCap{funcp, V3Number::Double{}, 100.0};
+            AstConst* const cap1p = new AstConst{fl, hundredCap};
+            AstConst* const cap2p = new AstConst{fl, hundredCap};
+            AstNodeExpr* const gtCondp = new AstGtD{fl, rawPercentp, cap1p};
+            rawPercentp = new AstCond{fl, gtCondp, cap2p, rawPercentp->cloneTree(false)};
+        }
+
+        return rawPercentp;
     }
 
     // Generate get_inst_coverage() function body (instance method - can access instance members)
@@ -1559,8 +1580,10 @@ class CoverageGroupVisitor final : public VNVisitor {
             }
         }
 
-        // Calculate: (sum / binCount) * 100.0
+        // Calculate: min((sum / binCount) * 100.0 * (100.0 / goal), 100.0)
+        // For goal < 100, scale up so hitting 'goal' percent gives 100%
         const int totalBins = static_cast<int>(m_staticHitVars.size());
+        const int goal = m_options.goal;
 
         // Cast sum to real
         AstNodeExpr* const sumRealp = new AstIToRD{fl, sumExprp};
@@ -1575,7 +1598,26 @@ class CoverageGroupVisitor final : public VNVisitor {
         // Multiply by 100.0
         V3Number hundredNum{funcp, V3Number::Double{}, 100.0};
         AstConst* const hundredp = new AstConst{fl, hundredNum};
-        return new AstMulD{fl, dividep, hundredp};
+        AstNodeExpr* rawPercentp = new AstMulD{fl, dividep, hundredp};
+
+        // Apply option.goal scaling: (raw_percent / goal) * 100.0
+        // If goal < 100, this scales up so hitting 'goal' percent gives 100%
+        if (goal != 100 && goal > 0) {
+            V3Number goalNum{funcp, V3Number::Double{}, static_cast<double>(goal)};
+            AstConst* const goalp = new AstConst{fl, goalNum};
+            rawPercentp = new AstDivD{fl, rawPercentp, goalp};
+            AstConst* const hundred2p = new AstConst{fl, hundredNum};
+            rawPercentp = new AstMulD{fl, rawPercentp, hundred2p};
+
+            // Cap at 100.0%: (rawPercent > 100.0) ? 100.0 : rawPercent
+            V3Number hundredCap{funcp, V3Number::Double{}, 100.0};
+            AstConst* const cap1p = new AstConst{fl, hundredCap};
+            AstConst* const cap2p = new AstConst{fl, hundredCap};
+            AstNodeExpr* const gtCondp = new AstGtD{fl, rawPercentp, cap1p};
+            rawPercentp = new AstCond{fl, gtCondp, cap2p, rawPercentp->cloneTree(false)};
+        }
+
+        return rawPercentp;
     }
 
     // Generate get_coverage() function body (static method - type-level coverage)
