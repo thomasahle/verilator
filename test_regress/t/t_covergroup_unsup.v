@@ -95,6 +95,7 @@ module t (/*AUTOARG*/
       signed id: coverpoint a iff (b);
    endgroup
 
+`ifndef T_COVERGROUP_UNSUP_IGN
    covergroup cg_cross;
       cross a, b iff (!rst);
    endgroup
@@ -113,6 +114,7 @@ module t (/*AUTOARG*/
    covergroup cg_cross_id;
       my_cg_id: cross a, b iff (!rst);
    endgroup
+`endif
 
    covergroup cg_binsoroptions_bk1;
       // bins_keyword id/*bin_identifier*/ bins_orBraE '=' '{' open_range_list '}' iffE
@@ -146,6 +148,7 @@ module t (/*AUTOARG*/
 
    endgroup
 
+`ifndef T_COVERGROUP_UNSUP_IGN
    covergroup cg_cross_bins;
       cross a, b {
          bins bin_a = binsof(a);
@@ -168,6 +171,7 @@ module t (/*AUTOARG*/
          bins bin_multiple_fields = binsof(p.inner_packet.field);
       }
    endgroup
+`endif
 
    covergroup cgArgs(int cg_lim);
    endgroup
