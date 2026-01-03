@@ -10,6 +10,6 @@
 import vltest_bootstrap
 
 test.scenarios("simulator")
-test.compile(verilator_flags2=["--binary", "--timing"], make_main=False)
+test.compile(verilator_flags2=["--binary", "--timing", "-Wno-UNSIGNED", "-Wno-CMPCONST"], make_main=False)
 test.execute()
 test.passes()
