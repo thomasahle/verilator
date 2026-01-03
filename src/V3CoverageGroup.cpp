@@ -89,6 +89,7 @@ class CoverageGroupVisitor final : public VNVisitor {
         int atLeast = 1;
         int goal = 100;
         int autoBinMax = 64;  // IEEE default
+        int crossAutoBinMax = 0;  // IEEE default (0 = unlimited)
     };
 
     // Current covergroup options
@@ -115,6 +116,9 @@ class CoverageGroupVisitor final : public VNVisitor {
             } else if (name == "auto_bin_max" && valp) {
                 opts.autoBinMax = valp->toSInt();
                 UINFO(4, "  option.auto_bin_max = " << opts.autoBinMax << endl);
+            } else if (name == "cross_auto_bin_max" && valp) {
+                opts.crossAutoBinMax = valp->toSInt();
+                UINFO(4, "  option.cross_auto_bin_max = " << opts.crossAutoBinMax << endl);
             } else if (name == "goal" && valp) {
                 opts.goal = valp->toSInt();
                 UINFO(4, "  option.goal = " << opts.goal << endl);
@@ -1170,6 +1174,16 @@ class CoverageGroupVisitor final : public VNVisitor {
         }
         UINFO(4, "Processing cross " << crossName << " of " << crossDesc.str()
                                      << " = " << totalCrossBins << " cross bins" << endl);
+
+        // Check cross_auto_bin_max limit (0 = unlimited)
+        if (m_options.crossAutoBinMax > 0
+            && totalCrossBins > static_cast<size_t>(m_options.crossAutoBinMax)) {
+            xp->v3warn(COVERIGN, "Cross coverage '" << crossName << "' has " << totalCrossBins
+                                                    << " bins, exceeds cross_auto_bin_max ("
+                                                    << m_options.crossAutoBinMax
+                                                    << "); skipping auto bin generation");
+            return;
+        }
 
         // Collect ignore_bins and illegal_bins expressions for cross bin filtering
         // These use binsof() expressions to specify which combinations to skip
