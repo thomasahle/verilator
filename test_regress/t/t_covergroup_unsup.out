@@ -3,26 +3,26 @@
       |                         ^~
                    ... For warning description see https://verilator.org/warn/COVERIGN?v=latest
                    ... Use "/* verilator lint_off COVERIGN */" and lint_on around source to disable this message.
-%Warning-COVERIGN: t/t_covergroup_unsup.v:109:24: Ignoring unsupported: coverage cross 'function' declaration
-  109 |          function void crossfunc; endfunction
+%Warning-COVERIGN: t/t_covergroup_unsup.v:110:24: Ignoring unsupported: coverage cross 'function' declaration
+  110 |          function void crossfunc; endfunction
       |                        ^~~~~~~~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:110:21: Ignoring unsupported: coverage select function call
-  110 |          bins one = crossfunc();
+%Warning-COVERIGN: t/t_covergroup_unsup.v:111:21: Ignoring unsupported: coverage select function call
+  111 |          bins one = crossfunc();
       |                     ^~~~~~~~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:137:33: Ignoring unsupported: covergroup value range
-  137 |       { bins bts2 = ( 2, 3 ), ( [5:6] ), ( [5 +/- 2] ), ( [ 5 +%- 20.0] ) ; }
+%Warning-COVERIGN: t/t_covergroup_unsup.v:139:33: Ignoring unsupported: covergroup value range
+  139 |       { bins bts2 = ( 2, 3 ), ( [5:6] ), ( [5 +/- 2] ), ( [ 5 +%- 20.0] ) ; }
       |                                 ^
-%Warning-COVERIGN: t/t_covergroup_unsup.v:137:44: Ignoring unsupported: covergroup value range
-  137 |       { bins bts2 = ( 2, 3 ), ( [5:6] ), ( [5 +/- 2] ), ( [ 5 +%- 20.0] ) ; }
+%Warning-COVERIGN: t/t_covergroup_unsup.v:139:44: Ignoring unsupported: covergroup value range
+  139 |       { bins bts2 = ( 2, 3 ), ( [5:6] ), ( [5 +/- 2] ), ( [ 5 +%- 20.0] ) ; }
       |                                            ^
-%Warning-COVERIGN: t/t_covergroup_unsup.v:137:59: Ignoring unsupported: covergroup value range
-  137 |       { bins bts2 = ( 2, 3 ), ( [5:6] ), ( [5 +/- 2] ), ( [ 5 +%- 20.0] ) ; }
+%Warning-COVERIGN: t/t_covergroup_unsup.v:139:59: Ignoring unsupported: covergroup value range
+  139 |       { bins bts2 = ( 2, 3 ), ( [5:6] ), ( [5 +/- 2] ), ( [ 5 +%- 20.0] ) ; }
       |                                                           ^
-%Warning-COVERIGN: t/t_covergroup_unsup.v:159:23: Ignoring unsupported: coverage select expression with (standalone)
-  159 |          bins bin_e = with (a);
+%Warning-COVERIGN: t/t_covergroup_unsup.v:162:23: Ignoring unsupported: coverage select expression with (standalone)
+  162 |          bins bin_e = with (a);
       |                       ^~~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:160:27: Ignoring unsupported: coverage select expression with (negated standalone)
-  160 |          bins bin_not_e = ! with (a);
+%Warning-COVERIGN: t/t_covergroup_unsup.v:163:27: Ignoring unsupported: coverage select expression with (negated standalone)
+  163 |          bins bin_not_e = ! with (a);
       |                           ^
 %Warning-WIDTHTRUNC: t/t_covergroup_unsup.v:77:7: Logical operator COVERPOINT expects 1 bit on the iff condition, but iff condition's VARREF 'b' generates 32 bits.
                                                 : ... note: In instance 't'
@@ -54,62 +54,62 @@
                                                  : ... note: In instance 't'
    95 |       signed id: coverpoint a iff (b);
       |                  ^~~~~~~~~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:140:25: Ignoring unsupported: cover '[*'
+%Warning-COVERIGN: t/t_covergroup_unsup.v:142:25: Ignoring unsupported: cover '[*'
                                                 : ... note: In instance 't'
-  140 |       { bins bts2 = ( 3 [*5] ) ; }
+  142 |       { bins bts2 = ( 3 [*5] ) ; }
       |                         ^~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:141:25: Ignoring unsupported: cover '[*'
+%Warning-COVERIGN: t/t_covergroup_unsup.v:143:25: Ignoring unsupported: cover '[*'
                                                 : ... note: In instance 't'
-  141 |       { bins bts2 = ( 3 [*5:6] ) ; }
+  143 |       { bins bts2 = ( 3 [*5:6] ) ; }
       |                         ^~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:142:25: Ignoring unsupported: cover '[->'
+%Warning-COVERIGN: t/t_covergroup_unsup.v:144:25: Ignoring unsupported: cover '[->'
                                                 : ... note: In instance 't'
-  142 |       { bins bts2 = ( 3 [->5] ) ; }
+  144 |       { bins bts2 = ( 3 [->5] ) ; }
       |                         ^~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:143:25: Ignoring unsupported: cover '[->'
+%Warning-COVERIGN: t/t_covergroup_unsup.v:145:25: Ignoring unsupported: cover '[->'
                                                 : ... note: In instance 't'
-  143 |       { bins bts2 = ( 3 [->5:6] ) ; }
+  145 |       { bins bts2 = ( 3 [->5:6] ) ; }
       |                         ^~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:144:25: Ignoring unsupported: cover '[='
+%Warning-COVERIGN: t/t_covergroup_unsup.v:146:25: Ignoring unsupported: cover '[='
                                                 : ... note: In instance 't'
-  144 |       { bins bts2 = ( 3 [=5] ) ; }
+  146 |       { bins bts2 = ( 3 [=5] ) ; }
       |                         ^~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:145:25: Ignoring unsupported: cover '[='
+%Warning-COVERIGN: t/t_covergroup_unsup.v:147:25: Ignoring unsupported: cover '[='
                                                 : ... note: In instance 't'
-  145 |       { bins bts2 = ( 3 [=5:6] ) ; }
+  147 |       { bins bts2 = ( 3 [=5:6] ) ; }
       |                         ^~
 %Warning-COVERIGN: t/t_covergroup_unsup.v:61:36: Covergroup clocking event parsed but automatic sampling not yet implemented; call sample() manually
                                                : ... note: In instance 't'
    61 |    covergroup cg_clockingevent() @(posedge clk);
       |                                    ^~~~~~~
-%Error-UNSUPPORTED: t/t_covergroup_unsup.v:99:7: Cross coverage references unknown coverpoint 'a'
-                                               : ... note: In instance 't'
-   99 |       cross a, b iff (!rst);
+%Error-UNSUPPORTED: t/t_covergroup_unsup.v:100:7: Cross coverage references unknown coverpoint 'a'
+                                                : ... note: In instance 't'
+  100 |       cross a, b iff (!rst);
       |       ^~~~~
                     ... For error description see https://verilator.org/warn/UNSUPPORTED?v=latest
-%Error-UNSUPPORTED: t/t_covergroup_unsup.v:102:7: Cross coverage references unknown coverpoint 'a'
+%Error-UNSUPPORTED: t/t_covergroup_unsup.v:103:7: Cross coverage references unknown coverpoint 'a'
                                                 : ... note: In instance 't'
-  102 |       cross a, b iff (!rst) {}
+  103 |       cross a, b iff (!rst) {}
       |       ^~~~~
-%Error-UNSUPPORTED: t/t_covergroup_unsup.v:105:7: Cross coverage references unknown coverpoint 'a'
+%Error-UNSUPPORTED: t/t_covergroup_unsup.v:106:7: Cross coverage references unknown coverpoint 'a'
                                                 : ... note: In instance 't'
-  105 |       cross a, b { option.comment = "cross"; option.weight = 12; }
+  106 |       cross a, b { option.comment = "cross"; option.weight = 12; }
       |       ^~~~~
-%Error-UNSUPPORTED: t/t_covergroup_unsup.v:108:7: Cross coverage references unknown coverpoint 'a'
+%Error-UNSUPPORTED: t/t_covergroup_unsup.v:109:7: Cross coverage references unknown coverpoint 'a'
                                                 : ... note: In instance 't'
-  108 |       cross a, b {
+  109 |       cross a, b {
       |       ^~~~~
-%Error-UNSUPPORTED: t/t_covergroup_unsup.v:114:17: Cross coverage references unknown coverpoint 'a'
+%Error-UNSUPPORTED: t/t_covergroup_unsup.v:115:17: Cross coverage references unknown coverpoint 'a'
                                                  : ... note: In instance 't'
-  114 |       my_cg_id: cross a, b iff (!rst);
+  115 |       my_cg_id: cross a, b iff (!rst);
       |                 ^~~~~
-%Error-UNSUPPORTED: t/t_covergroup_unsup.v:150:7: Cross coverage references unknown coverpoint 'a'
+%Error-UNSUPPORTED: t/t_covergroup_unsup.v:153:7: Cross coverage references unknown coverpoint 'a'
                                                 : ... note: In instance 't'
-  150 |       cross a, b {
+  153 |       cross a, b {
       |       ^~~~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:179:24: Covergroup clocking event parsed but automatic sampling not yet implemented; call sample() manually
+%Warning-COVERIGN: t/t_covergroup_unsup.v:183:24: Covergroup clocking event parsed but automatic sampling not yet implemented; call sample() manually
                                                 : ... note: In instance 't'
-  179 |       covergroup cov1 @m_z;
+  183 |       covergroup cov1 @m_z;
       |                        ^~~
 %Warning-UNSIGNED: t/t_covergroup_unsup.v:74:7: Comparison is constant due to unsigned arithmetic
                                               : ... note: In instance 't'
@@ -179,20 +179,20 @@
                                                : ... note: In instance 't'
    95 |       signed id: coverpoint a iff (b);
       |                  ^~~~~~~~~~
-%Warning-UNSIGNED: t/t_covergroup_unsup.v:180:10: Comparison is constant due to unsigned arithmetic
+%Warning-UNSIGNED: t/t_covergroup_unsup.v:184:10: Comparison is constant due to unsigned arithmetic
                                                 : ... note: In instance 't'
-  180 |          coverpoint m_x;
+  184 |          coverpoint m_x;
       |          ^~~~~~~~~~
-%Warning-CMPCONST: t/t_covergroup_unsup.v:180:10: Comparison is constant due to limited range
+%Warning-CMPCONST: t/t_covergroup_unsup.v:184:10: Comparison is constant due to limited range
                                                 : ... note: In instance 't'
-  180 |          coverpoint m_x;
+  184 |          coverpoint m_x;
       |          ^~~~~~~~~~
-%Warning-UNSIGNED: t/t_covergroup_unsup.v:181:10: Comparison is constant due to unsigned arithmetic
+%Warning-UNSIGNED: t/t_covergroup_unsup.v:185:10: Comparison is constant due to unsigned arithmetic
                                                 : ... note: In instance 't'
-  181 |          coverpoint m_y;
+  185 |          coverpoint m_y;
       |          ^~~~~~~~~~
-%Warning-CMPCONST: t/t_covergroup_unsup.v:181:10: Comparison is constant due to limited range
+%Warning-CMPCONST: t/t_covergroup_unsup.v:185:10: Comparison is constant due to limited range
                                                 : ... note: In instance 't'
-  181 |          coverpoint m_y;
+  185 |          coverpoint m_y;
       |          ^~~~~~~~~~
 %Error: Exiting due to
