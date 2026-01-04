@@ -78,10 +78,6 @@
                                                 : ... note: In instance 't'
   147 |       { bins bts2 = ( 3 [=5:6] ) ; }
       |                         ^~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:61:36: Covergroup clocking event parsed but automatic sampling not yet implemented; call sample() manually
-                                               : ... note: In instance 't'
-   61 |    covergroup cg_clockingevent() @(posedge clk);
-      |                                    ^~~~~~~
 %Error-UNSUPPORTED: t/t_covergroup_unsup.v:100:7: Cross coverage references unknown coverpoint 'a'
                                                 : ... note: In instance 't'
   100 |       cross a, b iff (!rst);
@@ -107,10 +103,6 @@
                                                 : ... note: In instance 't'
   153 |       cross a, b {
       |       ^~~~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:183:24: Covergroup clocking event parsed but automatic sampling not yet implemented; call sample() manually
-                                                : ... note: In instance 't'
-  183 |       covergroup cov1 @m_z;
-      |                        ^~~
 %Warning-UNSIGNED: t/t_covergroup_unsup.v:74:7: Comparison is constant due to unsigned arithmetic
                                               : ... note: In instance 't'
    74 |       coverpoint a;

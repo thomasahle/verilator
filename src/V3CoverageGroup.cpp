@@ -1931,18 +1931,92 @@ class CoverageGroupVisitor final : public VNVisitor {
 
         // Handle covergroup clocking event (automatic sampling)
         if (AstSenItem* const clockEventp = nodep->coverClockEventp()) {
-            // For now, issue a warning that automatic sampling requires manual sample() calls
-            // TODO: Generate an always block in the containing module that calls sample()
-            clockEventp->v3warn(COVERIGN,
-                                "Covergroup clocking event parsed but automatic sampling "
-                                "not yet implemented; call sample() manually");
-            // Remove the clocking event to prevent issues in later passes (like V3Gate)
+            // Check if sample() has arguments (beyond the return value)
+            bool hasSampleArgs = !m_sampleArgs.empty();
+            if (hasSampleArgs) {
+                // Cannot auto-sample when sample() has arguments
+                clockEventp->v3warn(COVERIGN,
+                                    "Covergroup clocking event with sample() arguments not "
+                                    "supported; call sample() manually");
+            } else {
+                // Generate automatic sampling:
+                // fork forever @(clock_event) this.sample(); join_none
+                generateAutoSampling(nodep, clockEventp);
+            }
+            // Remove the clocking event from the class to prevent issues in later passes
             clockEventp->unlinkFrBack();
             VL_DO_DANGLING(clockEventp->deleteTree(), clockEventp);
             nodep->coverClockEventp(nullptr);
         }
 
         m_classp = nullptr;
+    }
+
+    // Generate automatic sampling code in the constructor
+    // Adds: fork forever @(clock_event) sample(); join_none
+    void generateAutoSampling(AstClass* covergroupp, AstSenItem* clockEventp) {
+        UINFO(4, "Generating automatic sampling for covergroup " << covergroupp->name() << endl);
+
+        // Find the constructor function
+        AstFunc* constructorFuncp = nullptr;
+        for (AstNode* memberp = covergroupp->membersp(); memberp; memberp = memberp->nextp()) {
+            if (AstFunc* const funcp = VN_CAST(memberp, Func)) {
+                if (funcp->isConstructor()) {
+                    constructorFuncp = funcp;
+                    break;
+                }
+            }
+        }
+
+        if (!constructorFuncp) {
+            clockEventp->v3warn(COVERIGN, "Covergroup missing constructor for automatic sampling");
+            return;
+        }
+
+        FileLine* const fl = clockEventp->fileline();
+
+        // Create: this.sample()
+        // First, create 'this' reference
+        AstClassRefDType* const thisTypep
+            = new AstClassRefDType{fl, covergroupp, nullptr};
+        v3Global.rootp()->typeTablep()->addTypesp(thisTypep);
+        AstNodeExpr* const thisp = new AstThisRef{fl, thisTypep};
+
+        // Create method call: this.sample()
+        // m_sampleFuncp should already be set from earlier processing
+        if (!m_sampleFuncp) {
+            clockEventp->v3warn(COVERIGN,
+                                "Covergroup missing sample() function for automatic sampling");
+            return;
+        }
+        AstMethodCall* const sampleCallp
+            = new AstMethodCall{fl, thisp, "sample", nullptr};
+        sampleCallp->taskp(m_sampleFuncp);  // Link to actual sample() function
+        sampleCallp->dtypep(covergroupp->findVoidDType());
+
+        // Wrap method call in statement context
+        AstStmtExpr* const sampleStmtp = new AstStmtExpr{fl, sampleCallp};
+
+        // Create event control: @(clock_event) sample();
+        // Clone the clock event and create a SenTree
+        AstSenItem* const clonedEventp = clockEventp->cloneTree(false);
+        AstSenTree* const sentreep = new AstSenTree{fl, clonedEventp};
+        AstEventControl* const eventCtrlp = new AstEventControl{fl, sentreep, sampleStmtp};
+
+        // Create forever loop: forever @(clock_event) sample();
+        AstLoop* const foreverp = new AstLoop{fl, eventCtrlp};
+
+        // Create a begin block for the fork branch
+        AstBegin* const forkBranchp = new AstBegin{fl, "", foreverp, false};
+
+        // Create fork...join_none with the forever loop
+        AstFork* const forkp = new AstFork{fl, VJoinType::JOIN_NONE, ""};
+        forkp->addForksp(forkBranchp);
+
+        // Add the fork statement to the end of the constructor
+        constructorFuncp->addStmtsp(forkp);
+
+        UINFO(4, "Added automatic sampling fork to constructor" << endl);
     }
 
     // Initialize __Vparentp in the enclosing class
