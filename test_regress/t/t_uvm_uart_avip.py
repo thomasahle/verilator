@@ -7,6 +7,8 @@ import vltest_bootstrap
 import os
 
 test.scenarios('simulator')
+if not test.have_solver:
+    test.skip("Requires solver")
 
 # Use absolute paths resolved at runtime
 verilator_root = os.environ.get('VERILATOR_ROOT', os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
