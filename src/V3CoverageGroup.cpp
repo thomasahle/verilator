@@ -522,6 +522,135 @@ class CoverageGroupVisitor final : public VNVisitor {
         return true;
     }
 
+    // Process a repetition bin (e.g., bins x = (3 [*5]) or (3 [->5]))
+    // Returns true if repetition was processed, false if it should be skipped
+    bool processRepetitionBin(AstCoverBin* binp, AstCovRepetition* repp, AstNodeExpr* cpExprp,
+                              const string& cpName, AstNodeExpr* cpIffp, AstVar* anyMatchedVarp) {
+        FileLine* const fl = binp->fileline();
+        const string binName = binp->name().empty() ? "rep" + cvtToStr(m_binCount) : binp->name();
+
+        // Get the item being repeated (value or range)
+        AstNode* const itemp = repp->itemp();
+        if (!itemp) {
+            repp->v3warn(COVERIGN, "Repetition coverage requires a value");
+            return false;
+        }
+
+        // Get repetition count (must be constant for now)
+        AstConst* const countConstp = VN_CAST(repp->countp(), Const);
+        if (!countConstp) {
+            repp->v3warn(COVERIGN, "Repetition count must be constant");
+            return false;
+        }
+        const uint32_t repCount = countConstp->toUInt();
+        if (repCount == 0) {
+            repp->v3warn(COVERIGN, "Repetition count must be non-zero");
+            return false;
+        }
+
+        // Handle range (e.g., [*5:6]) - use low bound for now, warn about range
+        if (repp->count2p()) {
+            repp->v3warn(COVERIGN, "Repetition range [*N:M] using only low bound N");
+        }
+
+        UINFO(4, "Processing repetition bin '" << binName << "' type=" << repp->repTypeString()
+                                               << " count=" << repCount << endl);
+
+        // Create state counter for tracking repetitions
+        const string stateName = makeVarName("__Vcov_rep_cnt_", cpName, binName);
+        AstVar* const stateVarp
+            = new AstVar{fl, VVarType::MEMBER, stateName, m_classp->findUInt32DType()};
+        stateVarp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
+        stateVarp->valuep(new AstConst{fl, 0});
+        m_classp->addMembersp(stateVarp);
+
+        // Create counter and hit flag variables
+        const string counterName = makeVarName("__Vcov_cnt_", cpName, binName);
+        const string hitName = makeVarName("__Vcov_hit_", cpName, binName);
+        AstVar* const counterVarp = createCounterVar(fl, counterName);
+        AstVar* const hitVarp = createHitVar(fl, hitName);
+        AstVar* const staticHitVarp = createStaticHitVar(fl, hitName);
+
+        // Create condition for value match
+        AstNodeExpr* matchCondp = createStepMatch(fl, cloneWithTransforms(cpExprp), itemp);
+        if (!matchCondp) {
+            repp->v3warn(COVERIGN, "Repetition value cannot be matched");
+            return false;
+        }
+
+        // Apply iff conditions to match
+        if (cpIffp) { matchCondp = new AstLogAnd{fl, cpIffp->cloneTree(false), matchCondp}; }
+        if (binp->iffp()) {
+            matchCondp = new AstLogAnd{fl, cloneWithTransforms(binp->iffp()), matchCondp};
+        }
+
+        // Build state machine logic based on repetition type
+        const VCovRepetitionType repType = repp->repType();
+
+        // For CONSECUTIVE [*N]: increment on match, reset on mismatch
+        // For GOTO [->N] or NONCONSEC [=N]: increment on match only (don't reset)
+
+        // Statements when value matches
+        AstNode* matchStmtsp = nullptr;
+
+        // Increment state counter: state = state + 1
+        AstAssign* const incStatep = new AstAssign{
+            fl, new AstVarRef{fl, stateVarp, VAccess::WRITE},
+            new AstAdd{fl, new AstVarRef{fl, stateVarp, VAccess::READ}, new AstConst{fl, 1}}};
+        matchStmtsp = incStatep;
+
+        // Check if we've reached the target count: if (state + 1 == repCount) { hit; reset }
+        // Since we increment first, check after: if (state == repCount)
+        AstNodeExpr* reachedTargetp = new AstEq{
+            fl, new AstVarRef{fl, stateVarp, VAccess::READ}, new AstConst{fl, repCount}};
+
+        // Statements when target reached
+        AstAssign* const incCounterp = new AstAssign{
+            fl, new AstVarRef{fl, counterVarp, VAccess::WRITE},
+            new AstAdd{fl, new AstVarRef{fl, counterVarp, VAccess::READ}, new AstConst{fl, 1}}};
+        AstAssign* const setHitp = new AstAssign{
+            fl, new AstVarRef{fl, hitVarp, VAccess::WRITE}, new AstConst{fl, AstConst::BitTrue{}}};
+        AstAssign* const setStaticHitp = new AstAssign{
+            fl, new AstVarRef{fl, staticHitVarp, VAccess::WRITE},
+            new AstConst{fl, AstConst::BitTrue{}}};
+        AstAssign* const resetStatep = new AstAssign{
+            fl, new AstVarRef{fl, stateVarp, VAccess::WRITE}, new AstConst{fl, 0}};
+
+        AstIf* reachedIfp = new AstIf{fl, reachedTargetp, incCounterp, nullptr};
+        reachedIfp->addThensp(setHitp);
+        reachedIfp->addThensp(setStaticHitp);
+        reachedIfp->addThensp(resetStatep);
+
+        if (anyMatchedVarp) {
+            AstAssign* const setAnyMatchedp = new AstAssign{
+                fl, new AstVarRef{fl, anyMatchedVarp, VAccess::WRITE},
+                new AstConst{fl, AstConst::BitTrue{}}};
+            reachedIfp->addThensp(setAnyMatchedp);
+        }
+
+        matchStmtsp->addNext(reachedIfp);
+
+        // For CONSECUTIVE: also need to reset on mismatch
+        AstNode* mismatchStmtsp = nullptr;
+        if (repType == VCovRepetitionType::CONSECUTIVE) {
+            mismatchStmtsp = new AstAssign{fl, new AstVarRef{fl, stateVarp, VAccess::WRITE},
+                                           new AstConst{fl, 0}};
+        }
+
+        // Create the if statement: if (match) { inc; check } else { reset (if consecutive) }
+        AstIf* const ifp = new AstIf{fl, matchCondp, matchStmtsp, mismatchStmtsp};
+        m_sampleFuncp->addStmtsp(ifp);
+
+        // Track for coverage calculations
+        m_hitVars.push_back(hitVarp);
+        m_counterVars.push_back(counterVarp);
+        m_staticHitVars.push_back(staticHitVarp);
+        m_cpBinHitVars[cpName].push_back(CovBinInfo{binName, hitVarp});
+
+        ++m_binCount;
+        return true;
+    }
+
     // Create condition: expr >= lo && expr <= hi
     // Note: exprp is consumed (not cloned here), caller must provide a fresh clone
     AstNodeExpr* createRangeCheck(FileLine* fl, AstNodeExpr* exprp, AstNodeExpr* lop,
@@ -673,14 +802,21 @@ class CoverageGroupVisitor final : public VNVisitor {
         // Handle bin arrays: bins arr[] = {[0:3]} expands to arr[0], arr[1], arr[2], arr[3]
         if (processBinArray(binp, cpExprp, cpName, cpIffp, anyMatchedVarp)) return;
 
-        // Check for transition bins FIRST before creating variables
-        // This avoids creating duplicate variables when processTransitionBin also creates them
+        // Check for transition/repetition bins FIRST before creating variables
+        // This avoids creating duplicate variables when process*Bin also creates them
         for (AstNode* rangep = binp->rangesp(); rangep; rangep = rangep->nextp()) {
             if (AstCovTransition* const transp = VN_CAST(rangep, CovTransition)) {
                 // Transition coverage - process via state machine
                 // processTransitionBin creates its own counter/hit/state variables
                 if (processTransitionBin(binp, transp, cpExprp, cpName, cpIffp, anyMatchedVarp)) {
                     return;  // Successfully processed transition bin
+                }
+                // Failed to process, fall through to try regular processing
+            } else if (AstCovRepetition* const repp = VN_CAST(rangep, CovRepetition)) {
+                // Repetition coverage - process via state counter
+                // processRepetitionBin creates its own counter/hit/state variables
+                if (processRepetitionBin(binp, repp, cpExprp, cpName, cpIffp, anyMatchedVarp)) {
+                    return;  // Successfully processed repetition bin
                 }
                 // Failed to process, fall through to try regular processing
             }
@@ -705,7 +841,7 @@ class CoverageGroupVisitor final : public VNVisitor {
                 // Already handled above, skip
                 continue;
             } else if (VN_IS(rangep, CovRepetition)) {
-                // Coverage repetition - already warned in V3Width, skip
+                // Coverage repetition - already processed above, skip
                 continue;
             } else if (AstInsideRange* const irp = VN_CAST(rangep, InsideRange)) {
                 // InsideRange [lo:hi] - use its built-in method to create comparison

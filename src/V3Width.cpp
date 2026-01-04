@@ -6381,8 +6381,7 @@ class WidthVisitor final : public VNVisitor {
         userIterateAndNext(nodep->itemp(), WidthVP{SELF, BOTH}.p());
         userIterateAndNext(nodep->countp(), WidthVP{SELF, BOTH}.p());
         userIterateAndNext(nodep->count2p(), WidthVP{SELF, BOTH}.p());
-        // Warn about unsupported repetition operators
-        nodep->v3warn(COVERIGN, "Ignoring unsupported: cover '" << nodep->repTypeString() << "'");
+        // Repetition is now supported - warnings for partial support in V3CoverageGroup
     }
     void visit(AstCovTransition* nodep) override {
         // Transition sequence - each step's ranges need width context
