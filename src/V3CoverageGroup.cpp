@@ -542,19 +542,33 @@ class CoverageGroupVisitor final : public VNVisitor {
             repp->v3warn(COVERIGN, "Repetition count must be constant");
             return false;
         }
-        const uint32_t repCount = countConstp->toUInt();
-        if (repCount == 0) {
+        const uint32_t repCountLo = countConstp->toUInt();
+        if (repCountLo == 0) {
             repp->v3warn(COVERIGN, "Repetition count must be non-zero");
             return false;
         }
 
-        // Handle range (e.g., [*5:6]) - use low bound for now, warn about range
+        // Handle range (e.g., [*5:6]) - get high bound if present
+        uint32_t repCountHi = repCountLo;  // Default to same as low (exact count)
         if (repp->count2p()) {
-            repp->v3warn(COVERIGN, "Repetition range [*N:M] using only low bound N");
+            AstConst* const count2Constp = VN_CAST(repp->count2p(), Const);
+            if (!count2Constp) {
+                repp->v3warn(COVERIGN, "Repetition range high bound must be constant");
+                return false;
+            }
+            repCountHi = count2Constp->toUInt();
+            if (repCountHi < repCountLo) {
+                repp->v3warn(COVERIGN, "Repetition range high bound must be >= low bound");
+                return false;
+            }
         }
 
         UINFO(4, "Processing repetition bin '" << binName << "' type=" << repp->repTypeString()
-                                               << " count=" << repCount << endl);
+                                               << " count=" << repCountLo
+                                               << (repCountHi != repCountLo
+                                                       ? ":" + cvtToStr(repCountHi)
+                                                       : "")
+                                               << endl);
 
         // Create state counter for tracking repetitions
         const string stateName = makeVarName("__Vcov_rep_cnt_", cpName, binName);
@@ -599,10 +613,21 @@ class CoverageGroupVisitor final : public VNVisitor {
             new AstAdd{fl, new AstVarRef{fl, stateVarp, VAccess::READ}, new AstConst{fl, 1}}};
         matchStmtsp = incStatep;
 
-        // Check if we've reached the target count: if (state + 1 == repCount) { hit; reset }
-        // Since we increment first, check after: if (state == repCount)
-        AstNodeExpr* reachedTargetp = new AstEq{
-            fl, new AstVarRef{fl, stateVarp, VAccess::READ}, new AstConst{fl, repCount}};
+        // Check if we've reached the target range: state >= N && state <= M
+        // For exact count (N==M), this simplifies to state == N
+        AstNodeExpr* reachedTargetp;
+        if (repCountLo == repCountHi) {
+            // Exact count: state == N
+            reachedTargetp = new AstEq{fl, new AstVarRef{fl, stateVarp, VAccess::READ},
+                                       new AstConst{fl, repCountLo}};
+        } else {
+            // Range: state >= N && state <= M
+            AstNodeExpr* const geq = new AstGte{fl, new AstVarRef{fl, stateVarp, VAccess::READ},
+                                                new AstConst{fl, repCountLo}};
+            AstNodeExpr* const leq = new AstLte{fl, new AstVarRef{fl, stateVarp, VAccess::READ},
+                                                new AstConst{fl, repCountHi}};
+            reachedTargetp = new AstLogAnd{fl, geq, leq};
+        }
 
         // Statements when target reached
         AstAssign* const incCounterp = new AstAssign{
@@ -619,7 +644,10 @@ class CoverageGroupVisitor final : public VNVisitor {
         AstIf* reachedIfp = new AstIf{fl, reachedTargetp, incCounterp, nullptr};
         reachedIfp->addThensp(setHitp);
         reachedIfp->addThensp(setStaticHitp);
-        reachedIfp->addThensp(resetStatep);
+        // For exact count, reset immediately; for range, reset only at upper bound
+        if (repCountLo == repCountHi) {
+            reachedIfp->addThensp(resetStatep);
+        }
 
         if (anyMatchedVarp) {
             AstAssign* const setAnyMatchedp = new AstAssign{
@@ -629,6 +657,18 @@ class CoverageGroupVisitor final : public VNVisitor {
         }
 
         matchStmtsp->addNext(reachedIfp);
+
+        // For ranges: reset when exceeding upper bound M (after M matches)
+        if (repCountLo != repCountHi) {
+            // if (state > M) state = 0;
+            AstNodeExpr* const exceedMaxp = new AstGt{
+                fl, new AstVarRef{fl, stateVarp, VAccess::READ}, new AstConst{fl, repCountHi}};
+            AstIf* const resetMaxIfp = new AstIf{
+                fl, exceedMaxp,
+                new AstAssign{fl, new AstVarRef{fl, stateVarp, VAccess::WRITE}, new AstConst{fl, 0}},
+                nullptr};
+            matchStmtsp->addNext(resetMaxIfp);
+        }
 
         // For CONSECUTIVE: also need to reset on mismatch
         AstNode* mismatchStmtsp = nullptr;

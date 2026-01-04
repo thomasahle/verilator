@@ -23,6 +23,10 @@ module t(/*AUTOARG*/);
          // Non-consecutive repetition [=2] - same as goto semantically
          bins nonconsec_rep = (15 [=2]);
 
+         // Range repetition [*2:4] - value must be 20 two to four times consecutively
+         // Should hit on 2, 3, or 4 consecutive matches
+         bins range_rep = (20 [*2:4]);
+
          // Regular bins for comparison
          bins single_val = {5};
       }
@@ -63,6 +67,20 @@ module t(/*AUTOARG*/);
       value = 3; cg.sample();  // Different value
       value = 4; cg.sample();  // Different value
       value = 15; cg.sample(); // Match 2 - HIT!
+
+      // Test range repetition [*2:4]
+      // Should hit on 2, 3, or 4 consecutive matches of value=20
+      $display("Testing range repetition [*2:4]...");
+      value = 20; cg.sample(); // Match 1
+      value = 20; cg.sample(); // Match 2 - HIT (in range 2-4)
+      value = 20; cg.sample(); // Match 3 - HIT (still in range)
+      value = 20; cg.sample(); // Match 4 - HIT (still in range)
+      value = 20; cg.sample(); // Match 5 - exceeds range, reset
+      value = 1; cg.sample();  // Different value - reset
+      // New sequence
+      value = 20; cg.sample(); // Match 1
+      value = 20; cg.sample(); // Match 2 - HIT
+      value = 1; cg.sample();  // Different value - reset (sequence ended with 2 matches)
 
       // Check that we got expected hits
       // Note: We can't directly query bin hit counts in standard SV,
