@@ -3908,7 +3908,7 @@ value_range<nodeExprp>:         // ==IEEE: value_range/open_value_range
 covergroup_value_range<nodeExprp>:  // ==IEEE-2012: covergroup_value_range
                 cgexpr                                  { $$ = $1; }
         |       '[' cgexpr ':' cgexpr ']'
-                        { $$ = nullptr; BBCOVERIGN($1, "Ignoring unsupported: covergroup value range"); DEL($2, $4); }
+                        { $$ = new AstInsideRange{$1, $2, $4}; }
         //                      // IEEE-2023: added all four:
         //                      // Skipped as '$' is part of our expr
         //                      // IEEE-2023: '[' '$' ':' cgexpr ']'
