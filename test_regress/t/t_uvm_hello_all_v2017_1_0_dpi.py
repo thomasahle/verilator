@@ -25,6 +25,7 @@ test.compile(v_flags2=[
     "--CFLAGS -O0",
     "-CFLAGS", "-Wno-deprecated-declarations",
     "-Wall",
+    "-Wno-REDEFMACRO",  # UVM 2017 redefines UVM_VERSION from t/uvm
     "+incdir+t/uvm",  #
     "t/uvm/uvm_pkg_all_v2017_1_0_dpi.svh",
     test.pli_filename
