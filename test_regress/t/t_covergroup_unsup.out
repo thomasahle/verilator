@@ -54,30 +54,6 @@
                                                  : ... note: In instance 't'
    95 |       signed id: coverpoint a iff (b);
       |                  ^~~~~~~~~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:142:25: Ignoring unsupported: cover '[*'
-                                                : ... note: In instance 't'
-  142 |       { bins bts2 = ( 3 [*5] ) ; }
-      |                         ^~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:143:25: Ignoring unsupported: cover '[*'
-                                                : ... note: In instance 't'
-  143 |       { bins bts2 = ( 3 [*5:6] ) ; }
-      |                         ^~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:144:25: Ignoring unsupported: cover '[->'
-                                                : ... note: In instance 't'
-  144 |       { bins bts2 = ( 3 [->5] ) ; }
-      |                         ^~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:145:25: Ignoring unsupported: cover '[->'
-                                                : ... note: In instance 't'
-  145 |       { bins bts2 = ( 3 [->5:6] ) ; }
-      |                         ^~~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:146:25: Ignoring unsupported: cover '[='
-                                                : ... note: In instance 't'
-  146 |       { bins bts2 = ( 3 [=5] ) ; }
-      |                         ^~
-%Warning-COVERIGN: t/t_covergroup_unsup.v:147:25: Ignoring unsupported: cover '[='
-                                                : ... note: In instance 't'
-  147 |       { bins bts2 = ( 3 [=5:6] ) ; }
-      |                         ^~
 %Error-UNSUPPORTED: t/t_covergroup_unsup.v:100:7: Cross coverage references unknown coverpoint 'a'
                                                 : ... note: In instance 't'
   100 |       cross a, b iff (!rst);
