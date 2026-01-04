@@ -6383,6 +6383,11 @@ class WidthVisitor final : public VNVisitor {
         userIterateAndNext(nodep->count2p(), WidthVP{SELF, BOTH}.p());
         // Repetition is now supported - warnings for partial support in V3CoverageGroup
     }
+    void visit(AstCovTolerance* nodep) override {
+        // Tolerance range [value +/- tol] or [value +%- pct]
+        userIterateAndNext(nodep->centerp(), WidthVP{SELF, BOTH}.p());
+        userIterateAndNext(nodep->tolerancep(), WidthVP{SELF, BOTH}.p());
+    }
     void visit(AstCovTransition* nodep) override {
         // Transition sequence - each step's ranges need width context
         userIterateAndNext(nodep->stepsp(), WidthVP{SELF, BOTH}.p());

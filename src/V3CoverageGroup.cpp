@@ -378,6 +378,43 @@ class CoverageGroupVisitor final : public VNVisitor {
             AstNodeExpr* const leq
                 = new AstLte{fl, exprp->cloneTree(false), rp->rightp()->cloneTree(false)};
             return new AstLogAnd{fl, geq, leq};
+        } else if (AstCovTolerance* const tp = VN_CAST(stepp, CovTolerance)) {
+            // Tolerance range: [center +/- tol] or [center +%- pct]
+            // For +/-: check center - tol <= expr <= center + tol
+            // For +%-: check center * (1 - pct/100) <= expr <= center * (1 + pct/100)
+            AstConst* const centerConstp = VN_CAST(tp->centerp(), Const);
+            AstConst* const tolConstp = VN_CAST(tp->tolerancep(), Const);
+            if (!centerConstp || !tolConstp) {
+                tp->v3warn(COVERIGN, "Tolerance range requires constant values");
+                return nullptr;
+            }
+            AstNodeExpr* lop;
+            AstNodeExpr* hip;
+            if (tp->isPercent()) {
+                // Percentage: center * (1 - pct/100) to center * (1 + pct/100)
+                // Get center as integer (toUQuad works for both int and real)
+                const double center = static_cast<double>(centerConstp->num().toUQuad());
+                // Get percentage - could be real (25.0) or integer (25)
+                double pct;
+                if (tolConstp->num().isDouble()) {
+                    pct = tolConstp->num().toDouble() / 100.0;
+                } else {
+                    pct = static_cast<double>(tolConstp->num().toUQuad()) / 100.0;
+                }
+                const uint64_t lo = static_cast<uint64_t>(center * (1.0 - pct));
+                const uint64_t hi = static_cast<uint64_t>(center * (1.0 + pct));
+                lop = new AstConst{fl, AstConst::WidthedValue{}, centerConstp->width(),
+                                   static_cast<uint32_t>(lo)};
+                hip = new AstConst{fl, AstConst::WidthedValue{}, centerConstp->width(),
+                                   static_cast<uint32_t>(hi)};
+            } else {
+                // Absolute: center - tol to center + tol
+                lop = new AstSub{fl, centerConstp->cloneTree(false), tolConstp->cloneTree(false)};
+                hip = new AstAdd{fl, centerConstp->cloneTree(false), tolConstp->cloneTree(false)};
+            }
+            AstNodeExpr* const geq = new AstGte{fl, exprp, lop};
+            AstNodeExpr* const leq = new AstLte{fl, exprp->cloneTree(false), hip};
+            return new AstLogAnd{fl, geq, leq};
         } else if (AstConst* const cp = VN_CAST(stepp, Const)) {
             return new AstEq{fl, exprp, cp->cloneTree(false)};
         } else if (AstNodeExpr* const ep = VN_CAST(stepp, NodeExpr)) {
@@ -921,6 +958,9 @@ class CoverageGroupVisitor final : public VNVisitor {
                     rangeCondp
                         = new AstEq{fl, cloneWithTransforms(cpExprp), cp->cloneTree(false)};
                 }
+            } else if (AstCovTolerance* const tp = VN_CAST(rangep, CovTolerance)) {
+                // Tolerance range [value +/- tol] or [value +%- pct]
+                rangeCondp = createStepMatch(fl, cloneWithTransforms(cpExprp), tp);
             } else if (AstNodeExpr* const ep = VN_CAST(rangep, NodeExpr)) {
                 // Expression value
                 rangeCondp = new AstEq{fl, cloneWithTransforms(cpExprp), ep->cloneTree(false)};

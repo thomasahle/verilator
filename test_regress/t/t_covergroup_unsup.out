@@ -12,12 +12,6 @@
 %Warning-COVERIGN: t/t_covergroup_unsup.v:139:33: Ignoring unsupported: covergroup value range
   139 |       { bins bts2 = ( 2, 3 ), ( [5:6] ), ( [5 +/- 2] ), ( [ 5 +%- 20.0] ) ; }
       |                                 ^
-%Warning-COVERIGN: t/t_covergroup_unsup.v:139:44: Ignoring unsupported: covergroup value range
-  139 |       { bins bts2 = ( 2, 3 ), ( [5:6] ), ( [5 +/- 2] ), ( [ 5 +%- 20.0] ) ; }
-      |                                            ^
-%Warning-COVERIGN: t/t_covergroup_unsup.v:139:59: Ignoring unsupported: covergroup value range
-  139 |       { bins bts2 = ( 2, 3 ), ( [5:6] ), ( [5 +/- 2] ), ( [ 5 +%- 20.0] ) ; }
-      |                                                           ^
 %Warning-COVERIGN: t/t_covergroup_unsup.v:162:23: Ignoring unsupported: coverage select expression with (standalone)
   162 |          bins bin_e = with (a);
       |                       ^~~~
