@@ -4,7 +4,8 @@
 // any use, without warranty, 2025 by Wilson Snyder.
 // SPDX-License-Identifier: CC0-1.0
 
-// Test covergroup clocking events with automatic sampling
+// Test automatic covergroup sampling via clocking event
+// The covergroup should automatically sample() on each clock edge
 
 module t (/*AUTOARG*/
    // Inputs
@@ -13,13 +14,14 @@ module t (/*AUTOARG*/
    input clk;
 
    int a;
-   int b;
    int cyc = 0;
 
-   // Covergroup with clocking event - automatically samples on posedge clk
+   // Covergroup with clocking event - should auto-sample on posedge clk
    covergroup cg_auto @(posedge clk);
-      coverpoint a { bins low = {[0:3]}; bins high = {[4:7]}; }
-      coverpoint b { bins low = {[0:3]}; bins high = {[4:7]}; }
+      coverpoint a {
+         bins low = {[0:3]};
+         bins high = {[4:7]};
+      }
    endgroup
 
    cg_auto cov1;
@@ -32,8 +34,7 @@ module t (/*AUTOARG*/
       cyc <= cyc + 1;
       if (cyc < 10) begin
          a <= cyc % 8;
-         b <= (cyc + 1) % 8;
-         // No manual sample() needed - automatic sampling handles it
+         // NO manual sample() call - auto-sampling should handle it
       end
       if (cyc == 15) begin
          // Coverage should be non-zero from automatic sampling
@@ -42,7 +43,7 @@ module t (/*AUTOARG*/
             $write("*-* All Finished *-*\n");
             $finish;
          end else begin
-            $display("FAILED: Coverage is zero");
+            $display("FAILED: Automatic sampling did not collect coverage");
             $stop;
          end
       end
