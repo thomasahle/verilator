@@ -1179,6 +1179,29 @@ public:
     string emitC() final override { V3ERROR_NA_RETURN(""); }
     bool cleanOut() const final override { V3ERROR_NA_RETURN(true); }
 };
+class AstCovTolerance final : public AstNodeExpr {
+    // Tolerance range in coverage bins ([value +/- tol] or [value +%- pct])
+    // Parents: AstCoverBin (in rangesp) or AstCovTransition (in stepsp)
+    // @astgen op1 := centerp : AstNodeExpr  // Center value
+    // @astgen op2 := tolerancep : AstNodeExpr  // Tolerance value
+    bool m_isPercent;  // True for +%-, false for +/-
+public:
+    AstCovTolerance(FileLine* fl, AstNodeExpr* centerp, AstNodeExpr* tolerancep, bool isPercent)
+        : ASTGEN_SUPER_CovTolerance(fl)
+        , m_isPercent{isPercent} {
+        this->centerp(centerp);
+        this->tolerancep(tolerancep);
+    }
+    ASTGEN_MEMBERS_AstCovTolerance;
+    void dump(std::ostream& str) const override;
+    void dumpJson(std::ostream& str) const override;
+    bool isPercent() const { return m_isPercent; }
+    const char* opString() const { return m_isPercent ? "+%-" : "+/-"; }
+    string emitVerilog() override { return m_isPercent ? "[%l +%%- %r]" : "[%l +/- %r]"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return false; }
+    bool hasDType() const override { return false; }  // Coverage node, no dtype needed
+};
 class AstCvtArrayToArray final : public AstNodeExpr {
     // Copy/Cast from dynamic/unpacked types to dynamic/unpacked types
     // @astgen op1 := fromp : AstNodeExpr

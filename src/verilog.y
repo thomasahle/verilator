@@ -3900,9 +3900,9 @@ value_range<nodeExprp>:         // ==IEEE: value_range/open_value_range
         //                      // Skipped as '$' is part of our expr
         //                      // IEEE-2023: '[' expr ':' '$' ']'
         |       '[' expr yP_PLUSSLASHMINUS expr ']'
-                        { $$ = nullptr; BBUNSUP($1, "Unsupported: +/- range"); DEL($2, $4); }
+                        { $$ = new AstCovTolerance{$1, $2, $4, false}; }
         |       '[' expr yP_PLUSPCTMINUS expr ']'
-                        { $$ = nullptr; BBUNSUP($1, "Unsupported: +%- range"); DEL($2, $4); }
+                        { $$ = new AstCovTolerance{$1, $2, $4, true}; }
         ;
 
 covergroup_value_range<nodeExprp>:  // ==IEEE-2012: covergroup_value_range
@@ -3915,9 +3915,9 @@ covergroup_value_range<nodeExprp>:  // ==IEEE-2012: covergroup_value_range
         //                      // Skipped as '$' is part of our expr
         //                      // IEEE-2023: '[' cgexpr ':' '$' ']'
         |       '[' cgexpr yP_PLUSSLASHMINUS cgexpr ']'
-                        { $$ = nullptr; BBCOVERIGN($1, "Ignoring unsupported: covergroup value range"); DEL($2, $4); }
+                        { $$ = new AstCovTolerance{$1, $2, $4, false}; }
         |       '[' cgexpr yP_PLUSPCTMINUS cgexpr ']'
-                        { $$ = nullptr; BBCOVERIGN($1, "Ignoring unsupported: covergroup value range"); DEL($2, $4); }
+                        { $$ = new AstCovTolerance{$1, $2, $4, true}; }
         ;
 
 caseCondList<nodeExprp>:        // IEEE: part of case_item

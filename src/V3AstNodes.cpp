@@ -3329,6 +3329,15 @@ void AstCovRepetition::dumpJson(std::ostream& str) const {
     dumpJsonBoolFunc(str, isRange);
     dumpJsonGen(str);
 }
+void AstCovTolerance::dump(std::ostream& str) const {
+    this->AstNode::dump(str);
+    str << " " << opString();
+}
+void AstCovTolerance::dumpJson(std::ostream& str) const {
+    dumpJsonStr(str, "op", opString());
+    dumpJsonBoolFunc(str, isPercent);
+    dumpJsonGen(str);
+}
 void AstCovTransition::dump(std::ostream& str) const {
     this->AstNode::dump(str);
     str << " [" << numSteps() << " steps]";
