@@ -30,21 +30,28 @@ module uses_inner(inner_iface.master ifc);
 endmodule
 
 // Top module demonstrating the pattern
-module t(input logic clk);
+module t;
+  logic clk = 0;
+  always #5 clk = ~clk;
+
   container_iface container(.clk(clk));
 
   // This is the pattern that needs to work:
   // Connecting an interface port using a hierarchical path
   uses_inner u_inner(.ifc(container.inner));
 
-  // Check values
-  initial begin
-    if (container.inner.data == 8'hAB && container.inner.valid == 1) begin
-      $write("*-* All Finished *-*\n");
-      $finish;
-    end else begin
-      $display("FAIL: data=%h valid=%b", container.inner.data, container.inner.valid);
-      $stop;
+  // Check values after initial blocks have executed
+  int cycle = 0;
+  always @(posedge clk) begin
+    cycle <= cycle + 1;
+    if (cycle == 2) begin
+      if (container.inner.data == 8'hAB && container.inner.valid == 1) begin
+        $write("*-* All Finished *-*\n");
+        $finish;
+      end else begin
+        $display("FAIL: data=%h valid=%b", container.inner.data, container.inner.valid);
+        $stop;
+      end
     end
   end
 endmodule

@@ -10,7 +10,7 @@ import vltest_bootstrap
 test.scenarios('simulator')
 test.top_filename = "t/t_interface_hier_path.v"
 
-test.compile()
+test.compile(verilator_flags2=['--timing --binary'])
 
 test.execute()
 
