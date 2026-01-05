@@ -3296,8 +3296,8 @@ class WidthVisitor final : public VNVisitor {
                      EXTEND_EXP);
         for (AstNode *nextip, *itemp = nodep->itemsp(); itemp; itemp = nextip) {
             nextip = itemp->nextp();  // iterate may cause the node to get replaced
-            // InsideRange will get replaced with Lte&Gte and finalized later
-            if (!VN_IS(itemp, InsideRange))
+            // InsideRange and CovTolerance will get replaced with Lte&Gte and finalized later
+            if (!VN_IS(itemp, InsideRange) && !VN_IS(itemp, CovTolerance))
                 iterateCheck(nodep, "Inside Item", itemp, CONTEXT_DET, FINAL, expDTypep,
                              EXTEND_EXP);
         }
@@ -3354,6 +3354,91 @@ class WidthVisitor final : public VNVisitor {
             // Similar logic in V3Case
             return irangep->newAndFromInside(exprp, irangep->lhsp()->unlinkFrBack(),
                                              irangep->rhsp()->unlinkFrBack());
+        } else if (AstCovTolerance* const tolp = VN_CAST(itemp, CovTolerance)) {
+            // Tolerance range [center +/- tol] or [center +%- pct]
+            // Expand to: (exprp >= lo) && (exprp <= hi)
+            FileLine* const fl = tolp->fileline();
+            AstNodeExpr* centerp = tolp->centerp()->unlinkFrBack();
+            AstNodeExpr* tolerancep = tolp->tolerancep()->unlinkFrBack();
+            const bool isDouble = exprp->dtypep()->skipRefp()->isDouble();
+
+            // Convert to double if needed
+            if (isDouble && !centerp->dtypep()->skipRefp()->isDouble()) {
+                if (centerp->dtypep()->skipRefp()->isSigned()) {
+                    centerp = new AstISToRD{fl, centerp};
+                } else {
+                    centerp = new AstIToRD{fl, centerp};
+                }
+            }
+            if (isDouble && !tolerancep->dtypep()->skipRefp()->isDouble()) {
+                if (tolerancep->dtypep()->skipRefp()->isSigned()) {
+                    tolerancep = new AstISToRD{fl, tolerancep};
+                } else {
+                    tolerancep = new AstIToRD{fl, tolerancep};
+                }
+            }
+
+            AstNodeExpr* lop;
+            AstNodeExpr* hip;
+            if (tolp->isPercent()) {
+                // [center +%- pct]: lo = center * (100 - pct) / 100, hi = center * (100 + pct) / 100
+                if (isDouble) {
+                    AstNodeExpr* const c100 = new AstConst{fl, V3Number{nodep, 64}};
+                    c100->dtypeSetDouble();
+                    VN_AS(c100, Const)->num().setDouble(100.0);
+                    AstNodeExpr* const loMul
+                        = new AstMulD{fl, centerp->cloneTreePure(false),
+                                      new AstSubD{fl, c100->cloneTreePure(false),
+                                                  tolerancep->cloneTreePure(false)}};
+                    AstNodeExpr* const hiMul
+                        = new AstMulD{fl, centerp,
+                                      new AstAddD{fl, c100, tolerancep}};
+                    AstNodeExpr* const c100_2 = new AstConst{fl, V3Number{nodep, 64}};
+                    c100_2->dtypeSetDouble();
+                    VN_AS(c100_2, Const)->num().setDouble(100.0);
+                    AstNodeExpr* const c100_3 = new AstConst{fl, V3Number{nodep, 64}};
+                    c100_3->dtypeSetDouble();
+                    VN_AS(c100_3, Const)->num().setDouble(100.0);
+                    lop = new AstDivD{fl, loMul, c100_2};
+                    hip = new AstDivD{fl, hiMul, c100_3};
+                } else {
+                    AstConst* const c100 = new AstConst{fl, 100};
+                    AstNodeExpr* const loMul
+                        = new AstMul{fl, centerp->cloneTreePure(false),
+                                     new AstSub{fl, c100->cloneTreePure(false),
+                                                tolerancep->cloneTreePure(false)}};
+                    AstNodeExpr* const hiMul
+                        = new AstMul{fl, centerp,
+                                     new AstAdd{fl, c100, tolerancep}};
+                    lop = new AstDiv{fl, loMul, new AstConst{fl, 100}};
+                    hip = new AstDiv{fl, hiMul, new AstConst{fl, 100}};
+                }
+            } else {
+                // [center +/- tol]: lo = center - tol, hi = center + tol
+                if (isDouble) {
+                    lop = new AstSubD{fl, centerp->cloneTreePure(false),
+                                      tolerancep->cloneTreePure(false)};
+                    hip = new AstAddD{fl, centerp, tolerancep};
+                } else {
+                    lop = new AstSub{fl, centerp->cloneTreePure(false),
+                                     tolerancep->cloneTreePure(false)};
+                    hip = new AstAdd{fl, centerp, tolerancep};
+                }
+            }
+            // Create range check: (exprp >= lo) && (exprp <= hi)
+            AstNodeExpr* gep;
+            AstNodeExpr* lep;
+            if (isDouble) {
+                gep = new AstGteD{fl, exprp, lop};
+                lep = new AstLteD{fl, exprp->cloneTreePure(false), hip};
+            } else {
+                gep = new AstGte{fl, exprp, lop};
+                gep->fileline()->modifyWarnOff(V3ErrorCode::UNSIGNED, true);
+                lep = new AstLte{fl, exprp->cloneTreePure(false), hip};
+                lep->fileline()->modifyWarnOff(V3ErrorCode::CMPCONST, true);
+            }
+            // Don't delete tolp - it stays attached to parent AstInside and gets deleted with it
+            return new AstLogAnd{fl, gep, lep};
         } else if (VN_IS(itemDtp, UnpackArrayDType) || VN_IS(itemDtp, DynArrayDType)
                    || VN_IS(itemDtp, QueueDType)) {
             // Unsupported in parameters
@@ -6387,6 +6472,8 @@ class WidthVisitor final : public VNVisitor {
         // Tolerance range [value +/- tol] or [value +%- pct]
         userIterateAndNext(nodep->centerp(), WidthVP{SELF, BOTH}.p());
         userIterateAndNext(nodep->tolerancep(), WidthVP{SELF, BOTH}.p());
+        // Set dtype from center so inside operator can use it
+        nodep->dtypeFrom(nodep->centerp());
     }
     void visit(AstCovTransition* nodep) override {
         // Transition sequence - each step's ranges need width context

@@ -1200,7 +1200,7 @@ public:
     string emitVerilog() override { return m_isPercent ? "[%l +%%- %r]" : "[%l +/- %r]"; }
     string emitC() override { V3ERROR_NA_RETURN(""); }
     bool cleanOut() const override { return false; }
-    bool hasDType() const override { return false; }  // Coverage node, no dtype needed
+    bool hasDType() const override { return true; }  // Has dtype for inside operator support
 };
 class AstCvtArrayToArray final : public AstNodeExpr {
     // Copy/Cast from dynamic/unpacked types to dynamic/unpacked types
