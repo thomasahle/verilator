@@ -49,18 +49,27 @@ run_avip() {
     fi
 
     # Find compile.f file (handles various naming conventions)
-    # Try: apb_compile.f, SpiCompile.f, I2sCompile.f, compile.f
+    # Try: apb_compile.f, SpiCompile.f, I2sCompile.f, *Project.f, compile.f
     local compile_f_name=""
     if [[ -f "$sim_dir/${avip}_compile.f" ]]; then
         compile_f_name="${avip}_compile.f"
     else
-        # Try CamelCase versions
+        # Try CamelCase Compile versions
         for f in "$sim_dir"/*[Cc]ompile.f; do
             if [[ -f "$f" ]]; then
                 compile_f_name="$(basename "$f")"
                 break
             fi
         done
+        # Try Project.f versions (e.g., Axi4LiteProject.f)
+        if [[ -z "$compile_f_name" ]]; then
+            for f in "$sim_dir"/*[Pp]roject.f; do
+                if [[ -f "$f" ]]; then
+                    compile_f_name="$(basename "$f")"
+                    break
+                fi
+            done
+        fi
     fi
 
     if [[ -z "$compile_f_name" ]]; then
