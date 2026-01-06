@@ -1292,6 +1292,7 @@ void V3Options::parseOptsList(FileLine* fl, const string& optdir, int argc,
         m_assertCase = flag;
     });
     DECL_OPTION("-assert-case", OnOff, &m_assertCase);
+    DECL_OPTION("-assert-stats", OnOff, &m_assertStats);
     DECL_OPTION("-autoflush", OnOff, &m_autoflush);
 
     DECL_OPTION("-bbox-sys", OnOff, &m_bboxSys);
@@ -1358,11 +1359,16 @@ void V3Options::parseOptsList(FileLine* fl, const string& optdir, int argc,
     DECL_OPTION("-coverage", CbOnOff, [this](bool flag) { coverage(flag); });
     DECL_OPTION("-coverage-expr", OnOff, &m_coverageExpr);
     DECL_OPTION("-coverage-expr-max", Set, &m_coverageExprMax);
+    DECL_OPTION("-coverage-fsm", OnOff, &m_coverageFsm);
     DECL_OPTION("-coverage-line", OnOff, &m_coverageLine);
     DECL_OPTION("-coverage-max-width", Set, &m_coverageMaxWidth);
     DECL_OPTION("-coverage-toggle", OnOff, &m_coverageToggle);
     DECL_OPTION("-coverage-underscore", OnOff, &m_coverageUnderscore);
     DECL_OPTION("-coverage-user", OnOff, &m_coverageUser);
+    // Xcelium compatibility: these flags are accepted for compatibility
+    // -covoverwrite also sets warnings as non-fatal (matching Xcelium behavior)
+    DECL_OPTION("-covoverwrite", CbCall, []() { V3Error::warnFatal(false); });
+    DECL_OPTION("-covtest", CbVal, [](const char*) {});
 
     DECL_OPTION("-D", CbPartialMatch, [this](const char* valp) VL_MT_DISABLED {
         addDefine(valp, false);
@@ -1978,6 +1984,9 @@ void V3Options::parseOptsList(FileLine* fl, const string& optdir, int argc,
                     consumed = 1;
                 } else if (isFuture1(argName)) {
                     consumed = 2;
+                } else if (argName == "all" || argName == "test") {
+                    // Xcelium compatibility: skip bare positional arguments like "all" and "test"
+                    consumed = 1;
                 } else {
                     fl->v3fatal("Invalid option: " << argv[i] << parser.getSuggestion(argv[i]));
                     consumed = 1;
@@ -1987,6 +1996,12 @@ void V3Options::parseOptsList(FileLine* fl, const string& optdir, int argc,
             // Record all arguments except for -f and -F (their contents will be recorded instead)
             if (argName != "f" && argName != "F") addArg(argv + i, consumed, isForRerun);
             i += consumed;
+            continue;
+        }
+
+        // Xcelium compatibility: skip bare positional arguments like "all" and "test"
+        if (strcmp(argv[i], "all") == 0 || strcmp(argv[i], "test") == 0) {
+            ++i;
             continue;
         }
 
