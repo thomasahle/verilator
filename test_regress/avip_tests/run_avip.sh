@@ -20,19 +20,20 @@ NC='\033[0m' # No Color
 AVIPS=(apb spi axi4 ahb i3c i2s axi4Lite jtag uart)
 
 # AVIPs known to work
-WORKING_AVIPS=(apb spi axi4 ahb i3c i2s)
+WORKING_AVIPS=(apb spi axi4 ahb i3c i2s uart)
 
 # AVIPs with known issues (AVIP bugs, not Verilator bugs)
-KNOWN_ISSUES=(axi4Lite jtag uart)
+KNOWN_ISSUES=(axi4Lite jtag)
 
 # Function to get top module names for an AVIP (hdl_module:hvl_module)
 get_top_modules() {
     case "$1" in
-        apb|axi4|i3c|jtag|uart) echo "hdl_top:hvl_top" ;;
+        apb|axi4|i3c|jtag) echo "hdl_top:hvl_top" ;;
         spi) echo "SpiHdlTop:SpiHvlTop" ;;
         ahb) echo "HdlTop:HvlTop" ;;
         i2s) echo "hdlTop:hvlTop" ;;
         axi4Lite) echo "Axi4LiteHdlTop:Axi4LiteHvlTop" ;;
+        uart) echo "HdlTop:HvlTop" ;;
         *) echo "hdl_top:hvl_top" ;;  # default
     esac
 }
