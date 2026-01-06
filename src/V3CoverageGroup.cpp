@@ -2152,17 +2152,50 @@ class CoverageGroupVisitor final : public VNVisitor {
             AstClass* const enclosingp = findEnclosingClass(cpp);
             if (enclosingp) {
                 if (m_enclosingClassp && m_enclosingClassp != enclosingp) {
-                    // Multiple enclosing classes detected (e.g., covergroup extends with
-                    // references to both base and derived class members). Skip
-                    // enclosing class transformation for this covergroup.
-                    UINFO(4, "Covergroup references multiple enclosing classes: "
-                                 << m_enclosingClassp->name() << " and " << enclosingp->name()
-                                 << endl);
-                    multipleEnclosingClasses = true;
-                    m_enclosingClassp = nullptr;
-                    break;
+                    // Multiple enclosing classes detected.
+                    // For extended covergroups, check if one class inherits from the other.
+                    // If so, use the derived class as the enclosing class.
+                    bool resolved = false;
+                    if (nodep->isExtended()) {
+                        // Check if enclosingp is a base of m_enclosingClassp
+                        for (AstClassExtends* extp = m_enclosingClassp->extendsp(); extp;
+                             extp = VN_AS(extp->nextp(), ClassExtends)) {
+                            if (extp->classp() == enclosingp) {
+                                // enclosingp is a base, keep m_enclosingClassp (the derived)
+                                UINFO(4, "Extended covergroup: keeping derived class "
+                                             << m_enclosingClassp->name() << " (base: "
+                                             << enclosingp->name() << ")" << endl);
+                                resolved = true;
+                                break;
+                            }
+                        }
+                        // Check if m_enclosingClassp is a base of enclosingp
+                        if (!resolved) {
+                            for (AstClassExtends* extp = enclosingp->extendsp(); extp;
+                                 extp = VN_AS(extp->nextp(), ClassExtends)) {
+                                if (extp->classp() == m_enclosingClassp) {
+                                    // m_enclosingClassp is a base, use enclosingp (the derived)
+                                    UINFO(4, "Extended covergroup: using derived class "
+                                                 << enclosingp->name() << " (base: "
+                                                 << m_enclosingClassp->name() << ")" << endl);
+                                    m_enclosingClassp = enclosingp;
+                                    resolved = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (!resolved) {
+                        UINFO(4, "Covergroup references multiple unrelated enclosing classes: "
+                                     << m_enclosingClassp->name() << " and " << enclosingp->name()
+                                     << endl);
+                        multipleEnclosingClasses = true;
+                        m_enclosingClassp = nullptr;
+                        break;
+                    }
+                } else {
+                    m_enclosingClassp = enclosingp;
                 }
-                m_enclosingClassp = enclosingp;
             }
         }
 
@@ -2226,7 +2259,14 @@ class CoverageGroupVisitor final : public VNVisitor {
 
         // Initialize __Vparentp in the enclosing class if we have enclosing class references
         if (m_enclosingClassp && m_parentPtrVarp) {
-            initializeParentPtr(nodep);
+            if (nodep->isExtended()) {
+                // For extended covergroups, we need to add the instantiation code
+                // since there's no explicit g1 = new() in the derived class
+                instantiateExtendedCovergroup(nodep);
+            } else {
+                // For regular covergroups, find existing new() and add __Vparentp init
+                initializeParentPtr(nodep);
+            }
         }
 
         // Handle covergroup clocking event (automatic sampling)
@@ -2317,6 +2357,133 @@ class CoverageGroupVisitor final : public VNVisitor {
         constructorFuncp->addStmtsp(forkp);
 
         UINFO(4, "Added automatic sampling fork to constructor" << endl);
+    }
+
+    // Instantiate extended covergroup in the enclosing class constructor
+    // For extended covergroups, there's no explicit g1 = new() in user code,
+    // so we need to add it: this.g1 = new(); this.g1.__Vparentp = this;
+    void instantiateExtendedCovergroup(AstClass* covergroupp) {
+        if (!m_enclosingClassp) {
+            UINFO(4, "No enclosing class for extended covergroup instantiation" << endl);
+            return;
+        }
+
+        UINFO(4, "Instantiating extended covergroup " << covergroupp->name()
+                                                      << " in " << m_enclosingClassp->name()
+                                                      << endl);
+
+        // Find the member variable in enclosing class that holds this covergroup
+        AstVar* cgMemberVarp = nullptr;
+        for (AstNode* memberp = m_enclosingClassp->membersp(); memberp;
+             memberp = memberp->nextp()) {
+            if (AstVar* const varp = VN_CAST(memberp, Var)) {
+                // Check if this variable's type is the covergroup
+                if (AstClassRefDType* const refp = VN_CAST(varp->dtypep(), ClassRefDType)) {
+                    if (refp->classp() == covergroupp) {
+                        cgMemberVarp = varp;
+                        UINFO(4,
+                              "Found extended covergroup member var: " << varp->name() << endl);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!cgMemberVarp) {
+            UINFO(4, "Could not find extended covergroup member variable" << endl);
+            return;
+        }
+
+        // Find the enclosing class's constructor
+        AstFunc* constructorFuncp = nullptr;
+        for (AstNode* memberp = m_enclosingClassp->membersp(); memberp;
+             memberp = memberp->nextp()) {
+            if (AstFunc* const funcp = VN_CAST(memberp, Func)) {
+                if (funcp->isConstructor()) {
+                    constructorFuncp = funcp;
+                    break;
+                }
+            }
+        }
+
+        if (!constructorFuncp) {
+            UINFO(4, "Could not find enclosing class constructor" << endl);
+            return;
+        }
+
+        FileLine* const fl = covergroupp->fileline();
+
+        // Create: this.g1 = new();
+        // LHS: this.g1
+        AstClassRefDType* const thisTypep
+            = new AstClassRefDType{fl, m_enclosingClassp, nullptr};
+        v3Global.rootp()->typeTablep()->addTypesp(thisTypep);
+        AstThisRef* const thisp = new AstThisRef{fl, thisTypep};
+        AstMemberSel* const lhsp = new AstMemberSel{fl, thisp, cgMemberVarp};
+
+        // RHS: new()
+        AstClassRefDType* const cgTypep = new AstClassRefDType{fl, covergroupp, nullptr};
+        v3Global.rootp()->typeTablep()->addTypesp(cgTypep);
+
+        // Find the covergroup's constructor
+        AstFunc* cgConstructorFuncp = nullptr;
+        for (AstNode* memberp = covergroupp->membersp(); memberp; memberp = memberp->nextp()) {
+            if (AstFunc* const funcp = VN_CAST(memberp, Func)) {
+                if (funcp->isConstructor()) {
+                    cgConstructorFuncp = funcp;
+                    break;
+                }
+            }
+        }
+
+        AstNew* const newp = new AstNew{fl, nullptr};
+        newp->dtypep(cgTypep);
+        newp->classOrPackagep(covergroupp);
+        if (cgConstructorFuncp) newp->taskp(cgConstructorFuncp);
+
+        // Create assignment: this.g1 = new();
+        AstAssign* const assignp = new AstAssign{fl, lhsp, newp};
+
+        // Add to constructor - after any super.new() call
+        // Find the last statement (or super call) and add after it
+        AstNode* lastStmtp = nullptr;
+        for (AstNode* stmtp = constructorFuncp->stmtsp(); stmtp; stmtp = stmtp->nextp()) {
+            // Skip variable declarations
+            if (!VN_IS(stmtp, Var)) {
+                lastStmtp = stmtp;
+            }
+        }
+
+        if (lastStmtp) {
+            lastStmtp->addNextHere(assignp);
+        } else {
+            constructorFuncp->addStmtsp(assignp);
+        }
+
+        UINFO(4, "Added extended covergroup instantiation: " << assignp << endl);
+
+        // Now add __Vparentp initialization
+        if (m_parentPtrVarp) {
+            // Create: this.g1.__Vparentp
+            AstClassRefDType* const thisTypep2 = thisTypep->cloneTree(false);
+            v3Global.rootp()->typeTablep()->addTypesp(thisTypep2);
+            AstThisRef* const thisp2 = new AstThisRef{fl, thisTypep2};
+            AstMemberSel* const cgRefp = new AstMemberSel{fl, thisp2, cgMemberVarp};
+            AstMemberSel* const parentPtrp = new AstMemberSel{fl, cgRefp, m_parentPtrVarp};
+
+            // Create: this
+            AstClassRefDType* const thisTypep3 = thisTypep->cloneTree(false);
+            v3Global.rootp()->typeTablep()->addTypesp(thisTypep3);
+            AstThisRef* const thisp3 = new AstThisRef{fl, thisTypep3};
+
+            // Create assignment: this.g1.__Vparentp = this;
+            AstAssign* const initp = new AstAssign{fl, parentPtrp, thisp3};
+
+            // Add after the new() assignment
+            assignp->addNextHere(initp);
+
+            UINFO(4, "Added __Vparentp initialization: " << initp << endl);
+        }
     }
 
     // Initialize __Vparentp in the enclosing class
