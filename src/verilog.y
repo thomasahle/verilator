@@ -6892,6 +6892,18 @@ covergroup_declaration<nodep>:  // ==IEEE: covergroup_declaration
                               // Store clocking event in covergroup
                               cgClassp->coverClockEventp(clockEventp);
                           }
+                          // Add constructor args as class members (cloned) so they're in scope
+                          // for coverpoint expressions. The VARREFs will reference these members.
+                          for (AstNode* argp = $3; argp; argp = argp->nextp()) {
+                              if (AstVar* varp = VN_CAST(argp, Var)) {
+                                  AstVar* memberp = varp->cloneTree(false);
+                                  memberp->varType(VVarType::MEMBER);
+                                  memberp->funcLocal(false);
+                                  memberp->direction(VDirection::NONE);
+                                  memberp->lifetime(VLifetime::NONE);
+                                  cgClassp->addMembersp(memberp);
+                              }
+                          }
                           // Add sample args as class members (cloned) so they're in scope
                           for (AstNode* argp = sampleArgsp; argp; argp = argp->nextp()) {
                               if (AstVar* varp = VN_CAST(argp, Var)) {

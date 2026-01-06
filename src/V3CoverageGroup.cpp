@@ -73,6 +73,10 @@ class CoverageGroupVisitor final : public VNVisitor {
     // Sample arg support: map arg name -> function argument AstVar
     std::map<string, AstVar*> m_sampleArgs;
 
+    // Constructor arg support: map constructor param name -> class member AstVar
+    // These are used to transform VARREFs that reference constructor params to class members
+    std::map<string, AstVar*> m_constructorArgs;
+
     // Enclosing class support (for class-embedded covergroups)
     AstClass* m_enclosingClassp = nullptr;  // Enclosing class if covergroup is class-embedded
     AstVar* m_parentPtrVarp = nullptr;  // __Vparentp member variable
@@ -194,12 +198,39 @@ class CoverageGroupVisitor final : public VNVisitor {
         void visit(AstNode* nodep) override { iterateChildren(nodep); }
     };
 
+    // Transform expression to use class members instead of constructor parameters
+    // This is needed because coverpoint expressions may reference constructor params
+    // but these get deleted by V3Task, so we need to use the class member copies
+    class ConstructorArgTransformVisitor final : public VNVisitor {
+        std::map<string, AstVar*>& m_constructorArgs;
+
+    public:
+        explicit ConstructorArgTransformVisitor(AstNodeExpr* exprp,
+                                                std::map<string, AstVar*>& constructorArgs)
+            : m_constructorArgs{constructorArgs} {
+            iterate(exprp);
+        }
+        void visit(AstVarRef* nodep) override {
+            // Check if this VarRef matches a constructor argument name
+            if (nodep->varp()) {
+                auto it = m_constructorArgs.find(nodep->varp()->name());
+                if (it != m_constructorArgs.end()) {
+                    // Replace with reference to class member
+                    nodep->varp(it->second);
+                }
+            }
+        }
+        void visit(AstNode* nodep) override { iterateChildren(nodep); }
+    };
+
     // Visitor to detect and transform references to enclosing class members
     // This transforms VarRefs that point to the enclosing class to use __Vparentp->member
     class EnclosingClassTransformVisitor final : public VNVisitor {
         AstClass* m_covergroupp;  // The covergroup class
         AstClass* m_enclosingClassp;  // The enclosing class
         AstVar* m_parentPtrVarp;  // __Vparentp member variable
+        AstNodeExpr* m_rootExprp;  // Root expression being transformed
+        AstNodeExpr* m_newRootp = nullptr;  // New root if the root itself was replaced
         // Collect nodes to transform (avoid modifying tree during iteration)
         std::vector<AstMemberSel*> m_memberSelsToTransform;
         std::vector<AstVarRef*> m_varRefsToTransform;
@@ -209,7 +240,8 @@ class CoverageGroupVisitor final : public VNVisitor {
                                                 AstClass* enclosingClassp, AstVar* parentPtrVarp)
             : m_covergroupp{covergroupp}
             , m_enclosingClassp{enclosingClassp}
-            , m_parentPtrVarp{parentPtrVarp} {
+            , m_parentPtrVarp{parentPtrVarp}
+            , m_rootExprp{exprp} {
             if (exprp) {
                 // First pass: collect nodes to transform
                 iterate(exprp);
@@ -217,6 +249,9 @@ class CoverageGroupVisitor final : public VNVisitor {
                 doTransforms();
             }
         }
+
+        // Get the (possibly new) root expression after transformation
+        AstNodeExpr* rootp() const { return m_newRootp ? m_newRootp : m_rootExprp; }
 
         void doTransforms() {
             // Collect VarRefs that are fromp of MemberSels we'll transform
@@ -257,24 +292,34 @@ class CoverageGroupVisitor final : public VNVisitor {
             }
 
             // Transform standalone VarRef nodes (not part of MemberSel)
+            // For direct enclosing class member access like 'color', transform to:
+            // __Vparentp->color
             for (AstVarRef* nodep : m_varRefsToTransform) {
                 // Skip if this VarRef was already handled as part of a MemberSel
                 if (handledByMemberSel.count(nodep)) continue;
 
-                // For standalone VarRefs like 'data' in 'coverpoint data':
-                // Just clear the classOrPackagep to make it access through instance
-                // The __Vparentp member is accessed implicitly because we're in a method
-                // of the covergroup that has __Vparentp pointing to the enclosing class
-                //
-                // Actually this needs more work - for now just clear the static class context
-                // and we'll need to handle this differently at code generation time
-                //
-                // ALTERNATIVE: Don't transform standalone VarRefs - instead transform
-                // the entire coverpoint to use __Vparentp explicitly
-                nodep->classOrPackagep(nullptr);
+                FileLine* const fl = nodep->fileline();
+                AstVar* const memberVarp = nodep->varp();
 
-                UINFO(4, "Cleared classOrPackagep on enclosing class VarRef: "
-                              << nodep->varp()->name() << endl);
+                // Create new VarRef to __Vparentp
+                AstVarRef* const parentRefp = new AstVarRef{fl, m_parentPtrVarp, VAccess::READ};
+
+                // Create: __Vparentp->member
+                AstMemberSel* const newMemberSelp = new AstMemberSel{fl, parentRefp, memberVarp};
+
+                // Check if this is the root expression (no parent)
+                if (nodep == m_rootExprp) {
+                    // Can't use replaceWith - save new root and delete original
+                    m_newRootp = newMemberSelp;
+                    VL_DO_DANGLING(nodep->deleteTree(), nodep);
+                } else {
+                    // Replace within tree
+                    nodep->replaceWith(newMemberSelp);
+                    VL_DO_DANGLING(nodep->deleteTree(), nodep);
+                }
+
+                UINFO(4, "Transform enclosing class VarRef to MemberSel: " << memberVarp->name()
+                                                                           << endl);
             }
         }
 
@@ -356,14 +401,21 @@ class CoverageGroupVisitor final : public VNVisitor {
         UINFO(4, "Created __Vparentp for enclosing class: " << enclosingClassp->name() << endl);
     }
 
-    // Clone expression and transform to use sample args and enclosing class parent pointer
+    // Clone expression and transform to use sample args, constructor args, and enclosing class
     AstNodeExpr* cloneWithTransforms(AstNodeExpr* exprp) {
         AstNodeExpr* clonep = exprp->cloneTree(false);
-        // Transform sample args first
+        // Transform constructor args first (replace refs to constructor params with class members)
+        if (!m_constructorArgs.empty()) {
+            ConstructorArgTransformVisitor{clonep, m_constructorArgs};
+        }
+        // Transform sample args
         if (!m_sampleArgs.empty()) { SampleArgTransformVisitor{clonep, m_sampleArgs}; }
         // Transform enclosing class references to use __Vparentp
+        // Note: This may return a different root if the entire expression was a single VarRef
         if (m_enclosingClassp && m_parentPtrVarp) {
-            EnclosingClassTransformVisitor{clonep, m_classp, m_enclosingClassp, m_parentPtrVarp};
+            EnclosingClassTransformVisitor visitor{clonep, m_classp, m_enclosingClassp,
+                                                   m_parentPtrVarp};
+            clonep = visitor.rootp();
         }
         return clonep;
     }
@@ -2004,13 +2056,15 @@ class CoverageGroupVisitor final : public VNVisitor {
         m_staticHitVars.clear();
         m_cpBinHitVars.clear();
         m_sampleArgs.clear();
+        m_constructorArgs.clear();
         m_enclosingClassp = nullptr;
         m_parentPtrVarp = nullptr;
 
         // Extract coverage options from the covergroup
         m_options = extractOptions(nodep);
 
-        // Find sample(), get_coverage(), and get_inst_coverage() functions
+        // Find sample(), get_coverage(), get_inst_coverage(), and new() functions
+        AstFunc* newFuncp = nullptr;
         for (AstNode* memberp = nodep->membersp(); memberp; memberp = memberp->nextp()) {
             if (AstFunc* const funcp = VN_CAST(memberp, Func)) {
                 if (funcp->name() == "sample") {
@@ -2019,6 +2073,8 @@ class CoverageGroupVisitor final : public VNVisitor {
                     m_getCoverageFuncp = funcp;
                 } else if (funcp->name() == "get_inst_coverage") {
                     m_getInstCoverageFuncp = funcp;
+                } else if (funcp->name() == "new") {
+                    newFuncp = funcp;
                 }
             }
         }
@@ -2026,6 +2082,34 @@ class CoverageGroupVisitor final : public VNVisitor {
         if (!m_sampleFuncp) {
             nodep->v3warn(E_UNSUPPORTED, "Covergroup missing sample() function");
             return;
+        }
+
+        // Build map of class member names to their AstVar nodes
+        std::map<string, AstVar*> memberVars;
+        for (AstNode* memberp = nodep->membersp(); memberp; memberp = memberp->nextp()) {
+            if (AstVar* const varp = VN_CAST(memberp, Var)) {
+                if (varp->varType() == VVarType::MEMBER) {
+                    memberVars[varp->name()] = varp;
+                }
+            }
+        }
+
+        // Extract constructor arguments and map to class members
+        // Constructor args are cloned as class members in the parser (verilog.y)
+        if (newFuncp) {
+            for (AstNode* stmtp = newFuncp->stmtsp(); stmtp; stmtp = stmtp->nextp()) {
+                if (AstVar* const varp = VN_CAST(stmtp, Var)) {
+                    if (varp->direction().isAny() && varp->isFuncLocal()) {
+                        // This is a constructor argument - find matching class member
+                        auto it = memberVars.find(varp->name());
+                        if (it != memberVars.end()) {
+                            m_constructorArgs[varp->name()] = it->second;
+                            UINFO(4, "Found constructor arg: " << varp->name()
+                                                               << " -> member" << endl);
+                        }
+                    }
+                }
+            }
         }
 
         // Extract sample() function arguments for coverpoint expression transformation
