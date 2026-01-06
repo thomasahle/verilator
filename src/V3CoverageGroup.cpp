@@ -1098,29 +1098,20 @@ class CoverageGroupVisitor final : public VNVisitor {
         // Extract value ranges from rangesp for intersect support
         CovBinInfo binInfo{binName, hitVarp};
         for (AstNode* rangep = binp->rangesp(); rangep; rangep = rangep->nextp()) {
+            int64_t lo = 0, hi = 0;
             if (AstRange* const rp = VN_CAST(rangep, Range)) {
                 // Range [lo:hi] (legacy format)
-                if (AstConst* const lop = VN_CAST(rp->leftp(), Const)) {
-                    if (AstConst* const hip = VN_CAST(rp->rightp(), Const)) {
-                        if (!lop->num().isFourState() && !hip->num().isFourState()) {
-                            binInfo.addRange(lop->num().toSQuad(), hip->num().toSQuad());
-                        }
-                    }
+                if (extractIntValue(rp->leftp(), lo) && extractIntValue(rp->rightp(), hi)) {
+                    binInfo.addRange(lo, hi);
                 }
             } else if (AstInsideRange* const irp = VN_CAST(rangep, InsideRange)) {
                 // InsideRange [lo:hi] (from value_range in grammar)
-                if (AstConst* const lop = VN_CAST(irp->lhsp(), Const)) {
-                    if (AstConst* const hip = VN_CAST(irp->rhsp(), Const)) {
-                        if (!lop->num().isFourState() && !hip->num().isFourState()) {
-                            binInfo.addRange(lop->num().toSQuad(), hip->num().toSQuad());
-                        }
-                    }
+                if (extractIntValue(irp->lhsp(), lo) && extractIntValue(irp->rhsp(), hi)) {
+                    binInfo.addRange(lo, hi);
                 }
-            } else if (AstConst* const cp = VN_CAST(rangep, Const)) {
-                // Single value - skip if 4-state (wildcard bins with x/z)
-                if (!cp->num().isFourState()) {
-                    binInfo.addRange(cp->num().toSQuad(), cp->num().toSQuad());
-                }
+            } else if (extractIntValue(rangep, lo)) {
+                // Single value (Const or EnumItemRef)
+                binInfo.addRange(lo, lo);
             }
         }
         m_cpBinHitVars[cpName].push_back(binInfo);
@@ -1411,6 +1402,27 @@ class CoverageGroupVisitor final : public VNVisitor {
         }
     }
 
+    // Helper to extract integer value from various node types
+    static bool extractIntValue(AstNode* nodep, int64_t& value) {
+        if (AstConst* const cp = VN_CAST(nodep, Const)) {
+            if (!cp->num().isFourState()) {
+                value = cp->num().toSQuad();
+                return true;
+            }
+        } else if (AstEnumItemRef* const eip = VN_CAST(nodep, EnumItemRef)) {
+            // Get the enum item's value
+            if (eip->itemp() && eip->itemp()->valuep()) {
+                if (AstConst* const valcp = VN_CAST(eip->itemp()->valuep(), Const)) {
+                    if (!valcp->num().isFourState()) {
+                        value = valcp->num().toSQuad();
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     // Helper to check if a bin's value ranges overlap with intersect values
     static bool binValuesOverlap(const CovBinInfo& binInfo, AstNode* intersectp) {
         if (!intersectp) return true;  // No intersect means match everything
@@ -1419,31 +1431,16 @@ class CoverageGroupVisitor final : public VNVisitor {
         // Check each intersect value/range against bin's value ranges
         for (AstNode* rangep = intersectp; rangep; rangep = rangep->nextp()) {
             int64_t intLo = 0, intHi = 0;
-            if (AstConst* const cp = VN_CAST(rangep, Const)) {
-                intLo = intHi = cp->num().toSQuad();
+            // Try to extract value from single value nodes (Const or EnumItemRef)
+            if (extractIntValue(rangep, intLo)) {
+                intHi = intLo;
             } else if (AstRange* const rp = VN_CAST(rangep, Range)) {
-                if (AstConst* const lop = VN_CAST(rp->leftp(), Const)) {
-                    if (AstConst* const hip = VN_CAST(rp->rightp(), Const)) {
-                        intLo = lop->num().toSQuad();
-                        intHi = hip->num().toSQuad();
-                    } else {
-                        continue;  // Skip non-constant ranges
-                    }
-                } else {
-                    continue;
-                }
+                if (!extractIntValue(rp->leftp(), intLo)) continue;
+                if (!extractIntValue(rp->rightp(), intHi)) continue;
             } else if (AstInsideRange* const irp = VN_CAST(rangep, InsideRange)) {
                 // InsideRange [lo:hi] (from covergroup_value_range in grammar)
-                if (AstConst* const lop = VN_CAST(irp->lhsp(), Const)) {
-                    if (AstConst* const hip = VN_CAST(irp->rhsp(), Const)) {
-                        intLo = lop->num().toSQuad();
-                        intHi = hip->num().toSQuad();
-                    } else {
-                        continue;
-                    }
-                } else {
-                    continue;
-                }
+                if (!extractIntValue(irp->lhsp(), intLo)) continue;
+                if (!extractIntValue(irp->rhsp(), intHi)) continue;
             } else {
                 continue;
             }
