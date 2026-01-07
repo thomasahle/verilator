@@ -2616,7 +2616,8 @@ class LinkDotIfaceVisitor final : public VNVisitor {
     void visit(AstModportFTaskRef* nodep) override {  // IfaceVisitor::
         UINFO(5, "   fif: " << nodep);
         iterateChildren(nodep);
-        if (nodep->isExport()) nodep->v3warn(E_UNSUPPORTED, "Unsupported: modport export");
+        // Export modports: the function is declared in interface but implemented in module
+        // For now, handle the same as import - link to the interface's extern function declaration
         VSymEnt* const symp = m_curSymp->findIdFallback(nodep->name());
         if (!symp) {
             nodep->v3error("Modport item not found: " << nodep->prettyNameQ());
