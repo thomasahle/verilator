@@ -1728,6 +1728,21 @@ class WidthVisitor final : public VNVisitor {
                 iterateCheckBool(nodep, "preExprp", nodep->preExprp(), BOTH);
             }
             iterate(nodep->delayp());
+            // If the delay was deleted (e.g., due to --no-timing), replace the
+            // AstSExpr with just its expression since AstSExpr requires a non-null delayp
+            if (!nodep->delayp()) {
+                // Must type the expression before extracting it
+                iterateCheckBool(nodep, "exprp", nodep->exprp(), BOTH);
+                AstNodeExpr* resultp = nodep->exprp()->unlinkFrBack();
+                if (AstNodeExpr* const preExprp = nodep->preExprp()) {
+                    // If there's a preExprp, AND them together (already typed above)
+                    resultp = new AstAnd{nodep->fileline(), preExprp->unlinkFrBack(), resultp};
+                    resultp->dtypeSetBit();
+                }
+                nodep->replaceWith(resultp);
+                VL_DO_DANGLING(pushDeletep(nodep), nodep);
+                return;
+            }
             iterateCheckBool(nodep, "exprp", nodep->exprp(), BOTH);
             nodep->dtypeSetBit();
         }
