@@ -455,9 +455,10 @@ private:
                     new AstConst{flp, AstConst::BitFalse{}}});
 
                 // For bounded ranges, create attempts counter
+                // For ##[min:max], we have (max - min + 1) chances to match
                 AstVar* attemptsVarp = nullptr;
                 if (!isUnbounded) {
-                    const uint32_t rangeSize = maxVal - minVal;
+                    const uint32_t numAttempts = maxVal - minVal + 1;
                     attemptsVarp = new AstVar{
                         flp, VVarType::BLOCKTEMP, delayName + "__attempts",
                         nodep->findBasicDType(VBasicDTypeKwd::UINT32)};
@@ -465,7 +466,7 @@ private:
                     beginp->addStmtsp(attemptsVarp);
                     beginp->addStmtsp(new AstAssign{
                         flp, new AstVarRef{flp, attemptsVarp, VAccess::WRITE},
-                        new AstConst{flp, rangeSize}});
+                        new AstConst{flp, numAttempts}});
                 }
 
                 // Unlink the check from its current position
@@ -475,9 +476,18 @@ private:
                 AstLoop* const tryLoop = new AstLoop{flp};
 
                 // Loop test: continue while not matched
-                tryLoop->addStmtsp(new AstLoopTest{
-                    flp, tryLoop,
-                    new AstNot{flp, new AstVarRef{flp, matchedVarp, VAccess::READ}}});
+                // For bounded delays, also check that attempts > 0 (haven't exhausted all tries)
+                AstNodeExpr* loopCondp
+                    = new AstNot{flp, new AstVarRef{flp, matchedVarp, VAccess::READ}};
+                if (!isUnbounded) {
+                    // For bounded: !matched && attempts > 0
+                    // attempts starts at (maxVal - minVal + 1), decremented each failed attempt
+                    loopCondp = new AstAnd{
+                        flp, loopCondp,
+                        new AstGt{flp, new AstVarRef{flp, attemptsVarp, VAccess::READ},
+                                  new AstConst{flp, 0}}};
+                }
+                tryLoop->addStmtsp(new AstLoopTest{flp, tryLoop, loopCondp});
 
                 // Clone the condition for checking
                 AstNodeExpr* const condp = checkIfp->condp()->cloneTreePure(false);
@@ -488,18 +498,22 @@ private:
                     retryStmts = new AstEventControl{
                         flp, new AstSenTree{flp, sensesp->cloneTree(false)}, nullptr};
                 } else {
-                    // For bounded: if attempts > 0, wait one cycle and decrement
-                    AstEventControl* const retryControl = new AstEventControl{
-                        flp, new AstSenTree{flp, sensesp->cloneTree(false)}, nullptr};
-                    retryControl->addNextHere(new AstAssign{
+                    // For bounded: decrement attempts and wait one cycle if attempts > 1
+                    // (attempts == 1 means this is our last chance, no need to wait)
+                    AstAssign* const decrement = new AstAssign{
                         flp, new AstVarRef{flp, attemptsVarp, VAccess::WRITE},
                         new AstSub{flp, new AstVarRef{flp, attemptsVarp, VAccess::READ},
-                                   new AstConst{flp, 1}}});
-                    retryStmts = new AstIf{
+                                   new AstConst{flp, 1}}};
+                    AstEventControl* const retryControl = new AstEventControl{
+                        flp, new AstSenTree{flp, sensesp->cloneTree(false)}, nullptr};
+                    // Wait only if we have more attempts after decrement
+                    AstIf* const waitIf = new AstIf{
                         flp,
                         new AstGt{flp, new AstVarRef{flp, attemptsVarp, VAccess::READ},
                                   new AstConst{flp, 0}},
                         retryControl};
+                    decrement->addNextHere(waitIf);
+                    retryStmts = decrement;
                 }
 
                 // Success case: condition true - set matched flag
