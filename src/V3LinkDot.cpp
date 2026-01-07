@@ -4172,7 +4172,7 @@ class LinkDotResolveVisitor final : public VNVisitor {
                     AstRefDType* const refp = new AstRefDType{nodep->fileline(), nodep->name()};
                     // Don't check if typedef is to a <type T>::<reference> as might not be
                     // resolved yet. Also skip if typedef was found through a package (imported).
-                    if (m_ds.m_dotPos == DP_NONE && !foundp->classOrPackagep())
+                    if (m_ds.m_dotPos == DP_NONE && !foundp->imported())
                         checkDeclOrder(nodep, defp);
                     refp->typedefp(defp);
 
@@ -5626,7 +5626,7 @@ class LinkDotResolveVisitor final : public VNVisitor {
                     // Don't check if typedef is to a <type T>::<reference> as might not be
                     // resolved yet. Also skip if typedef was found through a package (imported)
                     // since the typedef definition is in a different compilation unit.
-                    if (!nodep->classOrPackagep() && !foundp->classOrPackagep()
+                    if (!nodep->classOrPackagep() && !foundp->imported()
                         && !defp->isUnderClass())
                         checkDeclOrder(nodep, defp);
                     nodep->typedefp(defp);
@@ -5664,7 +5664,7 @@ class LinkDotResolveVisitor final : public VNVisitor {
                     // Don't check if typedef is to a <type T>::<reference> as might not be
                     // resolved yet. Also skip if class was found through a package (imported)
                     // since the class definition is in a different compilation unit.
-                    if (!nodep->classOrPackagep() && !foundp->classOrPackagep())
+                    if (!nodep->classOrPackagep() && !foundp->imported())
                         checkDeclOrder(nodep, defp);
                     AstPin* const paramsp = nodep->paramsp();
                     if (paramsp) paramsp->unlinkFrBackWithNext();
