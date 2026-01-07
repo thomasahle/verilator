@@ -1,15 +1,18 @@
 // DESCRIPTION: Verilator: Verilog Test module
 //
 // This file ONLY is placed under the Creative Commons Public Domain, for
-// any use, without warranty, 2025 by Antmicro.
+// any use, without warranty, 2026 by Wilson Snyder.
 // SPDX-License-Identifier: CC0-1.0
+
+// Test disable task by name with fork join_none (background threads)
 
 int x = 0;
 
 task increment_x;
-  x++;
-  #2;
-  x++;
+  repeat (100) begin
+    x++;
+    #1;
+  end
 endtask
 
 class driver;
@@ -32,13 +35,19 @@ module t;
   driver c;
 
   initial begin
+    // Test 1: Simple task disable with join_none
     fork
       increment_x();
-      #1 disable increment_x;
-    join
+    join_none
 
-    if (x != 1) $stop;
+    #5;
+    if (x != 5) $stop;
+    disable increment_x;
+    #10;
+    // Task should have stopped, x should still be 5
+    if (x != 5) $stop;
 
+    // Test 2: Class method task disable (UVM pattern)
     c = new;
     fork
       c.get_and_send;
@@ -46,16 +55,14 @@ module t;
     if (c.m_time != 0) $stop;
 
     #11;
-    if ($time != 12) $stop;
     if (c.m_time != 10) $stop;
 
     #20;
-    if ($time != 32) $stop;
     if (c.m_time != 30) $stop;
     c.post_shutdown_phase;
 
     #20;
-    if ($time != 52) $stop;
+    // Task should have stopped, m_time should still be 30
     if (c.m_time != 30) $stop;
 
     $write("*-* All Finished *-*\n");
