@@ -2094,11 +2094,24 @@ class WidthVisitor final : public VNVisitor {
                     break;
                 }
                 case VAttrType::DIM_BITS: {
-                    if (VN_IS(dtypep, DynArrayDType)) {
-                        nodep->v3warn(E_UNSUPPORTED, "Unsupported: $bits for dynamic array");
-                    } else {
-                        nodep->v3warn(E_UNSUPPORTED, "Unsupported: $bits for queue");
-                    }
+                    // $bits for dynamic array/queue = element_bits * size()
+                    AstNodeExpr* const fromp = VN_AS(nodep->fromp()->unlinkFrBack(), NodeExpr);
+                    // Get element type width
+                    AstNodeDType* const elemDtypep = dtypep->subDTypep();
+                    UASSERT_OBJ(elemDtypep, nodep, "Dynamic type missing element type");
+                    const int elemBits = elemDtypep->skipRefp()->width();
+                    // Create: element_bits * size()
+                    AstNodeExpr* const sizep
+                        = new AstCMethodHard{nodep->fileline(), fromp, VCMethod::DYN_SIZE};
+                    sizep->dtypeSetSigned32();
+                    sizep->didWidth(true);
+                    sizep->protect(false);
+                    AstNode* const newp = new AstMul{
+                        nodep->fileline(),
+                        new AstConst{nodep->fileline(), AstConst::Signed32{}, elemBits}, sizep};
+                    newp->dtypeSetSigned32();
+                    nodep->replaceWith(newp);
+                    VL_DO_DANGLING(nodep->deleteTree(), nodep);
                     break;
                 }
                 default: nodep->v3fatalSrc("Unhandled attribute type");
