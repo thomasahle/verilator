@@ -1,5 +1,0 @@
-%Error: Internal Error: t/t_covergroup_coverpoints_unsup.v:21:21: ../V3EmitCFunc.h:#: Unknown node type reached emitter: EVENTCONTROL
-                                                                : ... note: In instance 't::cg'
-   21 |     covergroup cg @(posedge clk);
-      |                     ^~~~~~~
-                        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
