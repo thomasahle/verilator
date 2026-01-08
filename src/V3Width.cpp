@@ -3785,6 +3785,60 @@ class WidthVisitor final : public VNVisitor {
             classp = classp->extendsp() ? classp->extendsp()->classp() : nullptr;
         }
 
+        // Check for coverpoint access on covergroups (cg.cp.get_inst_coverage())
+        // Instead of creating a member variable here, we just mark that this is a coverpoint
+        // access and let methodCallCoverpoint handle the transformation
+        if (first_classp->isCovergroup()) {
+            // Get effective name for a coverpoint (IEEE 1800-2023 19.5)
+            // If coverpoint has no explicit name, use the expression name if it's a simple varref
+            auto getCpEffectiveName = [](AstCoverpoint* cpp) -> string {
+                if (!cpp->name().empty()) return cpp->name();
+                // For unlabeled coverpoints, use expression name if it's a simple varref
+                if (AstVarRef* const vrp = VN_CAST(cpp->exprp(), VarRef)) {
+                    return vrp->name();
+                }
+                return "";  // Anonymous coverpoint
+            };
+
+            // Helper lambda to find coverpoint by name
+            auto findCoverpoint = [&](AstClass* cgp, const string& name) -> AstCoverpoint* {
+                // Look in class statements
+                for (AstNode* stmtp = cgp->stmtsp(); stmtp; stmtp = stmtp->nextp()) {
+                    if (AstCoverpoint* const cpp = VN_CAST(stmtp, Coverpoint)) {
+                        if (getCpEffectiveName(cpp) == name) return cpp;
+                    }
+                }
+                // Also look in member functions (coverpoints may be in the constructor)
+                for (AstNode* memberp = cgp->membersp(); memberp; memberp = memberp->nextp()) {
+                    if (AstFunc* const funcp = VN_CAST(memberp, Func)) {
+                        for (AstNode* stmtp = funcp->stmtsp(); stmtp; stmtp = stmtp->nextp()) {
+                            if (AstCoverpoint* const cpp = VN_CAST(stmtp, Coverpoint)) {
+                                if (getCpEffectiveName(cpp) == name) return cpp;
+                            }
+                        }
+                    }
+                }
+                return nullptr;
+            };
+
+            if (findCoverpoint(first_classp, nodep->name())) {
+                // Found matching coverpoint - store the covergroup class for later use
+                // Mark the member select with a special type that methodCallCoverpoint recognizes
+                // Use AstBasicDType for the coverpoint proxy - it will only be used
+                // in method calls which we intercept
+                AstBasicDType* const cpDtypep
+                    = new AstBasicDType{nodep->fileline(), VBasicDTypeKwd::DOUBLE};
+                v3Global.rootp()->typeTablep()->addTypesp(cpDtypep);
+
+                // Store the coverpoint name and covergroup class in user fields for later
+                // Set a marker that this is a coverpoint (using user1 as boolean)
+                nodep->dtypep(cpDtypep);
+                nodep->user1(true);  // Mark as coverpoint member access
+                nodep->didWidth(true);
+                return true;
+            }
+        }
+
         VSpellCheck speller;
         for (AstClass* classp = first_classp; classp;) {
             for (AstNode* itemp = classp->membersp(); itemp; itemp = itemp->nextp()) {
@@ -3921,6 +3975,17 @@ class WidthVisitor final : public VNVisitor {
             methodCallEvent(nodep, basicp);
         } else if (basicp && basicp->isString()) {
             methodCallString(nodep, basicp);
+        } else if (AstMemberSel* const mselp = VN_CAST(nodep->fromp(), MemberSel)) {
+            // Check if this is a coverpoint member access (marked by user1 in memberSelClass)
+            if (mselp->user1()) {
+                methodCallCoverpoint(nodep, mselp);
+            } else {
+                nodep->v3warn(E_UNSUPPORTED,
+                              "Unsupported: Member call on object '"
+                                  << nodep->fromp()->prettyTypeName() << "' which is a '"
+                                  << nodep->fromp()->dtypep()->prettyTypeName() << "'");
+                nodep->dtypeSetVoid();
+            }
         } else {
             nodep->v3warn(E_UNSUPPORTED, "Unsupported: Member call on object '"
                                              << nodep->fromp()->prettyTypeName()
@@ -5034,6 +5099,88 @@ class WidthVisitor final : public VNVisitor {
             VL_DO_DANGLING(nodep->deleteTree(), nodep);
         } else {
             nodep->v3error("Unknown built-in string method " << nodep->prettyNameQ());
+        }
+    }
+    void methodCallCoverpoint(AstMethodCall* nodep, AstMemberSel* mselp) {
+        // Handle method calls on coverpoint member access
+        // Transform cg.cp.get_inst_coverage() to cg.__Vcp_cp_get_inst_coverage()
+        // We create the per-coverpoint function in the covergroup class if it doesn't exist
+        const string cpName = mselp->name();  // Name of the coverpoint
+        const string methodName = nodep->name();  // Method being called
+
+        // Get the covergroup class from the MemberSel's fromp
+        AstNodeDType* const cgDtypep = mselp->fromp()->dtypep()->skipRefToEnump();
+        AstClassRefDType* const cgRefp = VN_CAST(cgDtypep, ClassRefDType);
+        if (!cgRefp || !cgRefp->classp() || !cgRefp->classp()->isCovergroup()) {
+            nodep->v3error("Coverpoint method call on non-covergroup");
+            nodep->dtypeSetVoid();
+            return;
+        }
+        AstClass* const cgClassp = cgRefp->classp();
+
+        // Support get_inst_coverage(), get_coverage(), sample(), start(), stop()
+        if (methodName == "get_inst_coverage" || methodName == "get_coverage") {
+            methodOkArguments(nodep, 0, 0);
+            const string funcName = "__Vcp_" + cpName + "_get_inst_coverage";
+
+            // Check if the function already exists in the covergroup class
+            AstFunc* cpFuncp = nullptr;
+            for (AstNode* memberp = cgClassp->membersp(); memberp; memberp = memberp->nextp()) {
+                if (AstFunc* const funcp = VN_CAST(memberp, Func)) {
+                    if (funcp->name() == funcName) {
+                        cpFuncp = funcp;
+                        break;
+                    }
+                }
+            }
+
+            // Create the function if it doesn't exist (V3CoverageGroup will fill in the body)
+            if (!cpFuncp) {
+                FileLine* const fl = nodep->fileline();
+                AstBasicDType* const realDtypep
+                    = new AstBasicDType{fl, VBasicDTypeKwd::DOUBLE};
+                v3Global.rootp()->typeTablep()->addTypesp(realDtypep);
+
+                // Create function return variable (use MEMBER type to avoid being deleted by V3Dead)
+                AstVar* const funcRetp
+                    = new AstVar{fl, VVarType::MEMBER, funcName, realDtypep};
+                funcRetp->funcLocal(true);
+                funcRetp->funcReturn(true);
+                funcRetp->direction(VDirection::OUTPUT);
+                funcRetp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
+
+                // Create function (body will be filled by V3CoverageGroup)
+                cpFuncp = new AstFunc{fl, funcName, nullptr, funcRetp};
+                cpFuncp->dtypep(realDtypep);
+                cpFuncp->classMethod(true);
+                // Mark that this was created as a placeholder
+                cpFuncp->user1(true);
+                cgClassp->addMembersp(cpFuncp);
+            }
+
+            // Get the covergroup object (fromp of the MemberSel)
+            AstNodeExpr* const cgObjp = mselp->fromp()->unlinkFrBack();
+
+            // Create method call to the per-coverpoint function
+            AstMethodCall* const newCallp
+                = new AstMethodCall{nodep->fileline(), cgObjp, funcName, nullptr};
+            newCallp->taskp(cpFuncp);
+            newCallp->dtypep(cpFuncp->dtypep());
+            newCallp->classOrPackagep(cgClassp);
+            newCallp->didWidth(true);  // Already fully resolved
+
+            nodep->replaceWith(newCallp);
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+        } else if (methodName == "sample" || methodName == "start" || methodName == "stop") {
+            // These are no-ops for individual coverpoints (done at covergroup level)
+            methodOkArguments(nodep, 0, 0);
+            // Replace with 0 (no-op)
+            AstNodeExpr* const newp = new AstConst{nodep->fileline(), AstConst::RealDouble{}, 0.0};
+            nodep->replaceWith(newp);
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+        } else {
+            nodep->v3error("Unknown coverpoint method " << nodep->prettyNameQ());
+            nodep->dtypeSetVoid();
         }
     }
     AstQueueDType* queueDTypeIndexedBy(AstNodeDType* indexDTypep) {

@@ -10,13 +10,6 @@
 import vltest_bootstrap
 
 test.scenarios('simulator')
-
-# Coverpoint member access now works (see t_covergroup_coverpoint_access),
-# but clocked covergroups still have EVENTCONTROL issue
-if test.vlt_all:
-    test.compile(fails=True, expect_filename=test.golden_filename)
-else:
-    test.compile(nc_flags2=["-coverage", "functional"])
-    test.execute()
-
+test.compile()
+test.execute()
 test.passes()

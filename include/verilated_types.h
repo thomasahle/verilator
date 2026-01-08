@@ -2077,6 +2077,37 @@ public:
 };
 
 //======================================================================
+// VlCoverpointRef - Proxy for accessing individual coverpoints in covergroups
+
+template <typename T_Covergroup>
+class VlCoverpointRef final {
+    // MEMBERS
+    T_Covergroup* m_cgp = nullptr;  // Pointer to parent covergroup
+    double (T_Covergroup::*m_getCovp)() = nullptr;  // Per-coverpoint coverage function
+
+public:
+    // CONSTRUCTORS
+    VlCoverpointRef() = default;
+
+    // METHODS
+    // Initialize with parent covergroup and per-coverpoint coverage function
+    void init(T_Covergroup* cgp, double (T_Covergroup::*getCovp)()) {
+        m_cgp = cgp;
+        m_getCovp = getCovp;
+    }
+    // Get instance coverage for this coverpoint (IEEE 1800-2023 19.8.1)
+    double get_inst_coverage() const {
+        return (m_cgp && m_getCovp) ? (m_cgp->*m_getCovp)() : 0.0;
+    }
+    // Get type coverage - same as instance for per_instance=1 (default)
+    double get_coverage() const { return get_inst_coverage(); }
+    // Coverpoint methods that are no-ops (sampling is done at covergroup level)
+    void sample() const {}
+    void start() const {}
+    void stop() const {}
+};
+
+//======================================================================
 
 #define VL_NEW(Class, ...) \
     VlClassRef<Class> { vlSymsp->__Vm_deleter, __VA_ARGS__ }

@@ -1335,10 +1335,21 @@ class CoverageGroupVisitor final : public VNVisitor {
         ++m_binCount;
     }
 
+    // Get effective name for a coverpoint (IEEE 1800-2023 19.5)
+    // If coverpoint has no explicit name, use expression name if it's a simple varref
+    static string getCpEffectiveName(AstCoverpoint* cpp, int binCount) {
+        if (!cpp->name().empty()) return cpp->name();
+        // For unlabeled coverpoints, use expression name if it's a simple varref
+        if (AstVarRef* const vrp = VN_CAST(cpp->exprp(), VarRef)) {
+            return vrp->name();
+        }
+        return "cp" + cvtToStr(binCount);  // Fall back to auto-generated name
+    }
+
     // Process a coverpoint
     void processCoverpoint(AstCoverpoint* cpp) {
         FileLine* const fl = cpp->fileline();
-        const string cpName = cpp->name().empty() ? "cp" + cvtToStr(m_binCount) : cpp->name();
+        const string cpName = getCpEffectiveName(cpp, m_binCount);
 
         // Get the expression being covered
         AstNodeExpr* const exprp = cpp->exprp();
@@ -2032,6 +2043,140 @@ class CoverageGroupVisitor final : public VNVisitor {
         }
     }
 
+    // Generate per-coverpoint coverage function
+    // Returns coverage percentage for a single coverpoint's bins
+    AstNodeExpr* generateCpCoverageExpr(FileLine* fl, AstFunc* funcp,
+                                        const std::vector<CovBinInfo>& binInfos) {
+        if (binInfos.empty()) {
+            V3Number zeroNum{funcp, V3Number::Double{}, 0.0};
+            return new AstConst{fl, zeroNum};
+        }
+
+        // Build expression: sum of hit flags for this coverpoint's bins
+        AstNodeExpr* sumExprp = nullptr;
+        for (const CovBinInfo& binInfo : binInfos) {
+            AstVarRef* const hitRefp = new AstVarRef{fl, binInfo.hitVar, VAccess::READ};
+            AstNodeExpr* const extendedp = new AstExtend{fl, hitRefp, 32};
+            if (sumExprp) {
+                sumExprp = new AstAdd{fl, sumExprp, extendedp};
+            } else {
+                sumExprp = extendedp;
+            }
+        }
+
+        // Calculate: (sum / binCount) * 100.0
+        const int totalBins = static_cast<int>(binInfos.size());
+
+        // Cast sum to real
+        AstNodeExpr* const sumRealp = new AstIToRD{fl, sumExprp};
+
+        // Create constant for total bins
+        V3Number totalNum{funcp, V3Number::Double{}, static_cast<double>(totalBins)};
+        AstConst* const totalBinsDblp = new AstConst{fl, totalNum};
+
+        // Divide: sum / totalBins
+        AstNodeExpr* const dividep = new AstDivD{fl, sumRealp, totalBinsDblp};
+
+        // Multiply by 100.0
+        V3Number hundredNum{funcp, V3Number::Double{}, 100.0};
+        AstConst* const hundredp = new AstConst{fl, hundredNum};
+        AstNodeExpr* percentp = new AstMulD{fl, dividep, hundredp};
+
+        return percentp;
+    }
+
+    // Generate per-coverpoint member variables and coverage functions
+    // Creates a VlCoverpointRef<cgclass> member for each named coverpoint
+    void generateCoverpointMembers(AstFunc* constructorFuncp) {
+        if (!m_classp || m_cpBinHitVars.empty()) return;
+
+        FileLine* const fl = m_classp->fileline();
+
+        // Find all coverpoint names
+        // Skip only truly auto-generated names (cp0, cp1, etc.) that came from anonymous coverpoints
+        // Names derived from expression (like 'a', 'b') should be kept
+        for (const auto& cpPair : m_cpBinHitVars) {
+            const string& cpName = cpPair.first;
+            const std::vector<CovBinInfo>& binInfos = cpPair.second;
+
+            // Skip auto-generated names that match pattern "cp" + digits only
+            // This means the coverpoint had no name AND no simple varref expression
+            if (cpName.length() >= 3 && cpName[0] == 'c' && cpName[1] == 'p') {
+                const char* rest = cpName.c_str() + 2;
+                bool allDigits = (*rest != '\0');
+                while (*rest) {
+                    if (!isdigit(*rest)) {
+                        allDigits = false;
+                        break;
+                    }
+                    rest++;
+                }
+                if (allDigits) continue;  // Skip "cp0", "cp1", etc.
+            }
+
+            UINFO(4, "Creating coverpoint member: " << cpName << " with " << binInfos.size()
+                                                    << " bins" << endl);
+
+            // 1. Create per-coverpoint coverage function
+            const string funcName = "__Vcp_" + cpName + "_get_inst_coverage";
+
+            UINFO(4, "Looking for placeholder function: " << funcName << endl);
+
+            // Check if function already exists (created by V3Width as placeholder)
+            AstFunc* cpFuncp = nullptr;
+            for (AstNode* memberp = m_classp->membersp(); memberp; memberp = memberp->nextp()) {
+                if (AstFunc* const funcp = VN_CAST(memberp, Func)) {
+                    UINFO(9, "  Checking member function: " << funcp->name() << endl);
+                    if (funcp->name() == funcName) {
+                        cpFuncp = funcp;
+                        UINFO(4, "  Found existing placeholder function" << endl);
+                        break;
+                    }
+                }
+            }
+
+            if (!cpFuncp) {
+                UINFO(4, "  Creating new function (no placeholder found)" << endl);
+                // Return type: real (double)
+                AstBasicDType* const realDtypep
+                    = new AstBasicDType{fl, VBasicDTypeKwd::DOUBLE};
+                v3Global.rootp()->typeTablep()->addTypesp(realDtypep);
+
+                // Create function return variable (use MEMBER type to avoid being deleted by V3Dead)
+                AstVar* const funcRetp
+                    = new AstVar{fl, VVarType::MEMBER, funcName, realDtypep};
+                funcRetp->funcLocal(true);
+                funcRetp->funcReturn(true);
+                funcRetp->direction(VDirection::OUTPUT);
+                funcRetp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
+
+                // Create function
+                cpFuncp = new AstFunc{fl, funcName, nullptr, funcRetp};
+                cpFuncp->dtypep(realDtypep);
+                cpFuncp->classMethod(true);
+
+                // Add function to class
+                m_classp->addMembersp(cpFuncp);
+            }
+
+            // Generate coverage expression for this coverpoint
+            AstNodeExpr* const coverageExprp = generateCpCoverageExpr(fl, cpFuncp, binInfos);
+
+            // Assign to return variable - find the return variable in the function
+            UINFO(4, "  cpFuncp->fvarp() = " << (cpFuncp->fvarp() ? "exists" : "nullptr") << endl);
+            UASSERT_OBJ(cpFuncp->fvarp(), cpFuncp, "Coverpoint function missing fvarp");
+            AstVar* funcRetp = VN_AS(cpFuncp->fvarp(), Var);
+            AstVarRef* const retRefp = new AstVarRef{fl, funcRetp, VAccess::WRITE};
+            AstAssign* const assignp = new AstAssign{fl, retRefp, coverageExprp};
+            cpFuncp->addStmtsp(assignp);
+
+            // Note: We don't create a VlCoverpointRef member variable here because:
+            // 1. V3Width transforms cg.cp.get_inst_coverage() directly to cg.__Vcp_cp_get_inst_coverage()
+            // 2. Creating a member variable would require knowing the mangled C++ class name
+            //    which is not available at this stage
+        }
+    }
+
     // VISITORS
     void visit(AstClass* nodep) override {
         if (nodep->user1SetOnce()) return;  // Already processed
@@ -2233,6 +2378,9 @@ class CoverageGroupVisitor final : public VNVisitor {
         // Generate get_coverage() and get_inst_coverage() bodies (after all bins are created)
         generateGetCoverage();
         generateGetInstCoverage();
+
+        // Generate per-coverpoint members for coverpoint member access (cg.cp.get_inst_coverage())
+        generateCoverpointMembers(newFuncp);
 
         // Clean up - remove AstCoverpoint nodes as they've been lowered
         for (AstCoverpoint* cpp : coverpoints) {
