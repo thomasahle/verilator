@@ -1351,11 +1351,12 @@ package uvm_pkg;
 
     // Start heartbeat monitoring
     virtual task start(uvm_event e = null);
+      int last_cnt;  // Moved outside fork for Verilator scope resolution
       m_started = 1;
       fork
         begin
           while (m_started) begin
-            int last_cnt = m_cnt;
+            last_cnt = m_cnt;
             #(m_hb_window);
             if (!m_started) break;
             if (m_mode != UVM_NO_HB_MODE && m_cnt == last_cnt) begin
