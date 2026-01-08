@@ -2630,9 +2630,16 @@ class RandomizeVisitor final : public VNVisitor {
         return new AstRandRNG{fl, dtypep};
     }
     void addPrePostCall(AstClass* const classp, AstFunc* const funcp, const string& name) {
-        if (AstTask* userFuncp = VN_CAST(m_memberMap.findMember(classp, name), Task)) {
-            AstTaskRef* const callp = new AstTaskRef{userFuncp->fileline(), userFuncp, nullptr};
-            funcp->addStmtsp(callp->makeStmt());
+        // Search current class and parent classes for pre/post_randomize
+        for (const AstClass* searchp = classp; searchp;
+             searchp = searchp->extendsp() ? searchp->extendsp()->classp() : nullptr) {
+            if (AstTask* userFuncp
+                = VN_CAST(m_memberMap.findMember(searchp, name), Task)) {
+                AstTaskRef* const callp
+                    = new AstTaskRef{userFuncp->fileline(), userFuncp, nullptr};
+                funcp->addStmtsp(callp->makeStmt());
+                return;
+            }
         }
     }
     AstTask* newSetupConstraintTask(AstClass* const nodep, const std::string& name) {
