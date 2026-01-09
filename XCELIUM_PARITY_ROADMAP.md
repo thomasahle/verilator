@@ -491,6 +491,8 @@ Features needed:
 | shortreal type | **Works** | Promoted to real (64-bit), works correctly |
 | $dimensions | **Works** | Returns total number of dimensions |
 | $unpacked_dimensions | **Works** | Returns number of unpacked dimensions |
+| repeat statement | **Works** | repeat(n) with clocked and unclocked forms |
+| $left/$right/$low/$high | **Works** | Array bound query functions |
 
 ### Known Limitations
 
