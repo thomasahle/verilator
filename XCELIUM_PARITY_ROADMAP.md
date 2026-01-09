@@ -771,6 +771,20 @@ Features needed:
 | array unique_index | **Works** | Get indices of unique elements |
 | array find_first | **Works** | Find first matching element |
 | array find_last | **Works** | Find last matching element |
+| array find_index | **Works** | Find all indices matching condition |
+| array find_first_index | **Works** | Find first index matching condition |
+| array find_last_index | **Works** | Find last index matching condition |
+| array unique | **Works** | Return unique elements |
+| queue insert | **Works** | Insert element at index |
+| queue delete | **Works** | Delete element at index |
+| queue pop_front | **Works** | Remove and return first element |
+| queue pop_back | **Works** | Remove and return last element |
+| queue push_front | **Works** | Add element to front |
+| assoc exists | **Works** | Check if key exists |
+| assoc first/next | **Works** | Iterate forward through keys |
+| assoc last/prev | **Works** | Iterate backward through keys |
+| assoc delete | **Works** | Delete element by key |
+| assoc num/size | **Works** | Get number of elements |
 
 ### Known Limitations
 
