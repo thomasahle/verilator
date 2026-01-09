@@ -503,6 +503,9 @@ Features needed:
 | VCD dump functions | **Works** | $dumpfile, $dumpvars, $dumpoff, $dumpon, $dumpall, $dumpflush |
 | $monitor functions | **Works** | $monitor, $monitorb, $monitorh, $monitoro, $monitoroff, $monitoron |
 | $strobe functions | **Works** | $strobe, $strobeb, $strobeh, $strobeo |
+| $display format variants | **Works** | $displayb, $displayh, $displayo |
+| $write format variants | **Works** | $writeb, $writeh, $writeo |
+| $fdisplay format variants | **Works** | $fdisplayb, $fdisplayh, $fdisplayo |
 
 ### Known Limitations
 
