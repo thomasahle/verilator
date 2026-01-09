@@ -501,6 +501,8 @@ Features needed:
 | $fgetc/$ungetc | **Works** | Character-level file I/O |
 | $fread | **Works** | Binary file read into variables/arrays |
 | VCD dump functions | **Works** | $dumpfile, $dumpvars, $dumpoff, $dumpon, $dumpall, $dumpflush |
+| $monitor functions | **Works** | $monitor, $monitorb, $monitorh, $monitoro, $monitoroff, $monitoron |
+| $strobe functions | **Works** | $strobe, $strobeb, $strobeh, $strobeo |
 
 ### Known Limitations
 
