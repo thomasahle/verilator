@@ -620,6 +620,21 @@ Features needed:
 | enum | **Works** | Enum with .name(), .next() methods |
 | struct packed | **Works** | Packed struct with aggregate assignment |
 | union packed | **Works** | Packed union overlaying word/bytes |
+| casex | **Works** | Casex with x wildcards |
+| casez | **Works** | Casez with ? wildcards |
+| always_ff | **Works** | Flip-flop with async reset |
+| always_comb | **Works** | Combinational logic block |
+| always_latch | **Works** | Latch inference |
+| final block | **Works** | Final block executed at simulation end |
+| assign delay | **Works** | Continuous assignment with delay |
+| default parameter values | **Works** | Function/task default arguments |
+| named arguments | **Works** | Function call with .name(value) syntax |
+| ref argument | **Works** | Pass-by-reference function/task args |
+| inout argument | **Works** | Bidirectional function arguments |
+| local variable | **Works** | Class private member variables |
+| protected variable | **Works** | Class protected member variables |
+| static method | **Works** | Class static methods with :: scope |
+| virtual method | **Works** | Polymorphic virtual function dispatch |
 
 ### Known Limitations
 
