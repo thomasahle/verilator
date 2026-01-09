@@ -379,6 +379,8 @@ Features needed:
 | $info/$warning/$error | **Works** | Severity system tasks |
 | Interface arrays | **Works** | Arrays of interface instances |
 | Generate with interfaces | **Works** | Interface instantiation in generate |
+| Array locator methods | **Works** | find, find_index, find_first, find_last, min, max, unique |
+| Array manipulation | **Works** | sort, rsort, reverse, shuffle |
 
 ### Known Limitations
 
