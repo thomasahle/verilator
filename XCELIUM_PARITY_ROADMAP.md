@@ -656,6 +656,18 @@ Features needed:
 | input/output ports | **Works** | Module port declarations |
 | continuous assign | **Works** | Continuous assignment statements |
 | initial/always | **Works** | Initial and always blocks |
+| genvar/generate loop | **Works** | Generate for loops with genvar |
+| parameter/localparam | **Works** | Module parameters with overrides |
+| defparam | **Works** | Defparam for parameter override |
+| typedef | **Works** | Type definitions for logic/struct types |
+| function/task | **Works** | Procedural functions and tasks, recursive |
+| $display/$write | **Works** | Output formatting with format specifiers |
+| ternary operator | **Works** | Conditional expressions (a ? b : c) |
+| for loop | **Works** | For loops with local variable declaration |
+| while/do-while | **Works** | While and do-while loops |
+| repeat loop | **Works** | Repeat N times loop |
+| forever loop | **Works** | Forever with break |
+| if-else | **Works** | If-else and if-else-if chains |
 
 ### Known Limitations
 
