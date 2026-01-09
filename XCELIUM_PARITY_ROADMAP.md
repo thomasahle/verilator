@@ -488,6 +488,9 @@ Features needed:
 | $signed/$unsigned | **Works** | Signedness conversion functions |
 | bind construct | **Works** | Bind checker modules to design instances |
 | clocking blocks | **Works** | Clocking block with @(cb), cb.signal |
+| shortreal type | **Works** | Promoted to real (64-bit), works correctly |
+| $dimensions | **Works** | Returns total number of dimensions |
+| $unpacked_dimensions | **Works** | Returns number of unpacked dimensions |
 
 ### Known Limitations
 
