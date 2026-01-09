@@ -514,6 +514,9 @@ Features needed:
 | Primitive gates | **Works** | and, or, xor, nand, nor, xnor, not, buf |
 | Tri-state gates | **Works** | bufif0, bufif1, notif0, notif1 |
 | pullup/pulldown | **Works** | Resistive pull primitives |
+| $root reference | **Works** | Absolute hierarchical paths from design root |
+| $unit scope | **Works** | Compilation unit scope for globals |
+| specify blocks | **Works** | Parsed (timing ignored), allows code portability |
 
 ### Known Limitations
 
