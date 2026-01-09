@@ -327,15 +327,17 @@ Features needed:
 | Covergroup ignore_bins | **Works** | Coverage exclusion |
 | do-while randomization pattern | **Works** | UVM `uvm_do` support |
 | Cross coverage | **Works** | Full cross bin support |
+| super keyword | **Works** | Parent method calls in classes |
+| extern function | **Works** | Out-of-body class method definitions |
+| modport export | **Works** | Interface function export to modules |
+| stream operators on class members | **Works** | `{>> {p.data, p.addr}}` works |
 
 ### Known Limitations
 
 | Feature | Status | Workaround |
 |---------|--------|------------|
-| extern function | Not supported | Define functions inline |
-| modport export | Blocked | Use modport import instead |
-| stream operators on classes | Not supported | Use explicit pack/unpack |
 | randc | Converted to rand | Possible duplicates |
+| $psprintf with class args | Limited | Use $sformatf instead |
 
 ### AVIP Test Results (mbits-mirafra)
 
