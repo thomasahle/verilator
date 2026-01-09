@@ -349,6 +349,10 @@ Features needed:
 | inside constraint | **Works** | Value set membership works |
 | Packed struct randomization | **Works** | Constraints on struct fields work |
 | Enum array randomization | **Works** | rand enum arrays with constraints |
+| std::randomize() | **Works** | Global randomize with inline constraints |
+| $cast function | **Works** | Runtime type checking and downcasting |
+| Associative arrays (string keys) | **Works** | exists(), delete(), foreach work |
+| $urandom/$urandom_range | **Works** | Random number generation |
 
 ### Known Limitations
 
