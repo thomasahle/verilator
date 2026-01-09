@@ -469,6 +469,10 @@ Features needed:
 | foreach loop | **Works** | Fixed, dynamic, assoc, multi-dimensional arrays |
 | casez | **Works** | Wildcard case with ? matching any value |
 | casex | **Works** | Don't-care case with x/z treated as don't-care |
+| Immediate assertions | **Works** | assert, assume, cover statements |
+| final block | **Works** | Executes at end of simulation |
+| $fatal task | **Works** | Severity levels 0-2, optional message |
+| $finish with exit code | **Works** | $finish(0), $finish(1), etc. |
 
 ### Known Limitations
 
