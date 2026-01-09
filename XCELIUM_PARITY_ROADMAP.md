@@ -493,6 +493,8 @@ Features needed:
 | $unpacked_dimensions | **Works** | Returns number of unpacked dimensions |
 | repeat statement | **Works** | repeat(n) with clocked and unclocked forms |
 | $left/$right/$low/$high | **Works** | Array bound query functions |
+| $system | **Works** | Execute shell commands, returns exit code |
+| $info | **Works** | Informational message display |
 
 ### Known Limitations
 
