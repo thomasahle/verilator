@@ -455,6 +455,8 @@ Features needed:
 | Interface class (implements) | **Works** | Interface class with pure virtual, implements |
 | Polymorphism/$cast | **Works** | Virtual methods, base class handles, $cast |
 | Interface modports | **Works** | master/slave ports, input/output directions |
+| Modport with clocking | **Works** | Modport with clocking block reference |
+| uwire net type | **Works** | Unresolved wire type |
 | wait statements | **Works** | wait(expr), multiple sequential waits |
 | Process control | **Works** | process::self(), status(), await() |
 | Integer types | **Works** | byte, shortint, int, longint (signed/unsigned) |
