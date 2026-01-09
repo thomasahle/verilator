@@ -382,6 +382,9 @@ Features needed:
 | Array locator methods | **Works** | find, find_index, find_first, find_last, min, max, unique |
 | Array manipulation | **Works** | sort, rsort, reverse, shuffle |
 | Array reduce methods | **Works** | sum, product, and, or, xor |
+| SVA ## delay operator | **Works** | ##1, ##[1:3] range delays |
+| SVA implication (|->) | **Works** | Property implication |
+| SVA sequences | **Works** | Named sequence definitions |
 
 ### Known Limitations
 
