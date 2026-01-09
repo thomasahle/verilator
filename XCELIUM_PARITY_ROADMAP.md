@@ -495,6 +495,7 @@ Features needed:
 | $left/$right/$low/$high | **Works** | Array bound query functions |
 | $system | **Works** | Execute shell commands, returns exit code |
 | $info | **Works** | Informational message display |
+| $sformat | **Works** | Formatted string assignment (task form) |
 
 ### Known Limitations
 
