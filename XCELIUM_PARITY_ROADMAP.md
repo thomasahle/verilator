@@ -422,6 +422,9 @@ Features needed:
 | Packages | **Works** | import, wildcard import, typedef, function, parameter |
 | Array dimension functions | **Works** | $size, $dimensions, $left, $right, $low, $high, $increment |
 | Named arguments | **Works** | .name(value) syntax, reordering, mixed with positional |
+| $random | **Works** | Legacy random with optional seed |
+| ref/const ref arguments | **Works** | Pass by reference, const ref for read-only |
+| force/release | **Works** | Force signal values, release to normal driver |
 
 ### Known Limitations
 
