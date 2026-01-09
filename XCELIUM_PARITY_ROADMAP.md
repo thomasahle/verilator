@@ -589,6 +589,10 @@ Features needed:
 | $fopen/$fwrite/$fclose | **Works** | File I/O operations |
 | $readmemh | **Works** | Load hex file to memory |
 | string.tolower()/toupper() | **Works** | String case conversion |
+| $fgets | **Works** | Read line from file |
+| $sscanf | **Works** | Parse string with format |
+| $time/$realtime | **Works** | Get simulation time |
+| $onehot/$onehot0 | **Works** | One-hot encoding check |
 
 ### Known Limitations
 
