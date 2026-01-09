@@ -464,6 +464,8 @@ Features needed:
 | Solve before | **Works** | Parsing accepted, imperfect distribution (warning) |
 | constraint_mode | **Works** | Enable/disable constraints, query state |
 | rand_mode | **Works** | Enable/disable rand vars, query state |
+| this keyword | **Works** | Member access, returning this, constructor |
+| super keyword | **Works** | super.new(), super.method() calls |
 
 ### Known Limitations
 
