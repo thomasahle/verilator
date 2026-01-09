@@ -652,6 +652,10 @@ Features needed:
 | concatenation | **Works** | {a, b, c} bit concatenation |
 | reduction operators | **Works** | &, |, ^, ~& |~, ~^ unary reduction |
 | shift operators | **Works** | <<, >>, <<<, >>> logical/arithmetic |
+| wire/reg types | **Works** | Wire and reg data types |
+| input/output ports | **Works** | Module port declarations |
+| continuous assign | **Works** | Continuous assignment statements |
+| initial/always | **Works** | Initial and always blocks |
 
 ### Known Limitations
 
