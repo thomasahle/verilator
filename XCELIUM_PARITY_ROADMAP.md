@@ -577,6 +577,10 @@ Features needed:
 | string.atoi() | **Works** | String to integer conversion |
 | string.len()/substr() | **Works** | String length and substring |
 | string comparison | **Works** | ==, !=, <, >, concatenation |
+| $urandom | **Works** | Unsigned random number |
+| $urandom_range | **Works** | Random in range (min, max) |
+| shortint | **Works** | 16-bit signed integer |
+| longint | **Works** | 64-bit signed integer |
 
 ### Known Limitations
 
