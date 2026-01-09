@@ -373,6 +373,10 @@ Features needed:
 | fork-join_none | **Works** | Immediately continues |
 | wait fork | **Works** | Waits for all forked processes |
 | disable fork | **Works** | Kills all forked processes |
+| Static class members | **Works** | Static variables and functions |
+| Class-scope resolution (::) | **Works** | ClassName::member works |
+| $typename | **Works** | Returns string type name |
+| $info/$warning/$error | **Works** | Severity system tasks |
 
 ### Known Limitations
 
