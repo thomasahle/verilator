@@ -5479,17 +5479,14 @@ let_port_item<varp>:  // IEEE: let_port_Item
                           if ($4) $$->valuep($4);
                           PINNUMINC(); }
         |       data_type idAny/*formal_port_identifier*/ variable_dimensionListE exprEqE
-                        { BBUNSUP($<fl>1, "Unsupported: let typed ports");
-                          $$ = new AstVar{$<fl>2, VVarType::VAR, *$2, VFlagChildDType{},
-                                          new AstBasicDType{$<fl>2, LOGIC_IMPLICIT}};
+                        { $$ = new AstVar{$<fl>2, VVarType::VAR, *$2, VFlagChildDType{}, $1};
                           $$->direction(VDirection::INOUT);
                           $$->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
                           if ($4) $$->valuep($4);
                           PINNUMINC(); }
         |       implicit_typeE id/*formal_port_identifier*/ variable_dimensionListE exprEqE
-                        { if ($1) BBUNSUP($<fl>1, "Unsupported: let typed ports");
-                          $$ = new AstVar{$<fl>2, VVarType::VAR, *$2, VFlagChildDType{},
-                                          new AstBasicDType{$<fl>2, LOGIC_IMPLICIT}};
+                        { $$ = new AstVar{$<fl>2, VVarType::VAR, *$2, VFlagChildDType{},
+                                          $1 ? $1 : new AstBasicDType{$<fl>2, LOGIC_IMPLICIT}};
                           $$->direction(VDirection::INOUT);
                           $$->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
                           if ($4) $$->valuep($4);

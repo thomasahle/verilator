@@ -483,7 +483,7 @@ Features needed:
 | SVA disable iff | **Works** | Property disabling condition with reset |
 | program blocks | **Works** | Testbench program encapsulation |
 | $sampled | **Works** | Samples value in preponed region |
-| let declarations | **Works** | Expression macros with formal arguments |
+| let declarations | **Works** | Expression macros with typed formal arguments |
 | Wildcard port connections | **Works** | .* connects all ports by name |
 | $assertoff/$asserton | **Works** | Runtime assertion control |
 | $assertcontrol | **Works** | Full assertion control (kill, on, off, etc.) |
@@ -760,7 +760,7 @@ Features needed:
 | final block | **Works** | End-of-simulation block |
 | chained assignment | **Works** | a = b = c = val syntax |
 | streaming operators | **Works** | {>>{}}, {<<{}} pack/unpack |
-| let construct | **Works** | Inline parameterized expressions |
+| let construct | **Works** | Inline parameterized expressions with typed ports |
 | checker construct | **Works** | Reusable verification blocks |
 | clocking block | **Works** | Synchronization mechanism |
 | program block | **Works** | Testbench encapsulation |
