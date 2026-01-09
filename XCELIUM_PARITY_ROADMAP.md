@@ -535,6 +535,10 @@ Features needed:
 | hierarchical references | **Works** | Cross-module signal access |
 | parameter type | **Works** | Type as module parameter |
 | real type | **Works** | IEEE 754 double precision |
+| interface task/function | **Works** | Tasks/functions defined in interface |
+| genvar | **Works** | Generate loop variable |
+| logical equivalence (<->) | **Works** | a <-> b returns true if both same |
+| interface arrays | **Works** | Array of interface instances |
 
 ### Known Limitations
 
