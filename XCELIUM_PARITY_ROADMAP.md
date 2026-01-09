@@ -539,6 +539,11 @@ Features needed:
 | genvar | **Works** | Generate loop variable |
 | logical equivalence (<->) | **Works** | a <-> b returns true if both same |
 | interface arrays | **Works** | Array of interface instances |
+| `ifdef/`ifndef/`else/`endif | **Works** | Preprocessor conditionals |
+| `define macros with args | **Works** | Parameterized macros |
+| task with ref arguments | **Works** | Pass by reference in tasks |
+| multiple initial blocks | **Works** | All initial blocks run |
+| parameter arrays | **Works** | Array-type parameters |
 
 ### Known Limitations
 
