@@ -345,6 +345,10 @@ Features needed:
 | Nested class randomization | **Works** | rand class members work |
 | Fixed array randomization | **Works** | foreach constraints work correctly |
 | Queue/dynamic array size constraints | **Works** | size() constraints work |
+| rand_mode() | **Works** | Enable/disable per-variable randomization |
+| inside constraint | **Works** | Value set membership works |
+| Packed struct randomization | **Works** | Constraints on struct fields work |
+| Enum array randomization | **Works** | rand enum arrays with constraints |
 
 ### Known Limitations
 
