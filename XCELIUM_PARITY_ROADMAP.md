@@ -377,6 +377,8 @@ Features needed:
 | Class-scope resolution (::) | **Works** | ClassName::member works |
 | $typename | **Works** | Returns string type name |
 | $info/$warning/$error | **Works** | Severity system tasks |
+| Interface arrays | **Works** | Arrays of interface instances |
+| Generate with interfaces | **Works** | Interface instantiation in generate |
 
 ### Known Limitations
 
