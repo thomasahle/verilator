@@ -521,6 +521,8 @@ Features needed:
 | typedef class forward | **Works** | Forward declaration for class types |
 | initial #delay statement | **Works** | Initial block with pre-delay |
 | Port type declarations | **Works** | input wire, input logic, output reg, etc |
+| alias statement | **Works** | Net aliasing for short-circuit connection |
+| macromodule | **Works** | Same as module, hint for flattening |
 
 ### Known Limitations
 
