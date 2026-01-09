@@ -381,6 +381,7 @@ Features needed:
 | Generate with interfaces | **Works** | Interface instantiation in generate |
 | Array locator methods | **Works** | find, find_index, find_first, find_last, min, max, unique |
 | Array manipulation | **Works** | sort, rsort, reverse, shuffle |
+| Array reduce methods | **Works** | sum, product, and, or, xor |
 
 ### Known Limitations
 
