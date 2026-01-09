@@ -431,6 +431,8 @@ Features needed:
 | Severity tasks | **Works** | $info, $warning (non-fatal messages) |
 | Signed arithmetic | **Works** | Negation, mult/div/mod, comparisons, >>> |
 | Reduction operators | **Works** | &, |, ^, ~&, ~|, ~^ (parity) |
+| Timing delays | **Works** | assign #delay, <= #delay in always blocks |
+| $writememh/$writememb | **Works** | Write memory to file with optional range |
 
 ### Known Limitations
 
