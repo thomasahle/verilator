@@ -519,6 +519,8 @@ Features needed:
 | specify blocks | **Works** | Parsed (timing ignored), allows code portability |
 | package export | **Works** | Re-export symbols from nested packages |
 | typedef class forward | **Works** | Forward declaration for class types |
+| initial #delay statement | **Works** | Initial block with pre-delay |
+| Port type declarations | **Works** | input wire, input logic, output reg, etc |
 
 ### Known Limitations
 
