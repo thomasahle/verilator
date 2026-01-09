@@ -407,6 +407,7 @@ Features needed:
 | $display/$sformatf formatting | **Works** | %d, %h, %b, %o, %f, %e, %g, %s, %c, %t, width, precision |
 | Packed/unpacked arrays | **Works** | Multi-dimensional packed, mixed arrays |
 | Automatic/recursive functions | **Works** | function automatic, recursion, static |
+| Module parameters | **Works** | parameter, localparam, string params, overrides |
 
 ### Known Limitations
 
