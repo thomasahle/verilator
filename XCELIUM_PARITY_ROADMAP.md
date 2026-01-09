@@ -512,6 +512,8 @@ Features needed:
 | var keyword | **Works** | Explicit variable declaration |
 | supply0/supply1 | **Works** | Power supply net types |
 | Primitive gates | **Works** | and, or, xor, nand, nor, xnor, not, buf |
+| Tri-state gates | **Works** | bufif0, bufif1, notif0, notif1 |
+| pullup/pulldown | **Works** | Resistive pull primitives |
 
 ### Known Limitations
 
