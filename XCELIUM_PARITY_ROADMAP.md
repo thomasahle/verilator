@@ -317,6 +317,7 @@ Features needed:
 | Feature | Status | Notes |
 |---------|--------|-------|
 | pre/post_randomize callbacks with inheritance | **Fixed** | Bug fix in V3Randomize.cpp |
+| Coverpoint member access (.cp.get_coverage()) | **Fixed** | Bug fix in V3CoverageGroup.cpp |
 | $bits for dynamic arrays/queues | **Works** | Already implemented |
 | disable by task name | **Works** | Already implemented |
 | randomize() with inline constraints | **Works** | Full UVM pattern support |
@@ -333,7 +334,6 @@ Features needed:
 |---------|--------|------------|
 | extern function | Not supported | Define functions inline |
 | modport export | Blocked | Use modport import instead |
-| Coverpoint member access (.cp1.get_coverage()) | Bug | Use whole covergroup methods |
 | stream operators on classes | Not supported | Use explicit pack/unpack |
 | randc | Converted to rand | Possible duplicates |
 
