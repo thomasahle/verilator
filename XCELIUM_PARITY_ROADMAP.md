@@ -692,6 +692,14 @@ Features needed:
 | logical operators | **Works** | &&, ||, ! |
 | bitwise operators | **Works** | &, |, ^, ~, ~^ |
 | increment/decrement | **Works** | ++, -- (pre and post) |
+| compound assignment | **Works** | +=, -=, *=, /=, %=, &=, |=, ^= |
+| queue | **Works** | push_back, push_front, pop_back, pop_front |
+| dynamic array | **Works** | new[], size, delete, resize |
+| associative array ops | **Works** | string keys, exists, delete |
+| class constructor | **Works** | new() with default args |
+| class inheritance | **Works** | extends, super, polymorphism |
+| interface (basic) | **Works** | Signal bundling |
+| modport | **Works** | master/slave port directions |
 
 ### Known Limitations
 
