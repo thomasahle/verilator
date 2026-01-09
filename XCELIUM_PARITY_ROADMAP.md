@@ -451,6 +451,11 @@ Features needed:
 | Arithmetic operators | **Works** | +, -, *, /, %, unary +/-, ** power |
 | Bit/part select | **Works** | [n], [m:n], [idx+:w], [idx-:w], variable index |
 | Associative arrays | **Works** | num, exists, first, next, last, prev, delete |
+| Class inheritance | **Works** | extends, super.new(), multi-level inheritance |
+| Polymorphism/$cast | **Works** | Virtual methods, base class handles, $cast |
+| Interface modports | **Works** | master/slave ports, input/output directions |
+| wait statements | **Works** | wait(expr), multiple sequential waits |
+| Process control | **Works** | process::self(), status(), await() |
 
 ### Known Limitations
 
