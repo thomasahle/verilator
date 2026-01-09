@@ -317,6 +317,7 @@ Features needed:
 | Feature | Status | Notes |
 |---------|--------|-------|
 | randomize(variable_list) same-class | **Fixed** | Bug fix: only listed vars randomized |
+| randc (cyclic random) | **Works** | Produces proper permutation cycles |
 | pre/post_randomize callbacks with inheritance | **Fixed** | Bug fix in V3Randomize.cpp |
 | Coverpoint member access (.cp.get_coverage()) | **Fixed** | Bug fix in V3CoverageGroup.cpp |
 | $bits for dynamic arrays/queues | **Works** | Already implemented |
@@ -363,7 +364,7 @@ Features needed:
 
 | Feature | Status | Workaround |
 |---------|--------|------------|
-| randc | Converted to rand | Possible duplicates |
+| randc | **Works** | Cyclic random properly implemented |
 | $psprintf with class args | Limited | Use $sformatf instead |
 
 ### AVIP Test Results (mbits-mirafra)
