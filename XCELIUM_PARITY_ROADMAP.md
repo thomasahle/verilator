@@ -552,6 +552,9 @@ Features needed:
 | randcase statement | **Works** | Weighted random case selection |
 | `timescale directive | **Works** | Time unit and precision |
 | enum explicit base type | **Works** | enum logic [n:0] {...} |
+| class constructor defaults | **Works** | function new(arg=default) |
+| async reset pattern | **Works** | @(posedge clk or negedge rst_n) |
+| case default clause | **Works** | case/default for catch-all |
 
 ### Known Limitations
 
