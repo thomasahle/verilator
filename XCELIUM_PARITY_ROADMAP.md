@@ -569,6 +569,10 @@ Features needed:
 | typedef | **Works** | typedef logic [7:0] byte_t |
 | repeat loop | **Works** | repeat (n) begin end |
 | forever loop | **Works** | forever begin with break |
+| do-while loop | **Works** | do begin end while (cond) |
+| while loop | **Works** | while (cond) begin end |
+| $cast | **Works** | Dynamic class casting |
+| $typename | **Works** | Get type name string |
 
 ### Known Limitations
 
