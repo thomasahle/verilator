@@ -668,6 +668,14 @@ Features needed:
 | repeat loop | **Works** | Repeat N times loop |
 | forever loop | **Works** | Forever with break |
 | if-else | **Works** | If-else and if-else-if chains |
+| bit/part select | **Works** | Constant bit and range selection |
+| indexed part select | **Works** | Variable [idx +: width] selection |
+| fixed array | **Works** | Fixed-size array operations |
+| multi-dimensional array | **Works** | 2D and higher arrays |
+| string operations | **Works** | len, toupper, tolower, concat |
+| signed/unsigned | **Works** | Signed extensions, $signed/$unsigned |
+| type casting | **Works** | int', real', shortint' casts |
+| time delay (#) | **Works** | Procedural delay statements |
 
 ### Known Limitations
 
