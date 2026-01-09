@@ -481,6 +481,8 @@ Features needed:
 | Wildcard port connections | **Works** | .* connects all ports by name |
 | $assertoff/$asserton | **Works** | Runtime assertion control |
 | $countbits | **Works** | Count bits matching specified value |
+| Static local variables | **Works** | `static` inside automatic functions |
+| $printtimescale | **Works** | Prints module's timescale setting |
 
 ### Known Limitations
 
