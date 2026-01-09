@@ -447,6 +447,10 @@ Features needed:
 | Shift operators | **Works** | <<, >>, <<<, >>> (logical and arithmetic) |
 | Ternary operator | **Works** | cond ? a : b, nested, in expressions |
 | Logical operators | **Works** | &&, ||, ! (and complex expressions) |
+| Comparison operators | **Works** | ==, !=, <, >, <=, >= (signed comparisons) |
+| Arithmetic operators | **Works** | +, -, *, /, %, unary +/-, ** power |
+| Bit/part select | **Works** | [n], [m:n], [idx+:w], [idx-:w], variable index |
+| Associative arrays | **Works** | num, exists, first, next, last, prev, delete |
 
 ### Known Limitations
 
