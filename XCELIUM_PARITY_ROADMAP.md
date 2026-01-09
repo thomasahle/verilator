@@ -635,6 +635,14 @@ Features needed:
 | protected variable | **Works** | Class protected member variables |
 | static method | **Works** | Class static methods with :: scope |
 | virtual method | **Works** | Polymorphic virtual function dispatch |
+| parameterized class | **Works** | Class with type and value parameters |
+| pure virtual function | **Works** | Abstract virtual class methods |
+| super.method() | **Works** | Call parent class method |
+| this reference | **Works** | Self-reference within class |
+| extern constraint | **Works** | Constraint defined outside class |
+| constraint_mode() | **Works** | Enable/disable constraints |
+| rand_mode() | **Works** | Enable/disable field randomization |
+| soft constraint | **Works** | Override-able default constraints |
 
 ### Known Limitations
 
