@@ -467,6 +467,8 @@ Features needed:
 | this keyword | **Works** | Member access, returning this, constructor |
 | super keyword | **Works** | super.new(), super.method() calls |
 | foreach loop | **Works** | Fixed, dynamic, assoc, multi-dimensional arrays |
+| casez | **Works** | Wildcard case with ? matching any value |
+| casex | **Works** | Don't-care case with x/z treated as don't-care |
 
 ### Known Limitations
 
