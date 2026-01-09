@@ -473,6 +473,7 @@ Features needed:
 | final block | **Works** | Executes at end of simulation |
 | $fatal task | **Works** | Severity levels 0-2, optional message |
 | $finish with exit code | **Works** | $finish(0), $finish(1), etc. |
+| $timeformat | **Works** | Time display format with units, precision, suffix |
 
 ### Known Limitations
 
