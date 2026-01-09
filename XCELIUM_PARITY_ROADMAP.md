@@ -745,6 +745,7 @@ Features needed:
 | $atan/$atan2 | **Works** | Arctangent functions |
 | $realtobits/$bitstoreal | **Works** | IEEE 754 conversion |
 | $isunknown | **Works** | Unknown value detection (2-state) |
+| $isunbounded | **Works** | Check if queue is unbounded (int q[$] -> 1) |
 | $sampled | **Works** | Sampled value in assertions |
 | $rose/$fell | **Works** | Edge detection functions |
 | $stable | **Works** | Value stability check |

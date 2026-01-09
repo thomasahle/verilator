@@ -1825,6 +1825,27 @@ class WidthVisitor final : public VNVisitor {
             userIterateAndNext(nodep->lhsp(), WidthVP{SELF, BOTH}.p());
             nodep->dtypeSetBit();
         }
+        if (m_vup->final()) {
+            // Determine if expression is unbounded
+            // - AstUnbounded ($) -> true
+            // - Queue with no bound -> true (queues are unbounded by default)
+            // - Everything else -> false
+            bool isUnbounded = false;
+            if (VN_IS(nodep->lhsp(), Unbounded)) {
+                isUnbounded = true;
+            } else if (AstNodeDType* const dtypep = nodep->lhsp()->dtypep()) {
+                if (const AstQueueDType* const queuep
+                    = VN_CAST(dtypep->skipRefp(), QueueDType)) {
+                    // Queue is unbounded if no explicit bound, or bound is $
+                    isUnbounded = !queuep->boundp() || VN_IS(queuep->boundp(), Unbounded);
+                }
+            }
+            AstConst* const constp
+                = new AstConst{nodep->fileline(), AstConst::BitFalse{}};
+            if (isUnbounded) constp->num().setQuad(1);
+            nodep->replaceWith(constp);
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+        }
     }
     void visit(AstCExpr* nodep) override {
         // Inserted by V3Width only so we know has been resolved
