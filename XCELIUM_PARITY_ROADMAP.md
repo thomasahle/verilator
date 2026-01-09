@@ -750,6 +750,8 @@ Features needed:
 | streaming operators | **Works** | {>>{}}, {<<{}} pack/unpack |
 | let construct | **Works** | Inline parameterized expressions |
 | checker construct | **Works** | Reusable verification blocks |
+| clocking block | **Works** | Synchronization mechanism |
+| program block | **Works** | Testbench encapsulation |
 
 ### Known Limitations
 
