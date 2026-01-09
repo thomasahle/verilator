@@ -548,6 +548,10 @@ Features needed:
 | array slicing | **Works** | arr[start:end] range assignment |
 | struct named initialization | **Works** | '{field: value} syntax |
 | inside operator (expression) | **Works** | x inside {values, [range]} |
+| assert with else clause | **Works** | assert (cond) pass; else fail; |
+| randcase statement | **Works** | Weighted random case selection |
+| `timescale directive | **Works** | Time unit and precision |
+| enum explicit base type | **Works** | enum logic [n:0] {...} |
 
 ### Known Limitations
 
