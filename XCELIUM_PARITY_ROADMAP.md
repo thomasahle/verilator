@@ -573,6 +573,10 @@ Features needed:
 | while loop | **Works** | while (cond) begin end |
 | $cast | **Works** | Dynamic class casting |
 | $typename | **Works** | Get type name string |
+| $sformat/$sformatf | **Works** | Format to string |
+| string.atoi() | **Works** | String to integer conversion |
+| string.len()/substr() | **Works** | String length and substring |
+| string comparison | **Works** | ==, !=, <, >, concatenation |
 
 ### Known Limitations
 
