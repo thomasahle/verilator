@@ -724,6 +724,10 @@ Features needed:
 | $size function | **Works** | Array dimension sizes |
 | $high/$low | **Works** | Array index bounds |
 | 2**$clog2 pattern | **Works** | Power of 2 rounding |
+| $sformat/$sformatf | **Works** | String formatting functions |
+| $sscanf | **Works** | String scanning/parsing |
+| string getc/putc/substr | **Works** | Character access and substring |
+| string.itoa | **Works** | Integer to string conversion |
 
 ### Known Limitations
 
