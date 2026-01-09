@@ -506,6 +506,9 @@ Features needed:
 | $display format variants | **Works** | $displayb, $displayh, $displayo |
 | $write format variants | **Works** | $writeb, $writeh, $writeo |
 | $fdisplay format variants | **Works** | $fdisplayb, $fdisplayh, $fdisplayo |
+| @* sensitivity | **Works** | Inferred combinational sensitivity list |
+| defparam | **Works** | Parameter override by hierarchical name |
+| Attributes | **Works** | (* attr = value *) parsed on signals |
 
 ### Known Limitations
 
