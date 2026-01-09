@@ -517,6 +517,8 @@ Features needed:
 | $root reference | **Works** | Absolute hierarchical paths from design root |
 | $unit scope | **Works** | Compilation unit scope for globals |
 | specify blocks | **Works** | Parsed (timing ignored), allows code portability |
+| package export | **Works** | Re-export symbols from nested packages |
+| typedef class forward | **Works** | Forward declaration for class types |
 
 ### Known Limitations
 
