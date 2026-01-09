@@ -794,6 +794,14 @@ Features needed:
 | randomize with | **Works** | Inline constraint expressions |
 | rand_mode | **Works** | Enable/disable random variables |
 | constraint_mode | **Works** | Enable/disable constraints |
+| fork/join | **Works** | Parallel thread execution |
+| fork/join_any | **Works** | Wait for any thread to complete |
+| fork/join_none | **Works** | Non-blocking parallel threads |
+| wait fork | **Works** | Wait for all forked processes |
+| semaphore | **Works** | Thread synchronization primitive |
+| mailbox | **Works** | Thread-safe message passing |
+| process class | **Works** | Process introspection (self()) |
+| disable fork | **Works** | Kill forked processes |
 
 ### Known Limitations
 
