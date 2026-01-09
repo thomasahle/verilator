@@ -416,6 +416,9 @@ Features needed:
 | Streaming operators | **Works** | {>> {}}, {<< {}}, pack/unpack |
 | Wildcard equality | **Works** | ==?, !=? with constant patterns |
 | Temporal functions | **Works** | $past, $rose, $fell, $stable, $changed |
+| Loop constructs | **Works** | repeat, forever, while, do-while, break/continue |
+| Default arguments | **Works** | Functions/tasks with default parameter values |
+| Parameterized interfaces | **Works** | interface #(parameters) with modports |
 
 ### Known Limitations
 
