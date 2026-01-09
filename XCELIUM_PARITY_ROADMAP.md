@@ -720,6 +720,10 @@ Features needed:
 | tristate (basic) | **Works** | Z-state outputs with enable |
 | implicit port .* | **Works** | Automatic port connections |
 | named blocks | **Works** | begin:name/end:name syntax |
+| hierarchical access | **Works** | Cross-module signal access |
+| $size function | **Works** | Array dimension sizes |
+| $high/$low | **Works** | Array index bounds |
+| 2**$clog2 pattern | **Works** | Power of 2 rounding |
 
 ### Known Limitations
 
