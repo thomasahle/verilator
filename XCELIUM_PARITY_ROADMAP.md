@@ -585,6 +585,10 @@ Features needed:
 | signed/unsigned keywords | **Works** | logic signed/unsigned |
 | $signed/$unsigned | **Works** | Cast to signed/unsigned |
 | intra-assignment delay | **Works** | a <= #5 value |
+| 2D arrays | **Works** | arr[i][j] multi-dimensional |
+| $fopen/$fwrite/$fclose | **Works** | File I/O operations |
+| $readmemh | **Works** | Load hex file to memory |
+| string.tolower()/toupper() | **Works** | String case conversion |
 
 ### Known Limitations
 
