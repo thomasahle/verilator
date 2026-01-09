@@ -676,6 +676,14 @@ Features needed:
 | signed/unsigned | **Works** | Signed extensions, $signed/$unsigned |
 | type casting | **Works** | int', real', shortint' casts |
 | time delay (#) | **Works** | Procedural delay statements |
+| blocking/non-blocking | **Works** | = vs <= assignment semantics |
+| immediate assertion | **Works** | assert with else clause |
+| unique/priority if | **Works** | Unique and priority if modifiers |
+| inside expression | **Works** | Set and range membership |
+| negedge | **Works** | Negative edge sensitivity |
+| sensitivity list | **Works** | Multiple signals with or |
+| always @(*) | **Works** | Implicit sensitivity list |
+| wait statement | **Works** | Wait for condition |
 
 ### Known Limitations
 
