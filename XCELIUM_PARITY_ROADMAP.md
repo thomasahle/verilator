@@ -433,6 +433,7 @@ Features needed:
 | Reduction operators | **Works** | &, |, ^, ~&, ~|, ~^ (parity) |
 | Timing delays | **Works** | assign #delay, <= #delay in always blocks |
 | $writememh/$writememb | **Works** | Write memory to file with optional range |
+| Type casting | **Works** | width'(), signed'(), unsigned'(), int'(), real'(), shortint'() |
 
 ### Known Limitations
 
