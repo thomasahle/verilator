@@ -460,6 +460,8 @@ Features needed:
 | $system task | **Works** | Execute shell commands, return status |
 | Soft constraints | **Works** | soft keyword, yielding to hard constraints |
 | Queue methods | **Works** | push_back/front, pop_back/front, insert, delete, size |
+| Dynamic arrays | **Works** | new[], resize, delete, foreach, size |
+| Solve before | **Works** | Parsing accepted, imperfect distribution (warning) |
 
 ### Known Limitations
 
