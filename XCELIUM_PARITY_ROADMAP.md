@@ -496,6 +496,7 @@ Features needed:
 | $system | **Works** | Execute shell commands, returns exit code |
 | $info | **Works** | Informational message display |
 | $sformat | **Works** | Formatted string assignment (task form) |
+| unique0 case | **Works** | Like unique but allows no match |
 
 ### Known Limitations
 
