@@ -419,6 +419,9 @@ Features needed:
 | Loop constructs | **Works** | repeat, forever, while, do-while, break/continue |
 | Default arguments | **Works** | Functions/tasks with default parameter values |
 | Parameterized interfaces | **Works** | interface #(parameters) with modports |
+| Packages | **Works** | import, wildcard import, typedef, function, parameter |
+| Array dimension functions | **Works** | $size, $dimensions, $left, $right, $low, $high, $increment |
+| Named arguments | **Works** | .name(value) syntax, reordering, mixed with positional |
 
 ### Known Limitations
 
