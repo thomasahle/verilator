@@ -396,6 +396,12 @@ Features needed:
 | $countones | **Works** | Population count |
 | $onehot/$onehot0 | **Works** | One-hot detection |
 | $signed/$unsigned | **Works** | Signedness conversion |
+| typedef | **Works** | Type aliases |
+| enum (with methods) | **Works** | name(), next(), prev(), first(), last(), num() |
+| struct packed | **Works** | Bit-level struct packing |
+| union packed | **Works** | Overlapping field access |
+| unique/priority case | **Works** | Synthesis-friendly case statements |
+| DPI-C imports | **Works** | C function calls from SV |
 
 ### Known Limitations
 
