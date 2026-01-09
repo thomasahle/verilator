@@ -436,6 +436,9 @@ Features needed:
 | Type casting | **Works** | width'(), signed'(), unsigned'(), int'(), real'(), shortint'() |
 | Real math functions | **Works** | $rtoi, $itor, $ceil, $floor, $sqrt, $ln, $log10, $exp, $pow, $sin, $cos |
 | $realtobits/$bitstoreal | **Works** | IEEE 754 real <-> 64-bit conversion |
+| $sformat | **Works** | In-place string formatting with format specifiers |
+| Assignment patterns | **Works** | '{...} for structs/arrays, named, default patterns |
+| Trig/hyperbolic functions | **Works** | $tan, $asin, $acos, $atan, $atan2, $sinh, $cosh, $tanh, $asinh, $acosh, $atanh, $hypot |
 
 ### Known Limitations
 
