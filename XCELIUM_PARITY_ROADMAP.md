@@ -716,6 +716,10 @@ Features needed:
 | array ports | **Works** | Unpacked array port connections |
 | generate if | **Works** | Conditional generate blocks |
 | generate case | **Works** | Case-based generate selection |
+| localparam | **Works** | Local constants in modules |
+| tristate (basic) | **Works** | Z-state outputs with enable |
+| implicit port .* | **Works** | Automatic port connections |
+| named blocks | **Works** | begin:name/end:name syntax |
 
 ### Known Limitations
 
