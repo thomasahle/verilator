@@ -700,6 +700,14 @@ Features needed:
 | class inheritance | **Works** | extends, super, polymorphism |
 | interface (basic) | **Works** | Signal bundling |
 | modport | **Works** | master/slave port directions |
+| covergroup | **Works** | Coverage bins and sampling |
+| property declaration | **Works** | Named properties with implication |
+| sequence declaration | **Works** | Named sequences with ##delay |
+| cover statement | **Works** | Cover property for coverage |
+| assume statement | **Works** | Assumption for formal |
+| restrict statement | **Works** | Restriction for formal |
+| expect statement | **Works** | Blocking assertion |
+| disable iff | **Works** | Conditional assertion disable |
 
 ### Known Limitations
 
