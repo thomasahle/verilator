@@ -604,6 +604,9 @@ Features needed:
 | $random | **Works** | Seeded random number |
 | $dist_uniform | **Works** | Uniform distribution |
 | ternary operator | **Works** | a ? b : c expression |
+| localparam | **Works** | Local parameters |
+| generate block | **Works** | generate for loop |
+| case inside | **Works** | case with range matching |
 
 ### Known Limitations
 
