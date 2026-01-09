@@ -497,6 +497,8 @@ Features needed:
 | $info | **Works** | Informational message display |
 | $sformat | **Works** | Formatted string assignment (task form) |
 | unique0 case | **Works** | Like unique but allows no match |
+| $ferror | **Works** | File error checking with string message |
+| $fgetc/$ungetc | **Works** | Character-level file I/O |
 
 ### Known Limitations
 
