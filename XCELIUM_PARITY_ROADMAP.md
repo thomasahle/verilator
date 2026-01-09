@@ -413,6 +413,9 @@ Features needed:
 | $sscanf | **Works** | String scanning with format specifiers |
 | Part selects | **Works** | Fixed [a:b], indexed [i +: w], [i -: w] |
 | Concatenation/replication | **Works** | {a,b,c}, {n{x}}, nested, LHS assignment |
+| Streaming operators | **Works** | {>> {}}, {<< {}}, pack/unpack |
+| Wildcard equality | **Works** | ==?, !=? with constant patterns |
+| Temporal functions | **Works** | $past, $rose, $fell, $stable, $changed |
 
 ### Known Limitations
 
