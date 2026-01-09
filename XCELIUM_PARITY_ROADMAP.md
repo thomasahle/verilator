@@ -343,6 +343,8 @@ Features needed:
 | Distribution constraints (dist) | **Works** | Weighted distribution works |
 | Soft constraints | **Works** | Soft constraints with overrides |
 | Nested class randomization | **Works** | rand class members work |
+| Fixed array randomization | **Works** | foreach constraints work correctly |
+| Queue/dynamic array size constraints | **Works** | size() constraints work |
 
 ### Known Limitations
 
