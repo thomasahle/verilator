@@ -601,6 +601,9 @@ Features needed:
 | $sin/$cos | **Works** | Trigonometric functions |
 | $atan/$atan2 | **Works** | Arctangent functions |
 | $pow | **Works** | Real power function |
+| $random | **Works** | Seeded random number |
+| $dist_uniform | **Works** | Uniform distribution |
+| ternary operator | **Works** | a ? b : c expression |
 
 ### Known Limitations
 
