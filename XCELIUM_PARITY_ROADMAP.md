@@ -708,6 +708,14 @@ Features needed:
 | restrict statement | **Works** | Restriction for formal |
 | expect statement | **Works** | Blocking assertion |
 | disable iff | **Works** | Conditional assertion disable |
+| enum methods | **Works** | name, next, prev, first, last |
+| local scope | **Works** | Block-level variable shadowing |
+| automatic/static | **Works** | Function storage qualifiers |
+| parameterized modules | **Works** | #(parameter) instantiation |
+| named/positional ports | **Works** | Port connection patterns |
+| array ports | **Works** | Unpacked array port connections |
+| generate if | **Works** | Conditional generate blocks |
+| generate case | **Works** | Case-based generate selection |
 
 ### Known Limitations
 
