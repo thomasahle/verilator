@@ -488,6 +488,7 @@ Features needed:
 | $assertcontrol | **Works** | Full assertion control (kill, on, off, etc.) |
 | $assertkill | **Works** | Kill all assertions (shorthand for assertcontrol 4) |
 | $stacktrace | **Works** | Print call stack at runtime (requires debug build) |
+| $exit | **Works** | Terminate simulation (program block exit) |
 | $countbits | **Works** | Count bits matching specified value |
 | Static local variables | **Works** | `static` inside automatic functions |
 | $printtimescale | **Works** | Prints module's timescale setting |
