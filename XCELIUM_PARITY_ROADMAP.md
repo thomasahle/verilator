@@ -558,6 +558,9 @@ Features needed:
 | `elsif directive | **Works** | Chained preprocessor conditionals |
 | wire continuous assign | **Works** | assign wire = expr |
 | ** power operator | **Works** | a ** b exponentiation |
+| nested module instantiation | **Works** | Module inside module hierarchy |
+| indexed part select | **Works** | data[idx +: width], data[idx -: width] |
+| always @(signal) | **Works** | Sensitivity to signal changes |
 
 ### Known Limitations
 
