@@ -535,6 +535,7 @@ Features needed:
 | macromodule | **Works** | Same as module, hint for flattening |
 | timeunit/timeprecision | **Works** | SV time declarations in modules |
 | $isunknown | **Works** | Test for X/Z values (always 0 in 2-state) |
+| $isunbounded | **Works** | Check if queue/array is unbounded |
 | unique if / priority if | **Works** | Synthesis-friendly if statements |
 | '0 '1 fill literals | **Works** | Context-dependent fill values |
 | bit type | **Works** | 2-state data type, signed/unsigned |
@@ -601,6 +602,7 @@ Features needed:
 | $fopen/$fwrite/$fclose | **Works** | File I/O operations |
 | $readmemh | **Works** | Load hex file to memory |
 | string.tolower()/toupper() | **Works** | String case conversion |
+| "literal".method() | **Works** | Method calls on string literals |
 | $fgets | **Works** | Read line from file |
 | $sscanf | **Works** | Parse string with format |
 | $time/$realtime | **Works** | Get simulation time |

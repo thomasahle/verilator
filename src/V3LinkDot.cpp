@@ -3655,6 +3655,13 @@ class LinkDotResolveVisitor final : public VNVisitor {
                 && (VN_IS(nodep->lhsp(), CellRef) || VN_IS(nodep->lhsp(), CellArrayRef))) {
                 m_ds.m_unlinkedScopep = nodep->lhsp();
             }
+            // String literals can have method calls - treat RHS as method
+            if (const AstConst* const constp = VN_CAST(nodep->lhsp(), Const)) {
+                if (constp->num().isString() || constp->num().isFromString()) {
+                    m_ds.m_dotPos = DP_MEMBER;
+                    m_ds.m_dotText = "";
+                }
+            }
             if (m_ds.m_dotPos == DP_FIRST) m_ds.m_dotPos = DP_SCOPE;
             if (!m_ds.m_dotErr) {  // Once something wrong, give up
                 // Top 'final' dot RHS is final RHS, else it's a
@@ -5837,6 +5844,20 @@ class LinkDotResolveVisitor final : public VNVisitor {
         VL_RESTORER(m_replaceWithAlias);
         if (nodep->user2()) m_replaceWithAlias = false;
         iterateChildren(nodep);
+    }
+    void visit(AstConst* nodep) override {
+        // String literals can have method calls like "123".atoi()
+        // Don't error on them when under a DOT - the method will be resolved in V3Width
+        // Use isFromString() which is true for VerilogStringLiteral constants
+        if (m_ds.m_dotPos != DP_NONE
+            && (nodep->num().isString() || nodep->num().isFromString())) {
+            // Allow string literal to be on LHS of DOT for method calls
+            // The DOT handling in visit(AstDot*) will continue processing
+        } else if (!m_inPackedArray) {
+            LINKDOT_VISIT_START();
+            checkNoDot(nodep);
+        }
+        // No children to iterate
     }
 
     void visit(AstNode* nodep) override {

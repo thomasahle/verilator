@@ -3996,6 +3996,16 @@ class WidthVisitor final : public VNVisitor {
             methodCallEvent(nodep, basicp);
         } else if (basicp && basicp->isString()) {
             methodCallString(nodep, basicp);
+        } else if (const AstConst* constp = VN_CAST(nodep->fromp(), Const)) {
+            // String literals parsed in expression context have logic type but need string methods
+            if (constp->num().isFromString()) {
+                methodCallString(nodep, basicp);
+            } else {
+                nodep->v3warn(E_UNSUPPORTED,
+                              "Unsupported: Member call on constant '" << constp->prettyName()
+                                                                       << "'");
+                nodep->dtypeSetVoid();
+            }
         } else if (AstMemberSel* const mselp = VN_CAST(nodep->fromp(), MemberSel)) {
             // Check if this is a coverpoint member access (marked by user1 in memberSelClass)
             if (mselp->user1()) {
