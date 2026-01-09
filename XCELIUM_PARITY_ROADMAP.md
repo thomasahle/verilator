@@ -581,6 +581,10 @@ Features needed:
 | $urandom_range | **Works** | Random in range (min, max) |
 | shortint | **Works** | 16-bit signed integer |
 | longint | **Works** | 64-bit signed integer |
+| byte | **Works** | 8-bit signed integer |
+| signed/unsigned keywords | **Works** | logic signed/unsigned |
+| $signed/$unsigned | **Works** | Cast to signed/unsigned |
+| intra-assignment delay | **Works** | a <= #5 value |
 
 ### Known Limitations
 
