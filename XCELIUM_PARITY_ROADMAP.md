@@ -318,6 +318,9 @@ Features needed:
 |---------|--------|-------|
 | randomize(variable_list) same-class | **Fixed** | Bug fix: only listed vars randomized |
 | randc (cyclic random) | **Works** | Produces proper permutation cycles |
+| local:: in inline constraints | **Works** | Module variables accessible |
+| UVM-like phasing with fork/join | **Works** | build/connect/run phases work |
+| Parameterized classes | **Works** | Type and value parameters work |
 | pre/post_randomize callbacks with inheritance | **Fixed** | Bug fix in V3Randomize.cpp |
 | Coverpoint member access (.cp.get_coverage()) | **Fixed** | Bug fix in V3CoverageGroup.cpp |
 | $bits for dynamic arrays/queues | **Works** | Already implemented |
