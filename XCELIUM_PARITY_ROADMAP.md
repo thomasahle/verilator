@@ -565,6 +565,10 @@ Features needed:
 | wait statement | **Works** | wait (condition) blocking |
 | 'with' clause | **Works** | array.find_index with (item > n) |
 | force/release | **Works** | Override continuous assignment |
+| streaming operator | **Works** | {<<8{bytes}} = data unpacking |
+| typedef | **Works** | typedef logic [7:0] byte_t |
+| repeat loop | **Works** | repeat (n) begin end |
+| forever loop | **Works** | forever begin with break |
 
 ### Known Limitations
 
