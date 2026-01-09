@@ -484,6 +484,8 @@ Features needed:
 | Static local variables | **Works** | `static` inside automatic functions |
 | $printtimescale | **Works** | Prints module's timescale setting |
 | $swrite/$swriteh/b/o | **Works** | String write with format/hex/binary/octal |
+| $cast | **Works** | Dynamic class casting with success check |
+| $signed/$unsigned | **Works** | Signedness conversion functions |
 
 ### Known Limitations
 
