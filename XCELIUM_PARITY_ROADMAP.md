@@ -509,6 +509,9 @@ Features needed:
 | @* sensitivity | **Works** | Inferred combinational sensitivity list |
 | defparam | **Works** | Parameter override by hierarchical name |
 | Attributes | **Works** | (* attr = value *) parsed on signals |
+| var keyword | **Works** | Explicit variable declaration |
+| supply0/supply1 | **Works** | Power supply net types |
+| Primitive gates | **Works** | and, or, xor, nand, nor, xnor, not, buf |
 
 ### Known Limitations
 
