@@ -561,6 +561,10 @@ Features needed:
 | nested module instantiation | **Works** | Module inside module hierarchy |
 | indexed part select | **Works** | data[idx +: width], data[idx -: width] |
 | always @(signal) | **Works** | Sensitivity to signal changes |
+| foreach loop | **Works** | foreach (arr[i]) iteration |
+| wait statement | **Works** | wait (condition) blocking |
+| 'with' clause | **Works** | array.find_index with (item > n) |
+| force/release | **Works** | Override continuous assignment |
 
 ### Known Limitations
 
