@@ -425,6 +425,9 @@ Features needed:
 | $random | **Works** | Legacy random with optional seed |
 | ref/const ref arguments | **Works** | Pass by reference, const ref for read-only |
 | force/release | **Works** | Force signal values, release to normal driver |
+| Class visibility | **Works** | local, protected, public modifiers |
+| output/inout args | **Works** | Output and inout arguments in functions/tasks |
+| Class null/copy | **Works** | null comparison, shallow copy with new |
 
 ### Known Limitations
 
