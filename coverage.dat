@@ -1,0 +1,49 @@
+# SystemC::Coverage-3
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl102n14tlinepagev_line/semaphoreoblockS102-103hstd::semaphore__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl106n19tlinepagev_line/semaphoreoblockS106-107hstd::semaphore__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl110n10tlinepagev_line/semaphoreoblockS110,115hstd::semaphore__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl112n7tlinepagev_line/semaphoreoblockS112-113hstd::semaphore__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl119n18tlinepagev_line/semaphoreoblockS119,124hstd::semaphore__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl120n7tbranchpagev_branch/semaphoreoifS120-122hstd::semaphore__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl120n8tbranchpagev_branch/semaphoreoelsehstd::semaphore__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl129n3tlinepagev_line/processoblockS129hstd::process__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl141n29tlinepagev_line/processoblockS141-142,144,146hstd::process__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl149n29tlinepagev_line/processoblockS149,151hstd::process__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl155n20tlinepagev_line/processoblockS155,157hstd::process__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl163n19tlinepagev_line/processoblockS163-164hstd::process__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl171n19tlinepagev_line/processoblockS171-172hstd::process__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl175n10tlinepagev_line/processoblockS175,177hstd::process__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl177n34texprpagev_expr/processo((status() == process::FINISHED)==0 && (status() == process::KILLED)==0) => 0hstd::process__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl177n34texprpagev_expr/processo((status() == process::FINISHED)==1) => 1hstd::process__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl177n34texprpagev_expr/processo((status() == process::KILLED)==1) => 1hstd::process__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl181n17tlinepagev_line/processoblockS181hstd::process__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl183n7tlinepagev_line/processoblockS183-184hstd::process__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl228n21tlinepagev_line/processoblockS228,230,232-233hstd::process__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl236n19tlinepagev_line/processoblockS236-237hstd::process__Vclpkg' 0
+C 'f/Users/ahle/repos/verilator/include/verilated_std.svl242n16tlinepagev_line/stdoblockS242-243hstd' 0
+C 'f/tmp/test_covergroup.svl13n19tlinepagev_line/toblockS13ht' 1
+C 'f/tmp/test_covergroup.svl15n3tlinepagev_line/toblockS15-21,23-25ht' 1
+C 'f/tmp/test_covergroup.svl3n15ttogglepagev_toggle/toval[0]:0->1ht' 1
+C 'f/tmp/test_covergroup.svl3n15ttogglepagev_toggle/toval[0]:1->0ht' 0
+C 'f/tmp/test_covergroup.svl3n15ttogglepagev_toggle/toval[1]:0->1ht' 1
+C 'f/tmp/test_covergroup.svl3n15ttogglepagev_toggle/toval[1]:1->0ht' 0
+C 'f/tmp/test_covergroup.svl3n15ttogglepagev_toggle/toval[2]:0->1ht' 1
+C 'f/tmp/test_covergroup.svl3n15ttogglepagev_toggle/toval[2]:1->0ht' 0
+C 'f/tmp/test_covergroup.svl5n14tlinepagev_line/cgoblockS5ht::cg__Vclpkg' 2
+C 'f/tmp/test_covergroup.svl5n19tlinepagev_line/cgoblockS5ht::cg__Vclpkg' 2
+C 'f/tmp/test_covergroup.svl5n3tlinepagev_line/cgoblockS5ht::cg__Vclpkg' 1
+C 'f/tmp/test_covergroup.svl7n16tbranchpagev_branch/cgoifS7ht::cg__Vclpkg' 0
+C 'f/tmp/test_covergroup.svl7n17tbranchpagev_branch/cgoelseht::cg__Vclpkg' 2
+C 'f/tmp/test_covergroup.svl7n19texprpagev_expr/cgo((val <= 32'sh2)==0) => 0ht::cg__Vclpkg' 2
+C 'f/tmp/test_covergroup.svl7n19texprpagev_expr/cgo((val >= 32'sh0)==0) => 0ht::cg__Vclpkg' 0
+C 'f/tmp/test_covergroup.svl7n19texprpagev_expr/cgo((val >= 32'sh0)==1 && (val <= 32'sh2)==1) => 1ht::cg__Vclpkg' 0
+C 'f/tmp/test_covergroup.svl8n16tbranchpagev_branch/cgoifS8ht::cg__Vclpkg' 1
+C 'f/tmp/test_covergroup.svl8n17tbranchpagev_branch/cgoelseht::cg__Vclpkg' 1
+C 'f/tmp/test_covergroup.svl8n19texprpagev_expr/cgo((val <= 32'sh4)==0) => 0ht::cg__Vclpkg' 1
+C 'f/tmp/test_covergroup.svl8n19texprpagev_expr/cgo((val >= 32'sh3)==0) => 0ht::cg__Vclpkg' 0
+C 'f/tmp/test_covergroup.svl8n19texprpagev_expr/cgo((val >= 32'sh3)==1 && (val <= 32'sh4)==1) => 1ht::cg__Vclpkg' 1
+C 'f/tmp/test_covergroup.svl9n17tbranchpagev_branch/cgoifS9ht::cg__Vclpkg' 1
+C 'f/tmp/test_covergroup.svl9n18tbranchpagev_branch/cgoelseht::cg__Vclpkg' 1
+C 'f/tmp/test_covergroup.svl9n20texprpagev_expr/cgo((val <= 32'sh7)==0) => 0ht::cg__Vclpkg' 0
+C 'f/tmp/test_covergroup.svl9n20texprpagev_expr/cgo((val >= 32'sh5)==0) => 0ht::cg__Vclpkg' 1
+C 'f/tmp/test_covergroup.svl9n20texprpagev_expr/cgo((val >= 32'sh5)==1 && (val <= 32'sh7)==1) => 1ht::cg__Vclpkg' 1

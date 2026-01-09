@@ -1,0 +1,203 @@
+SymEnt Dump:
++ '$root'                         se0x103974af0  fallb=se0x0  [E]  n=NETLIST 0x10396b160 <e1> {a0aa}  $root [1ps/1ps]
+| + '$unit '                        se0x1039711a0  fallb=se0x0  [E]  n=NETLIST 0x10396b160 <e1> {a0aa}  $root [1ps/1ps]
+| | + 'Bar'                           se0x79706d020  fallb=se0x1039711a0  [E]  n=CLASS 0x10397d0f0 <e1378> {e12ab} u1=0x79706d020 u3=0x1 u4=0x1  Bar  L3 D4 [1ps] [EXT]
+| | | + 'new'                           se0x79706d1a0  fallb=se0x79706d020  [E]  n=FUNC 0x796cb8900 <e3126> {e12ab} u1=0x79706d1a0 @dt=0x0@  new
+| | | + 'one'                           se0x7971510e0  fallb=se0x79706d020  [E]  n=VAR 0x7970ee080 <e885> {e13an} u1=0x7971510e0 @dt=0x0@  one [RAND] [VAUTOMI]  VAR
+| | | + 'test'                          se0x79706d080  fallb=se0x79706d020  [E]  n=TASK 0x796cb8600 <e1377> {e16as} u1=0x79706d080  test [METHOD] [VFUNC]
+| | | | + 'ok'                            se0x7971511a0  fallb=se0x79706d080  [E]  n=VAR 0x7970ee300 <e915> {e17as} u1=0x7971511a0 @dt=0x0@  ok [VAUTOMI]  VAR
+| | | | + 'unnamedblk1'                   se0x79706d0e0  fallb=se0x79706d080  [E]  n=BEGIN 0x7970f4600 <e1076> {e22ah} u1=0x79706d0e0  unnamedblk1 [UNNAMED] [IMPLIED]
+| | | | | + 'i'                             se0x797151200  fallb=se0x79706d0e0  [E]  n=VAR 0x7970ee440 <e3081> {e22aq} u1=0x797151200 @dt=0x0@  i [VAUTOM]  VAR
+| | | | | + 'randomize'                     se0x79706e280  fallb=se0x79706d0e0  [E]  n=FUNC 0x796cb8b00 <e3181#> {e12ab} u1=0x79706e2e0 @dt=0x0@  randomize [METHOD] [VIRT]
+| | | | + 'unnamedblk2'                   se0x79706d140  fallb=se0x79706d080  [E]  n=BEGIN 0x7970f4d80 <e1326> {e39ah} u1=0x79706d140  unnamedblk2 [UNNAMED] [IMPLIED]
+| | | | | + 'i'                             se0x797151260  fallb=se0x79706d140  [E]  n=VAR 0x7970eea80 <e3083> {e39aq} u1=0x797151260 @dt=0x0@  i [VAUTOM]  VAR
+| | | | | + 'randomize'                     se0x79706e2e0  fallb=se0x79706d140  [E]  n=FUNC 0x796cb8b00 <e3181#> {e12ab} u1=0x79706e2e0 @dt=0x0@  randomize [METHOD] [VIRT]
+| | | + 'three'                         se0x797151140  fallb=se0x79706d020  [E]  n=VAR 0x7970ee1c0 <e893> {e14ap} u1=0x797151140 @dt=0x0@  three [VSTATIC]  VAR
+| | | + 'two'                           se0x796c701e0  fallb=se0x79706cf60  [I]  n=VAR 0x7970ede00 <e874> {e9ai} u1=0x797151080 @dt=0x0@  two [VAUTOMI]  VAR
+| | | + 'zero'                          se0x796c70240  fallb=se0x79706cf60  [I]  n=VAR 0x7970edcc0 <e866> {e8an} u1=0x797151020 @dt=0x0@  zero [RAND] [VAUTOMI]  VAR
+| | + 'Baz'                           se0x79706d200  fallb=se0x1039711a0  [E]  n=CLASS 0x10397d550 <e1399> {e52ab} u1=0x79706d200 u3=0x1 u4=0x1  Baz  L3 D4 [1ps]
+| | | + 'bar'                           se0x797151320  fallb=se0x79706d200  [E]  n=VAR 0x7970ef0c0 <e1391> {e54ai} u1=0x797151320 @dt=0x0@  bar [VAUTOMI]  VAR
+| | | + 'four'                          se0x7971512c0  fallb=se0x79706d200  [E]  n=VAR 0x7970eef80 <e1384> {e53ai} u1=0x7971512c0 @dt=0x0@  four [VAUTOMI]  VAR
+| | | + 'new'                           se0x79706d260  fallb=se0x79706d200  [E]  n=FUNC 0x7970f8400 <e1398> {e56an} u1=0x79706d260 @dt=0x0@  new [METHOD] [VFUNC]
+| | + 'Boo'                           se0x79706d380  fallb=se0x1039711a0  [E]  n=CLASS 0x10397da50 <e1424> {e69ab} u1=0x79706d380 u3=0x1 u4=0x1  Boo  L3 D4 [1ps] [EXT]
+| | | + 'five'                          se0x7971513e0  fallb=se0x79706d380  [E]  n=VAR 0x7970ef340 <e1422> {e70an} u1=0x7971513e0 @dt=0x0@  five [RAND] [VAUTOMI]  VAR
+| | | + 'new'                           se0x79706d3e0  fallb=se0x79706d380  [E]  n=FUNC 0x796cb8a00 <e3128> {e69ab} u1=0x79706d3e0 @dt=0x0@  new
+| | | + 'one'                           se0x796c702a0  fallb=se0x79706d020  [I]  n=VAR 0x7970ee080 <e885> {e13an} u1=0x7971510e0 @dt=0x0@  one [RAND] [VAUTOMI]  VAR
+| | | + 'test'                          se0x796c70300  fallb=se0x79706d020  [I]  n=TASK 0x796cb8600 <e1377> {e16as} u1=0x79706d080  test [METHOD] [VFUNC]
+| | | + 'three'                         se0x796c70360  fallb=se0x79706d020  [I]  n=VAR 0x7970ee1c0 <e893> {e14ap} u1=0x797151140 @dt=0x0@  three [VSTATIC]  VAR
+| | | + 'two'                           se0x796c703c0  fallb=se0x79706cf60  [I]  n=VAR 0x7970ede00 <e874> {e9ai} u1=0x797151080 @dt=0x0@  two [VAUTOMI]  VAR
+| | | + 'zero'                          se0x796c70420  fallb=se0x79706cf60  [I]  n=VAR 0x7970edcc0 <e866> {e8an} u1=0x797151020 @dt=0x0@  zero [RAND] [VAUTOMI]  VAR
+| | + 'Foo'                           se0x79706cf60  fallb=se0x1039711a0  [E]  n=CLASS 0x103974910 <e863> {e7ab} u1=0x79706cf60 u3=0x1 u4=0x1  Foo  L3 D4 [1ps] [EXT]
+| | | + 'new'                           se0x79706cfc0  fallb=se0x79706cf60  [E]  n=FUNC 0x796cb8800 <e3124> {e7ab} u1=0x79706cfc0 @dt=0x0@  new
+| | | + 'two'                           se0x797151080  fallb=se0x79706cf60  [E]  n=VAR 0x7970ede00 <e874> {e9ai} u1=0x797151080 @dt=0x0@  two [VAUTOMI]  VAR
+| | | + 'zero'                          se0x797151020  fallb=se0x79706cf60  [E]  n=VAR 0x7970edcc0 <e866> {e8an} u1=0x797151020 @dt=0x0@  zero [RAND] [VAUTOMI]  VAR
+| | + 'Qux'                           se0x79706d2c0  fallb=se0x1039711a0  [E]  n=CLASS 0x10397d7d0 <e1413> {e61ab} u1=0x79706d2c0 u3=0x1 u4=0x1  Qux  L3 D4 [1ps]
+| | | + 'baz'                           se0x797151380  fallb=se0x79706d2c0  [E]  n=VAR 0x7970ef200 <e1404> {e62ai} u1=0x797151380 @dt=0x0@  baz [VAUTOMI]  VAR
+| | | + 'new'                           se0x79706d320  fallb=se0x79706d2c0  [E]  n=FUNC 0x7970f8500 <e1412> {e64an} u1=0x79706d320 @dt=0x0@  new [METHOD] [VFUNC]
+| | + 'std'                           se0x79706d440  fallb=se0x1039711a0  [E]  n=PACKAGE 0x103971400 <e2959> {d31aj} u1=0x79706d440 u4=0x1  std  L2 D3 [LIB] [1ps]
+| | | + 'mailbox'                       se0x79706d4a0  fallb=se0x79706d440  [E]  n=CLASS 0x103974b90 <e9> {d33ad} u1=0x79706d4a0 u3=0x1 u4=0x1  mailbox  L3 D4 [1ps]
+| | | | + 'T'                             se0x797151440  fallb=se0x79706d4a0  [E]  n=PARAMTYPEDTYPE 0x79713bd40 <e3017> {d34am} u1=0x7971514a0 @dt=0x0@  T -> REQUIREDTYPE 0x79714cc00 <e3015> {d34am} @dt=0x0@
+| | | | + '__paramNumber1'                se0x7971514a0  fallb=se0x79706d4a0  n=PARAMTYPEDTYPE 0x79713bd40 <e3017> {d34am} u1=0x7971514a0 @dt=0x0@  T -> REQUIREDTYPE 0x79714cc00 <e3015> {d34am} @dt=0x0@
+| | | | + 'get'                           se0x79706d680  fallb=se0x79706d4a0  [E]  n=TASK 0x103979830 <e156> {d63ak} u1=0x79706d680  get [METHOD] [VTASK]
+| | | | | + 'message'                       se0x7971517a0  fallb=se0x79706d680  [E]  n=VAR 0x7970ec000 <e152> {d63au} u1=0x7971517a0 @dt=0x0@  message REF [VAUTOMI]  PORT
+| | | | + 'm_bound'                       se0x797151500  fallb=se0x79706d4a0  [E]  n=VAR 0x103974ed0 <e268> {d36at} u1=0x797151500 @dt=0x0@  m_bound [VAUTOMI]  VAR
+| | | | + 'm_queue'                       se0x797151560  fallb=se0x79706d4a0  [E]  n=VAR 0x103975490 <e38> {d37ar} u1=0x797151560 @dt=0x0@  m_queue [VAUTOMI]  VAR
+| | | | + 'new'                           se0x79706d500  fallb=se0x79706d4a0  [E]  n=FUNC 0x1039755d0 <e60> {d39ao} u1=0x79706d500 @dt=0x0@  new [METHOD] [VFUNC]
+| | | | | + 'bound'                         se0x7971515c0  fallb=se0x79706d500  [E]  n=VAR 0x1039759f0 <e49> {d39aw} u1=0x7971515c0 @dt=0x0@  bound INPUT [VAUTOMI]  PORT
+| | | | + 'num'                           se0x79706d560  fallb=se0x79706d4a0  [E]  n=FUNC 0x103975e10 <e75> {d43as} u1=0x79706d560 @dt=0x0@  num [METHOD] [VFUNC]
+| | | | | + 'num'                           se0x797151620  fallb=se0x79706d560  [E]  n=VAR 0x10397ce70 <e3088> {d43as} u1=0x797151620 @dt=0x0@  num OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| | | | + 'peek'                          se0x79706d740  fallb=se0x79706d4a0  [E]  n=TASK 0x10397a110 <e215> {d80ak} u1=0x79706d740  peek [METHOD] [VTASK]
+| | | | | + 'message'                       se0x7971518c0  fallb=se0x79706d740  [E]  n=VAR 0x7970ec500 <e211> {d80av} u1=0x7971518c0 @dt=0x0@  message REF [VAUTOMI]  PORT
+| | | | + 'put'                           se0x79706d5c0  fallb=se0x79706d4a0  [E]  n=TASK 0x1039761b0 <e82> {d47ak} u1=0x79706d5c0  put [METHOD] [VTASK]
+| | | | | + 'message'                       se0x797151680  fallb=se0x79706d5c0  [E]  n=VAR 0x103976470 <e78> {d47aq} u1=0x797151680 @dt=0x0@  message INPUT [VAUTOMI]  PORT
+| | | | + 'try_get'                       se0x79706d6e0  fallb=se0x79706d4a0  [E]  n=FUNC 0x103979a10 <e208> {d72as} u1=0x79706d6e0 @dt=0x0@  try_get [METHOD] [VFUNC]
+| | | | | + 'message'                       se0x797151860  fallb=se0x79706d6e0  [E]  n=VAR 0x7970ec140 <e162> {d72bg} u1=0x797151860 @dt=0x0@  message REF [VAUTOMI]  PORT
+| | | | | + 'try_get'                       se0x797151800  fallb=se0x79706d6e0  [E]  n=VAR 0x103973bd0 <e3096> {d72as} u1=0x797151800 @dt=0x0@  try_get OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| | | | + 'try_peek'                      se0x79706d7a0  fallb=se0x79706d4a0  [E]  n=FUNC 0x10397a210 <e267> {d89as} u1=0x79706d7a0 @dt=0x0@  try_peek [METHOD] [VFUNC]
+| | | | | + 'message'                       se0x797151980  fallb=se0x79706d7a0  [E]  n=VAR 0x7970ec640 <e221> {d89bh} u1=0x797151980 @dt=0x0@  message REF [VAUTOMI]  PORT
+| | | | | + 'try_peek'                      se0x797151920  fallb=se0x79706d7a0  [E]  n=VAR 0x103973d10 <e3100> {d89as} u1=0x797151920 @dt=0x0@  try_peek OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| | | | + 'try_put'                       se0x79706d620  fallb=se0x79706d4a0  [E]  n=FUNC 0x103976670 <e149> {d55as} u1=0x79706d620 @dt=0x0@  try_put [METHOD] [VFUNC]
+| | | | | + 'message'                       se0x797151740  fallb=se0x79706d620  [E]  n=VAR 0x1039789f0 <e88> {d55bc} u1=0x797151740 @dt=0x0@  message INPUT [VAUTOMI]  PORT
+| | | | | + 'try_put'                       se0x7971516e0  fallb=se0x79706d620  [E]  n=VAR 0x103973a90 <e3092> {d55as} u1=0x7971516e0 @dt=0x0@  try_put OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| | | + 'process'                       se0x79706d9e0  fallb=se0x79706d440  [E]  n=CLASS 0x10397b0d0 <e560> {d129ad} u1=0x79706d9e0 u3=0x1 u4=0x1  process  L3 D4 [1ps]
+| | | | + 'FINISHED'                      se0x797151c20  fallb=se0x79706d9e0  [E]  n=ENUMITEM 0x10397b2d0 <e386> {d131ah} u1=0x797151c20 @dt=0x0@  FINISHED
+| | | | + 'KILLED'                        se0x797151da0  fallb=se0x79706d9e0  [E]  n=ENUMITEM 0x10397b5d0 <e417> {d135ah} u1=0x797151da0 @dt=0x0@  KILLED
+| | | | + 'RUNNING'                       se0x797151c80  fallb=se0x79706d9e0  [E]  n=ENUMITEM 0x10397b390 <e394> {d132ah} u1=0x797151c80 @dt=0x0@  RUNNING
+| | | | + 'SUSPENDED'                     se0x797151d40  fallb=se0x79706d9e0  [E]  n=ENUMITEM 0x10397b510 <e409> {d134ah} u1=0x797151d40 @dt=0x0@  SUSPENDED
+| | | | + 'WAITING'                       se0x797151ce0  fallb=se0x79706d9e0  [E]  n=ENUMITEM 0x10397b450 <e402> {d133ah} u1=0x797151ce0 @dt=0x0@  WAITING
+| | | | + 'await'                         se0x79706dc80  fallb=se0x79706d9e0  [E]  n=TASK 0x796cb8300 <e495> {d175ak} u1=0x79706dc80  await [METHOD] [VTASK]
+| | | | + 'get_randstate'                 se0x79706dd40  fallb=se0x79706d9e0  [E]  n=FUNC 0x7970f8200 <e540> {d228av} u1=0x79706dd40 @dt=0x0@  get_randstate [METHOD] [VFUNC]
+| | | | | + 'get_randstate'                 se0x7971520a0  fallb=se0x79706dd40  [E]  n=VAR 0x103974410 <e3116> {d228av} u1=0x7971520a0 @dt=0x0@  get_randstate OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| | | | | + 's'                             se0x797152100  fallb=se0x79706dd40  [E]  n=VAR 0x7970ed680 <e524> {d230ao} u1=0x797152100 @dt=0x0@  s [VAUTOMI]  VAR
+| | | | + 'kill'                          se0x79706db60  fallb=se0x79706d9e0  [E]  n=TASK 0x796cb8000 <e468> {d163at} u1=0x79706db60  kill [METHOD] [VFUNC]
+| | | | + 'killQueue'                     se0x79706dce0  fallb=se0x79706d9e0  [E]  n=TASK 0x796cb8400 <e512> {d181ar} u1=0x79706dce0  killQueue [METHOD] [STATIC] [VTASK]
+| | | | | + 'processQueue'                  se0x797152040  fallb=se0x79706dce0  [E]  n=VAR 0x7970ed540 <e508> {d181bn} u1=0x797152040 @dt=0x0@  processQueue REF [VAUTOMI]  PORT
+| | | | + 'm_process'                     se0x797151e60  fallb=se0x79706d9e0  [E]  n=VAR 0x7970ecf00 <e428> {d139ax} u1=0x797151e60 @dt=0x0@  m_process [VAUTOMI]  VAR
+| | | | + 'new'                           se0x79706de00  fallb=se0x79706d9e0  [E]  n=FUNC 0x796cb8700 <e3118> {d129ad} u1=0x79706de00 @dt=0x0@  new
+| | | | + 'resume'                        se0x79706dc20  fallb=se0x79706d9e0  [E]  n=TASK 0x796cb8200 <e493> {d171at} u1=0x79706dc20  resume [METHOD] [VFUNC]
+| | | | + 'self'                          se0x79706da40  fallb=se0x79706d9e0  [E]  n=FUNC 0x7970f8000 <e443> {d141bd} u1=0x79706da40 @dt=0x0@  self [METHOD] [STATIC] [VFUNC]
+| | | | | + 'p'                             se0x797151f20  fallb=se0x79706da40  [E]  n=VAR 0x7970ed040 <e436> {d142ap} u1=0x797151f20 @dt=0x0@  p [VAUTOMI]  VAR
+| | | | | + 'self'                          se0x797151ec0  fallb=se0x79706da40  [E]  n=VAR 0x103974190 <e3108> {d141bd} u1=0x797151ec0 @dt=0x0@  self OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| | | | + 'set_randstate'                 se0x79706dda0  fallb=se0x79706d9e0  [E]  n=TASK 0x796cb8500 <e559> {d236at} u1=0x79706dda0  set_randstate [METHOD] [VFUNC]
+| | | | | + 's'                             se0x797152160  fallb=se0x79706dda0  [E]  n=VAR 0x7970ed7c0 <e546> {d236bo} u1=0x797152160 @dt=0x0@  s INPUT [VAUTOMI]  PORT
+| | | | + 'set_status'                    se0x79706daa0  fallb=se0x79706d9e0  [E]  n=TASK 0x10397b9b0 <e452> {d149bd} u1=0x79706daa0  set_status [METHOD] [VFUNC]
+| | | | | + 's'                             se0x797151f80  fallb=se0x79706daa0  [E]  n=VAR 0x7970ed180 <e448> {d149bu} u1=0x797151f80 @dt=0x0@  s INPUT [VAUTOMI]  PORT
+| | | | + 'state'                         se0x797151e00  fallb=se0x79706d9e0  [E]  n=TYPEDEF 0x796cb0620 <e422> {d136ah} u1=0x797151e00 @dt=0x0@  state [UNDCLS] -> ENUMDTYPE 0x10397b690 <e3027> {d130an} @dt=0x0@  process.state enum
+| | | | + 'status'                        se0x79706db00  fallb=se0x79706d9e0  [E]  n=FUNC 0x7970f8100 <e459> {d155au} u1=0x79706db00 @dt=0x0@  status [METHOD] [VFUNC]
+| | | | | + 'status'                        se0x797151fe0  fallb=se0x79706db00  [E]  n=VAR 0x1039742d0 <e3112> {d155au} u1=0x797151fe0 @dt=0x0@  status OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| | | | + 'suspend'                       se0x79706dbc0  fallb=se0x79706d9e0  [E]  n=TASK 0x796cb8100 <e484> {d167at} u1=0x79706dbc0  suspend [METHOD] [VFUNC]
+| | | + 'randomize'                     se0x79706de60  fallb=se0x79706d440  [E]  n=FUNC 0x7970f8300 <e573> {d242aq} u1=0x79706de60 @dt=0x0@  randomize [VFUNC]
+| | | | + 'randomize'                     se0x7971521c0  fallb=se0x79706de60  [E]  n=VAR 0x103973e50 <e3122> {d242aq} u1=0x7971521c0 @dt=0x0@  randomize OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| | | + 'semaphore'                     se0x79706d800  fallb=se0x79706d440  [E]  n=CLASS 0x10397a810 <e378> {d99ad} u1=0x79706d800 u3=0x1 u4=0x1  semaphore  L3 D4 [1ps]
+| | | | + 'get'                           se0x79706d920  fallb=se0x79706d800  [E]  n=TASK 0x10397ad50 <e329> {d110ak} u1=0x79706d920  get [METHOD] [VTASK]
+| | | | | + 'keyCount'                      se0x797151b00  fallb=se0x79706d920  [E]  n=VAR 0x7970ecc80 <e324> {d110as} u1=0x797151b00 @dt=0x0@  keyCount INPUT [VAUTOMI]  PORT
+| | | | + 'm_keyCount'                    se0x7971519e0  fallb=se0x79706d800  [E]  n=VAR 0x7970ec8c0 <e272> {d100at} u1=0x7971519e0 @dt=0x0@  m_keyCount [VAUTOMI]  VAR
+| | | | + 'new'                           se0x79706d860  fallb=se0x79706d800  [E]  n=FUNC 0x10397a950 <e294> {d102ao} u1=0x79706d860 @dt=0x0@  new [METHOD] [VFUNC]
+| | | | | + 'keyCount'                      se0x797151a40  fallb=se0x79706d860  [E]  n=VAR 0x7970eca00 <e283> {d102aw} u1=0x797151a40 @dt=0x0@  keyCount INPUT [VAUTOMI]  PORT
+| | | | + 'put'                           se0x79706d8c0  fallb=se0x79706d800  [E]  n=TASK 0x10397aaf0 <e316> {d106at} u1=0x79706d8c0  put [METHOD] [VFUNC]
+| | | | | + 'keyCount'                      se0x797151aa0  fallb=se0x79706d8c0  [E]  n=VAR 0x7970ecb40 <e302> {d106bb} u1=0x797151aa0 @dt=0x0@  keyCount INPUT [VAUTOMI]  PORT
+| | | | + 'try_get'                       se0x79706d980  fallb=se0x79706d800  [E]  n=FUNC 0x10397ae50 <e377> {d119as} u1=0x79706d980 @dt=0x0@  try_get [METHOD] [VFUNC]
+| | | | | + 'keyCount'                      se0x797151bc0  fallb=se0x79706d980  [E]  n=VAR 0x7970ecdc0 <e340> {d119be} u1=0x797151bc0 @dt=0x0@  keyCount INPUT [VAUTOMI]  PORT
+| | | | | + 'try_get'                       se0x797151b60  fallb=se0x79706d980  [E]  n=VAR 0x103974050 <e3104> {d119as} u1=0x797151b60 @dt=0x0@  try_get OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| | | + 'vl_covergroup_options_t'       se0x797152220  fallb=se0x79706d440  [E]  n=TYPEDEF 0x796cb0c40 <e655> {d261af} u1=0x797152220 @dt=0x0@  vl_covergroup_options_t -> STRUCTDTYPE 0x10397bcd0 <e3046> {d249al} @dt=0x0@  std::vl_covergroup_options_t
+| | | + 'vl_covergroup_type_options_t'  se0x797152340  fallb=se0x79706d440  [E]  n=TYPEDEF 0x796cb0ee0 <e803> {d289af} u1=0x797152340 @dt=0x0@  vl_covergroup_type_options_t -> STRUCTDTYPE 0x7971080e0 <e3061> {d281al} @dt=0x0@  std::vl_covergroup_type_options_t
+| | | + 'vl_coverpoint_options_t'       se0x797152280  fallb=se0x79706d440  [E]  n=TYPEDEF 0x796cb0d20 <e702> {d270af} u1=0x797152280 @dt=0x0@  vl_coverpoint_options_t -> STRUCTDTYPE 0x10397c590 <e3051> {d263al} @dt=0x0@  std::vl_coverpoint_options_t
+| | | + 'vl_coverpoint_type_options_t'  se0x7971523a0  fallb=se0x79706d440  [E]  n=TYPEDEF 0x796cb0fc0 <e836> {d296af} u1=0x7971523a0 @dt=0x0@  vl_coverpoint_type_options_t -> STRUCTDTYPE 0x7971082a0 <e3066> {d291al} @dt=0x0@  std::vl_coverpoint_type_options_t
+| | | + 'vl_cross_options_t'            se0x7971522e0  fallb=se0x79706d440  [E]  n=TYPEDEF 0x796cb0e00 <e749> {d279af} u1=0x7971522e0 @dt=0x0@  vl_cross_options_t -> STRUCTDTYPE 0x10397c750 <e3056> {d272al} @dt=0x0@  std::vl_cross_options_t
+| | | + 'vl_cross_type_options_t'       se0x797152400  fallb=se0x79706d440  [E]  n=TYPEDEF 0x796cb10a0 <e862> {d302af} u1=0x797152400 @dt=0x0@  vl_cross_type_options_t -> STRUCTDTYPE 0x797108460 <e3071> {d298al} @dt=0x0@  std::vl_cross_type_options_t
+| + 't'                             se0x796c70180  fallb=se0x1039711a0  [E]  n=MODULE 0x7970ef480 <e2956> {e73ai} u1=0x796c70180 u4=0x1  t  L1 D2 [1ps]
+| | + 'unnamedblk1'                   se0x79706dec0  fallb=se0x796c70180  [E]  n=BEGIN 0x7970f7780 <e2952> {e74am} u1=0x79706dec0  unnamedblk1 [UNNAMED]
+| | | + 'bar'                           se0x7971524c0  fallb=se0x79706dec0  [E]  n=VAR 0x7970ef700 <e1441> {e76al} u1=0x7971524c0 @dt=0x0@  bar [VSTATICI]  VAR
+| | | + 'boo'                           se0x797152460  fallb=se0x79706dec0  [E]  n=VAR 0x7970ef5c0 <e1431> {e75al} u1=0x797152460 @dt=0x0@  boo [VSTATICI]  VAR
+| | | + 'ok'                            se0x797152580  fallb=se0x79706dec0  [E]  n=VAR 0x7970ef980 <e1473> {e78as} u1=0x797152580 @dt=0x0@  ok [VSTATICI]  VAR
+| | | + 'qux'                           se0x797152520  fallb=se0x79706dec0  [E]  n=VAR 0x7970ef840 <e1449> {e77al} u1=0x797152520 @dt=0x0@  qux [VSTATICI]  VAR
+| | | + 'unnamedblk2'                   se0x79706df20  fallb=se0x79706dec0  [E]  n=BEGIN 0x7970f5440 <e1626> {e87ah} u1=0x79706df20  unnamedblk2 [UNNAMED] [IMPLIED]
+| | | | + 'i'                             se0x7971525e0  fallb=se0x79706df20  [E]  n=VAR 0x7970efac0 <e2986> {e87aq} u1=0x7971525e0 @dt=0x0@  i [VAUTOM]  VAR
+| | | | + 'unnamedblk3'                   se0x79706df80  fallb=se0x79706df20  [E]  n=BEGIN 0x7970f5380 <e1624> {e87bk} u1=0x79706df80  unnamedblk3 [UNNAMED]
+| | | | | + 'res'                           se0x797152640  fallb=se0x79706df80  [E]  n=VAR 0x7970efd40 <e1600> {e88ao} u1=0x797152640 @dt=0x0@  res [VSTATICI]  VAR
+| | | + 'unnamedblk4'                   se0x79706dfe0  fallb=se0x79706dec0  [E]  n=BEGIN 0x7970f5980 <e1879> {e97ah} u1=0x79706dfe0  unnamedblk4 [UNNAMED] [IMPLIED]
+| | | | + 'i'                             se0x7971526a0  fallb=se0x79706dfe0  [E]  n=VAR 0x7970efe80 <e2994> {e97aq} u1=0x7971526a0 @dt=0x0@  i [VAUTOM]  VAR
+| | | | + 'unnamedblk5'                   se0x79706e040  fallb=se0x79706dfe0  [E]  n=BEGIN 0x7970f58c0 <e1877> {e97bk} u1=0x79706e040  unnamedblk5 [UNNAMED]
+| | | | | + '__Vwith1'                      se0x79706e0a0  fallb=se0x79706e040  [E]  n=WITH 0x7971317c0 <e3670#> {e98bn} u1=0x79706e0a0 @dt=0x0@
+| | | | | | + 'item'                          se0x797152760  fallb=se0x79706e0a0  [E]  n=LAMBDAARGREF 0x796d4e280 <e3135> {e98bn} u1=0x797152760 @dt=0x0@  item
+| | | | | + 'res'                           se0x797152700  fallb=se0x79706e040  [E]  n=VAR 0x797140140 <e1765> {e98ao} u1=0x797152700 @dt=0x0@  res [VSTATICI]  VAR
+| | | + 'unnamedblk6'                   se0x79706e100  fallb=se0x79706dec0  [E]  n=BEGIN 0x7970f5e00 <e2157> {e111ah} u1=0x79706e100  unnamedblk6 [UNNAMED] [IMPLIED]
+| | | | + 'i'                             se0x7971527c0  fallb=se0x79706e100  [E]  n=VAR 0x797140280 <e3002> {e111aq} u1=0x7971527c0 @dt=0x0@  i [VAUTOM]  VAR
+| | | + 'unnamedblk7'                   se0x79706e160  fallb=se0x79706dec0  [E]  n=BEGIN 0x7970f6400 <e2364> {e119ah} u1=0x79706e160  unnamedblk7 [UNNAMED] [IMPLIED]
+| | | | + 'i'                             se0x797152820  fallb=se0x79706e160  [E]  n=VAR 0x797140500 <e3004> {e119aq} u1=0x797152820 @dt=0x0@  i [VAUTOM]  VAR
+| | | + 'unnamedblk8'                   se0x79706e1c0  fallb=se0x79706dec0  [E]  n=BEGIN 0x7970f6c40 <e2639> {e132ah} u1=0x79706e1c0  unnamedblk8 [UNNAMED] [IMPLIED]
+| | | | + 'i'                             se0x797152880  fallb=se0x79706e1c0  [E]  n=VAR 0x797140780 <e3006> {e132aq} u1=0x797152880 @dt=0x0@  i [VAUTOM]  VAR
+| | | + 'unnamedblk9'                   se0x79706e220  fallb=se0x79706dec0  [E]  n=BEGIN 0x7970f7480 <e2925> {e143ah} u1=0x79706e220  unnamedblk9 [UNNAMED] [IMPLIED]
+| | | | + 'i'                             se0x7971528e0  fallb=se0x79706e220  [E]  n=VAR 0x797140a00 <e3008> {e143aq} u1=0x7971528e0 @dt=0x0@  i [VAUTOM]  VAR
+%%Warning: SymEnt Orphans:
++ 'Orphan'                        se0x79706c4e0  fallb=se0x1039711a0  [E]  n=PACKAGE 0x103971400 <e2959> {d31aj} u1=0x79706d440 u4=0x1  std  L2 D3 [LIB] [1ps]
+| + 'mailbox'                       se0x79706c480  fallb=se0x79706c4e0  [E]  n=CLASS 0x103974b90 <e9> {d33ad} u1=0x79706d4a0 u3=0x1 u4=0x1  mailbox  L3 D4 [1ps]
+| | + 'T'                             se0x797150000  fallb=se0x79706c480  [E]  n=PARAMTYPEDTYPE 0x79713bd40 <e3017> {d34am} u1=0x7971514a0 @dt=0x0@  T -> REQUIREDTYPE 0x79714cc00 <e3015> {d34am} @dt=0x0@
+| | + '__paramNumber1'                se0x797150060  fallb=se0x79706c480  n=PARAMTYPEDTYPE 0x79713bd40 <e3017> {d34am} u1=0x7971514a0 @dt=0x0@  T -> REQUIREDTYPE 0x79714cc00 <e3015> {d34am} @dt=0x0@
+| | + 'get'                           se0x79706c720  fallb=se0x79706c480  [E]  n=TASK 0x103979830 <e156> {d63ak} u1=0x79706d680  get [METHOD] [VTASK]
+| | | + 'message'                       se0x797150360  fallb=se0x79706c720  [E]  n=VAR 0x7970ec000 <e152> {d63au} u1=0x7971517a0 @dt=0x0@  message REF [VAUTOMI]  PORT
+| | + 'm_bound'                       se0x7971500c0  fallb=se0x79706c480  [E]  n=VAR 0x103974ed0 <e268> {d36at} u1=0x797151500 @dt=0x0@  m_bound [VAUTOMI]  VAR
+| | + 'm_queue'                       se0x797150120  fallb=se0x79706c480  [E]  n=VAR 0x103975490 <e38> {d37ar} u1=0x797151560 @dt=0x0@  m_queue [VAUTOMI]  VAR
+| | + 'new'                           se0x79706c5a0  fallb=se0x79706c480  [E]  n=FUNC 0x1039755d0 <e60> {d39ao} u1=0x79706d500 @dt=0x0@  new [METHOD] [VFUNC]
+| | | + 'bound'                         se0x797150180  fallb=se0x79706c5a0  [E]  n=VAR 0x1039759f0 <e49> {d39aw} u1=0x7971515c0 @dt=0x0@  bound INPUT [VAUTOMI]  PORT
+| | + 'num'                           se0x79706c600  fallb=se0x79706c480  [E]  n=FUNC 0x103975e10 <e75> {d43as} u1=0x79706d560 @dt=0x0@  num [METHOD] [VFUNC]
+| | | + 'num'                           se0x7971501e0  fallb=se0x79706c600  [E]  n=VAR 0x10397ce70 <e3088> {d43as} u1=0x797151620 @dt=0x0@  num OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| | + 'peek'                          se0x79706c7e0  fallb=se0x79706c480  [E]  n=TASK 0x10397a110 <e215> {d80ak} u1=0x79706d740  peek [METHOD] [VTASK]
+| | | + 'message'                       se0x797150480  fallb=se0x79706c7e0  [E]  n=VAR 0x7970ec500 <e211> {d80av} u1=0x7971518c0 @dt=0x0@  message REF [VAUTOMI]  PORT
+| | + 'put'                           se0x79706c660  fallb=se0x79706c480  [E]  n=TASK 0x1039761b0 <e82> {d47ak} u1=0x79706d5c0  put [METHOD] [VTASK]
+| | | + 'message'                       se0x797150240  fallb=se0x79706c660  [E]  n=VAR 0x103976470 <e78> {d47aq} u1=0x797151680 @dt=0x0@  message INPUT [VAUTOMI]  PORT
+| | + 'try_get'                       se0x79706c780  fallb=se0x79706c480  [E]  n=FUNC 0x103979a10 <e208> {d72as} u1=0x79706d6e0 @dt=0x0@  try_get [METHOD] [VFUNC]
+| | | + 'message'                       se0x797150420  fallb=se0x79706c780  [E]  n=VAR 0x7970ec140 <e162> {d72bg} u1=0x797151860 @dt=0x0@  message REF [VAUTOMI]  PORT
+| | | + 'try_get'                       se0x7971503c0  fallb=se0x79706c780  [E]  n=VAR 0x103973bd0 <e3096> {d72as} u1=0x797151800 @dt=0x0@  try_get OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| | + 'try_peek'                      se0x79706c840  fallb=se0x79706c480  [E]  n=FUNC 0x10397a210 <e267> {d89as} u1=0x79706d7a0 @dt=0x0@  try_peek [METHOD] [VFUNC]
+| | | + 'message'                       se0x797150540  fallb=se0x79706c840  [E]  n=VAR 0x7970ec640 <e221> {d89bh} u1=0x797151980 @dt=0x0@  message REF [VAUTOMI]  PORT
+| | | + 'try_peek'                      se0x7971504e0  fallb=se0x79706c840  [E]  n=VAR 0x103973d10 <e3100> {d89as} u1=0x797151920 @dt=0x0@  try_peek OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| | + 'try_put'                       se0x79706c6c0  fallb=se0x79706c480  [E]  n=FUNC 0x103976670 <e149> {d55as} u1=0x79706d620 @dt=0x0@  try_put [METHOD] [VFUNC]
+| | | + 'message'                       se0x797150300  fallb=se0x79706c6c0  [E]  n=VAR 0x1039789f0 <e88> {d55bc} u1=0x797151740 @dt=0x0@  message INPUT [VAUTOMI]  PORT
+| | | + 'try_put'                       se0x7971502a0  fallb=se0x79706c6c0  [E]  n=VAR 0x103973a90 <e3092> {d55as} u1=0x7971516e0 @dt=0x0@  try_put OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| + 'process'                       se0x79706ca80  fallb=se0x79706c4e0  [E]  n=CLASS 0x10397b0d0 <e560> {d129ad} u1=0x79706d9e0 u3=0x1 u4=0x1  process  L3 D4 [1ps]
+| | + 'FINISHED'                      se0x7971507e0  fallb=se0x79706ca80  [E]  n=ENUMITEM 0x10397b2d0 <e386> {d131ah} u1=0x797151c20 @dt=0x0@  FINISHED
+| | + 'KILLED'                        se0x797150960  fallb=se0x79706ca80  [E]  n=ENUMITEM 0x10397b5d0 <e417> {d135ah} u1=0x797151da0 @dt=0x0@  KILLED
+| | + 'RUNNING'                       se0x797150840  fallb=se0x79706ca80  [E]  n=ENUMITEM 0x10397b390 <e394> {d132ah} u1=0x797151c80 @dt=0x0@  RUNNING
+| | + 'SUSPENDED'                     se0x797150900  fallb=se0x79706ca80  [E]  n=ENUMITEM 0x10397b510 <e409> {d134ah} u1=0x797151d40 @dt=0x0@  SUSPENDED
+| | + 'WAITING'                       se0x7971508a0  fallb=se0x79706ca80  [E]  n=ENUMITEM 0x10397b450 <e402> {d133ah} u1=0x797151ce0 @dt=0x0@  WAITING
+| | + 'await'                         se0x79706cd20  fallb=se0x79706ca80  [E]  n=TASK 0x796cb8300 <e495> {d175ak} u1=0x79706dc80  await [METHOD] [VTASK]
+| | + 'get_randstate'                 se0x79706cde0  fallb=se0x79706ca80  [E]  n=FUNC 0x7970f8200 <e540> {d228av} u1=0x79706dd40 @dt=0x0@  get_randstate [METHOD] [VFUNC]
+| | | + 'get_randstate'                 se0x797150c60  fallb=se0x79706cde0  [E]  n=VAR 0x103974410 <e3116> {d228av} u1=0x7971520a0 @dt=0x0@  get_randstate OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| | | + 's'                             se0x797150cc0  fallb=se0x79706cde0  [E]  n=VAR 0x7970ed680 <e524> {d230ao} u1=0x797152100 @dt=0x0@  s [VAUTOMI]  VAR
+| | + 'kill'                          se0x79706cc00  fallb=se0x79706ca80  [E]  n=TASK 0x796cb8000 <e468> {d163at} u1=0x79706db60  kill [METHOD] [VFUNC]
+| | + 'killQueue'                     se0x79706cd80  fallb=se0x79706ca80  [E]  n=TASK 0x796cb8400 <e512> {d181ar} u1=0x79706dce0  killQueue [METHOD] [STATIC] [VTASK]
+| | | + 'processQueue'                  se0x797150c00  fallb=se0x79706cd80  [E]  n=VAR 0x7970ed540 <e508> {d181bn} u1=0x797152040 @dt=0x0@  processQueue REF [VAUTOMI]  PORT
+| | + 'm_process'                     se0x797150a20  fallb=se0x79706ca80  [E]  n=VAR 0x7970ecf00 <e428> {d139ax} u1=0x797151e60 @dt=0x0@  m_process [VAUTOMI]  VAR
+| | + 'new'                           se0x79706cea0  fallb=se0x79706ca80  [E]  n=FUNC 0x796cb8700 <e3118> {d129ad} u1=0x79706de00 @dt=0x0@  new
+| | + 'resume'                        se0x79706ccc0  fallb=se0x79706ca80  [E]  n=TASK 0x796cb8200 <e493> {d171at} u1=0x79706dc20  resume [METHOD] [VFUNC]
+| | + 'self'                          se0x79706cae0  fallb=se0x79706ca80  [E]  n=FUNC 0x7970f8000 <e443> {d141bd} u1=0x79706da40 @dt=0x0@  self [METHOD] [STATIC] [VFUNC]
+| | | + 'p'                             se0x797150ae0  fallb=se0x79706cae0  [E]  n=VAR 0x7970ed040 <e436> {d142ap} u1=0x797151f20 @dt=0x0@  p [VAUTOMI]  VAR
+| | | + 'self'                          se0x797150a80  fallb=se0x79706cae0  [E]  n=VAR 0x103974190 <e3108> {d141bd} u1=0x797151ec0 @dt=0x0@  self OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| | + 'set_randstate'                 se0x79706ce40  fallb=se0x79706ca80  [E]  n=TASK 0x796cb8500 <e559> {d236at} u1=0x79706dda0  set_randstate [METHOD] [VFUNC]
+| | | + 's'                             se0x797150d20  fallb=se0x79706ce40  [E]  n=VAR 0x7970ed7c0 <e546> {d236bo} u1=0x797152160 @dt=0x0@  s INPUT [VAUTOMI]  PORT
+| | + 'set_status'                    se0x79706cb40  fallb=se0x79706ca80  [E]  n=TASK 0x10397b9b0 <e452> {d149bd} u1=0x79706daa0  set_status [METHOD] [VFUNC]
+| | | + 's'                             se0x797150b40  fallb=se0x79706cb40  [E]  n=VAR 0x7970ed180 <e448> {d149bu} u1=0x797151f80 @dt=0x0@  s INPUT [VAUTOMI]  PORT
+| | + 'state'                         se0x7971509c0  fallb=se0x79706ca80  [E]  n=TYPEDEF 0x796cb0620 <e422> {d136ah} u1=0x797151e00 @dt=0x0@  state [UNDCLS] -> ENUMDTYPE 0x10397b690 <e3027> {d130an} @dt=0x0@  process.state enum
+| | + 'status'                        se0x79706cba0  fallb=se0x79706ca80  [E]  n=FUNC 0x7970f8100 <e459> {d155au} u1=0x79706db00 @dt=0x0@  status [METHOD] [VFUNC]
+| | | + 'status'                        se0x797150ba0  fallb=se0x79706cba0  [E]  n=VAR 0x1039742d0 <e3112> {d155au} u1=0x797151fe0 @dt=0x0@  status OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| | + 'suspend'                       se0x79706cc60  fallb=se0x79706ca80  [E]  n=TASK 0x796cb8100 <e484> {d167at} u1=0x79706dbc0  suspend [METHOD] [VFUNC]
+| + 'randomize'                     se0x79706cf00  fallb=se0x79706c4e0  [E]  n=FUNC 0x7970f8300 <e573> {d242aq} u1=0x79706de60 @dt=0x0@  randomize [VFUNC]
+| | + 'randomize'                     se0x797150d80  fallb=se0x79706cf00  [E]  n=VAR 0x103973e50 <e3122> {d242aq} u1=0x7971521c0 @dt=0x0@  randomize OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| + 'semaphore'                     se0x79706c8a0  fallb=se0x79706c4e0  [E]  n=CLASS 0x10397a810 <e378> {d99ad} u1=0x79706d800 u3=0x1 u4=0x1  semaphore  L3 D4 [1ps]
+| | + 'get'                           se0x79706c9c0  fallb=se0x79706c8a0  [E]  n=TASK 0x10397ad50 <e329> {d110ak} u1=0x79706d920  get [METHOD] [VTASK]
+| | | + 'keyCount'                      se0x7971506c0  fallb=se0x79706c9c0  [E]  n=VAR 0x7970ecc80 <e324> {d110as} u1=0x797151b00 @dt=0x0@  keyCount INPUT [VAUTOMI]  PORT
+| | + 'm_keyCount'                    se0x7971505a0  fallb=se0x79706c8a0  [E]  n=VAR 0x7970ec8c0 <e272> {d100at} u1=0x7971519e0 @dt=0x0@  m_keyCount [VAUTOMI]  VAR
+| | + 'new'                           se0x79706c900  fallb=se0x79706c8a0  [E]  n=FUNC 0x10397a950 <e294> {d102ao} u1=0x79706d860 @dt=0x0@  new [METHOD] [VFUNC]
+| | | + 'keyCount'                      se0x797150600  fallb=se0x79706c900  [E]  n=VAR 0x7970eca00 <e283> {d102aw} u1=0x797151a40 @dt=0x0@  keyCount INPUT [VAUTOMI]  PORT
+| | + 'put'                           se0x79706c960  fallb=se0x79706c8a0  [E]  n=TASK 0x10397aaf0 <e316> {d106at} u1=0x79706d8c0  put [METHOD] [VFUNC]
+| | | + 'keyCount'                      se0x797150660  fallb=se0x79706c960  [E]  n=VAR 0x7970ecb40 <e302> {d106bb} u1=0x797151aa0 @dt=0x0@  keyCount INPUT [VAUTOMI]  PORT
+| | + 'try_get'                       se0x79706ca20  fallb=se0x79706c8a0  [E]  n=FUNC 0x10397ae50 <e377> {d119as} u1=0x79706d980 @dt=0x0@  try_get [METHOD] [VFUNC]
+| | | + 'keyCount'                      se0x797150780  fallb=se0x79706ca20  [E]  n=VAR 0x7970ecdc0 <e340> {d119be} u1=0x797151bc0 @dt=0x0@  keyCount INPUT [VAUTOMI]  PORT
+| | | + 'try_get'                       se0x797150720  fallb=se0x79706ca20  [E]  n=VAR 0x103974050 <e3104> {d119as} u1=0x797151b60 @dt=0x0@  try_get OUTPUT [FUNCRTN] [VAUTOM]  VAR
+| + 'vl_covergroup_options_t'       se0x797150de0  fallb=se0x79706c4e0  [E]  n=TYPEDEF 0x796cb0c40 <e655> {d261af} u1=0x797152220 @dt=0x0@  vl_covergroup_options_t -> STRUCTDTYPE 0x10397bcd0 <e3046> {d249al} @dt=0x0@  std::vl_covergroup_options_t
+| + 'vl_covergroup_type_options_t'  se0x797150f00  fallb=se0x79706c4e0  [E]  n=TYPEDEF 0x796cb0ee0 <e803> {d289af} u1=0x797152340 @dt=0x0@  vl_covergroup_type_options_t -> STRUCTDTYPE 0x7971080e0 <e3061> {d281al} @dt=0x0@  std::vl_covergroup_type_options_t
+| + 'vl_coverpoint_options_t'       se0x797150e40  fallb=se0x79706c4e0  [E]  n=TYPEDEF 0x796cb0d20 <e702> {d270af} u1=0x797152280 @dt=0x0@  vl_coverpoint_options_t -> STRUCTDTYPE 0x10397c590 <e3051> {d263al} @dt=0x0@  std::vl_coverpoint_options_t
+| + 'vl_coverpoint_type_options_t'  se0x797150f60  fallb=se0x79706c4e0  [E]  n=TYPEDEF 0x796cb0fc0 <e836> {d296af} u1=0x7971523a0 @dt=0x0@  vl_coverpoint_type_options_t -> STRUCTDTYPE 0x7971082a0 <e3066> {d291al} @dt=0x0@  std::vl_coverpoint_type_options_t
+| + 'vl_cross_options_t'            se0x797150ea0  fallb=se0x79706c4e0  [E]  n=TYPEDEF 0x796cb0e00 <e749> {d279af} u1=0x7971522e0 @dt=0x0@  vl_cross_options_t -> STRUCTDTYPE 0x10397c750 <e3056> {d272al} @dt=0x0@  std::vl_cross_options_t
+| + 'vl_cross_type_options_t'       se0x797150fc0  fallb=se0x79706c4e0  [E]  n=TYPEDEF 0x796cb10a0 <e862> {d302af} u1=0x797152400 @dt=0x0@  vl_cross_type_options_t -> STRUCTDTYPE 0x797108460 <e3071> {d298al} @dt=0x0@  std::vl_cross_type_options_t

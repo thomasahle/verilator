@@ -752,6 +752,25 @@ Features needed:
 | checker construct | **Works** | Reusable verification blocks |
 | clocking block | **Works** | Synchronization mechanism |
 | program block | **Works** | Testbench encapsulation |
+| const ref | **Works** | Const reference function arguments |
+| default clocking | **Works** | Default clocking block declaration |
+| ref arguments | **Works** | Pass-by-reference function/task args |
+| inout arguments | **Works** | Bidirectional task arguments |
+| output arguments | **Works** | Output-only task arguments |
+| default arguments | **Works** | Function argument default values |
+| variable lifetime | **Works** | static/automatic in functions/tasks |
+| array reduction (sum) | **Works** | arr.sum() returns element sum |
+| array reduction (product) | **Works** | arr.product() returns element product |
+| array reduction (and/or/xor) | **Works** | Bitwise reduction methods |
+| array locator (min/max) | **Works** | Find minimum/maximum elements |
+| array locator (find) | **Works** | Find elements matching condition |
+| array ordering (sort) | **Works** | Sort array in ascending order |
+| array ordering (rsort) | **Works** | Sort array in descending order |
+| array ordering (reverse) | **Works** | Reverse array element order |
+| array ordering (shuffle) | **Works** | Randomize array element order |
+| array unique_index | **Works** | Get indices of unique elements |
+| array find_first | **Works** | Find first matching element |
+| array find_last | **Works** | Find last matching element |
 
 ### Known Limitations
 
