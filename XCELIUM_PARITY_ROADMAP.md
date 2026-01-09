@@ -405,6 +405,8 @@ Features needed:
 | always_comb/always_ff/always_latch | **Works** | Synthesis-friendly always blocks |
 | String methods | **Works** | len, getc, toupper, tolower, substr, compare, putc, atoi, atohex |
 | $display/$sformatf formatting | **Works** | %d, %h, %b, %o, %f, %e, %g, %s, %c, %t, width, precision |
+| Packed/unpacked arrays | **Works** | Multi-dimensional packed, mixed arrays |
+| Automatic/recursive functions | **Works** | function automatic, recursion, static |
 
 ### Known Limitations
 
