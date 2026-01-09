@@ -386,6 +386,10 @@ Features needed:
 | SVA implication (|->) | **Works** | Property implication |
 | SVA sequences | **Works** | Named sequence definitions |
 | Type parameters in classes | **Works** | class #(type T) works with int/string/object |
+| Event triggers (-> and @) | **Works** | Named events, .triggered property |
+| $test$plusargs/$value$plusargs | **Works** | Runtime plusarg checking |
+| bind construct | **Works** | Attach checkers/monitors to modules |
+| File I/O | **Works** | $fopen, $fwrite, $fclose, $fgets, $feof, $fscanf |
 
 ### Known Limitations
 
