@@ -428,6 +428,9 @@ Features needed:
 | Class visibility | **Works** | local, protected, public modifiers |
 | output/inout args | **Works** | Output and inout arguments in functions/tasks |
 | Class null/copy | **Works** | null comparison, shallow copy with new |
+| Severity tasks | **Works** | $info, $warning (non-fatal messages) |
+| Signed arithmetic | **Works** | Negation, mult/div/mod, comparisons, >>> |
+| Reduction operators | **Works** | &, |, ^, ~&, ~|, ~^ (parity) |
 
 ### Known Limitations
 
