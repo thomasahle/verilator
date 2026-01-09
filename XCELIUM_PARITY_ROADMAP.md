@@ -353,6 +353,10 @@ Features needed:
 | $cast function | **Works** | Runtime type checking and downcasting |
 | Associative arrays (string keys) | **Works** | exists(), delete(), foreach work |
 | $urandom/$urandom_range | **Works** | Random number generation |
+| Virtual interfaces | **Works** | vif.signal, vif.clocking work |
+| Mailbox | **Works** | put/get/try_get/peek/num work |
+| Semaphore | **Works** | get/put/try_get work |
+| Clocking blocks | **Works** | Clocking drives and samples work |
 
 ### Known Limitations
 
