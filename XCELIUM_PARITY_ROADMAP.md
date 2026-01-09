@@ -597,6 +597,10 @@ Features needed:
 | $clog2 | **Works** | Ceiling log base 2 |
 | $ln/$exp/$sqrt | **Works** | Math functions |
 | $itor/$rtoi | **Works** | Int/real conversion |
+| $ceil/$floor | **Works** | Ceiling/floor functions |
+| $sin/$cos | **Works** | Trigonometric functions |
+| $atan/$atan2 | **Works** | Arctangent functions |
+| $pow | **Works** | Real power function |
 
 ### Known Limitations
 
