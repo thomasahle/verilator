@@ -748,6 +748,8 @@ Features needed:
 | final block | **Works** | End-of-simulation block |
 | chained assignment | **Works** | a = b = c = val syntax |
 | streaming operators | **Works** | {>>{}}, {<<{}} pack/unpack |
+| let construct | **Works** | Inline parameterized expressions |
+| checker construct | **Works** | Reusable verification blocks |
 
 ### Known Limitations
 
