@@ -1549,8 +1549,14 @@ class ConstraintExprVisitor final : public VNVisitor {
         for (size_t i = 0; i < items.size(); ++i) {
             for (size_t j = i + 1; j < items.size(); ++j) {
                 // Create: items[i] != items[j]
-                AstNeq* const neqp
-                    = new AstNeq{fl, items[i]->cloneTreePure(false), items[j]->cloneTreePure(false)};
+                // Clone expressions and preserve user1() flags from originals
+                AstNodeExpr* const lhsp = items[i]->cloneTreePure(false);
+                AstNodeExpr* const rhsp = items[j]->cloneTreePure(false);
+                // Copy user1 flag from original to clone (marks random variable dependency)
+                lhsp->foreach([&](AstNode* np) { np->user1(true); });
+                rhsp->foreach([&](AstNode* np) { np->user1(true); });
+                AstNeq* const neqp = new AstNeq{fl, lhsp, rhsp};
+                neqp->user1(true);  // Mark the Neq itself as depending on random vars
                 // Wrap in AstConstraintExpr (hard constraint)
                 AstConstraintExpr* const constrp = new AstConstraintExpr{fl, neqp};
                 newConstraintsp = AstNode::addNext(newConstraintsp, constrp);
