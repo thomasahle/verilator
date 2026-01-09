@@ -744,6 +744,10 @@ Features needed:
 | $timeformat | **Works** | Time display format control |
 | `timescale directive | **Works** | Module time units |
 | $dumpfile/$dumpvars | **Works** | VCD waveform dump functions |
+| $fatal/$error | **Works** | Severity system tasks |
+| final block | **Works** | End-of-simulation block |
+| chained assignment | **Works** | a = b = c = val syntax |
+| streaming operators | **Works** | {>>{}}, {<<{}} pack/unpack |
 
 ### Known Limitations
 
