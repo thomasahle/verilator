@@ -402,6 +402,8 @@ Features needed:
 | union packed | **Works** | Overlapping field access |
 | unique/priority case | **Works** | Synthesis-friendly case statements |
 | DPI-C imports | **Works** | C function calls from SV |
+| always_comb/always_ff/always_latch | **Works** | Synthesis-friendly always blocks |
+| String methods | **Works** | len, getc, toupper, tolower, substr, compare, putc, atoi, atohex |
 
 ### Known Limitations
 
