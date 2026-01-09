@@ -728,6 +728,10 @@ Features needed:
 | $sscanf | **Works** | String scanning/parsing |
 | string getc/putc/substr | **Works** | Character access and substring |
 | string.itoa | **Works** | Integer to string conversion |
+| string.atoi/atohex | **Works** | String to integer conversion |
+| real math functions | **Works** | sqrt, floor, ceil, sin, cos, ln, exp |
+| $atan/$atan2 | **Works** | Arctangent functions |
+| $realtobits/$bitstoreal | **Works** | IEEE 754 conversion |
 
 ### Known Limitations
 
