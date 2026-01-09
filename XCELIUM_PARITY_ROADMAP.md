@@ -740,6 +740,10 @@ Features needed:
 | $past | **Works** | Previous value access |
 | $random | **Works** | Random number generation |
 | $system/$swrite | **Works** | System call and string write |
+| $printtimescale | **Works** | Print current timescale |
+| $timeformat | **Works** | Time display format control |
+| `timescale directive | **Works** | Module time units |
+| $dumpfile/$dumpvars | **Works** | VCD waveform dump functions |
 
 ### Known Limitations
 
