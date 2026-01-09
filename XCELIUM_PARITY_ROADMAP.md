@@ -366,6 +366,7 @@ Features needed:
 | Mailbox | **Works** | put/get/try_get/peek/num work |
 | Semaphore | **Works** | get/put/try_get work |
 | Clocking blocks | **Works** | Clocking drives and samples work |
+| Clocking input/output skew | **Works** | `default input #1step output #0` skew specification |
 | Virtual classes/pure virtual methods | **Works** | Polymorphic method dispatch works |
 | Conflicting constraint detection | **Works** | randomize() returns 0 on conflict |
 | extern constraint | **Works** | Out-of-body constraint definitions |
