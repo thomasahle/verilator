@@ -478,6 +478,7 @@ Features needed:
 | program blocks | **Works** | Testbench program encapsulation |
 | $sampled | **Works** | Samples value in preponed region |
 | let declarations | **Works** | Expression macros with formal arguments |
+| Wildcard port connections | **Works** | .* connects all ports by name |
 
 ### Known Limitations
 
