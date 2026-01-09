@@ -544,6 +544,10 @@ Features needed:
 | task with ref arguments | **Works** | Pass by reference in tasks |
 | multiple initial blocks | **Works** | All initial blocks run |
 | parameter arrays | **Works** | Array-type parameters |
+| iff event control | **Works** | Conditional event sensitivity |
+| array slicing | **Works** | arr[start:end] range assignment |
+| struct named initialization | **Works** | '{field: value} syntax |
+| inside operator (expression) | **Works** | x inside {values, [range]} |
 
 ### Known Limitations
 
