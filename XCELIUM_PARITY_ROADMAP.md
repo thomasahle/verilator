@@ -321,6 +321,10 @@ Features needed:
 | local:: in inline constraints | **Works** | Module variables accessible |
 | UVM-like phasing with fork/join | **Works** | build/connect/run phases work |
 | Parameterized classes | **Works** | Type and value parameters work |
+| Nested class randomization | **Works** | 3+ levels deep with inline constraints |
+| Function calls in constraints | **Works** | Return values properly evaluated |
+| 'this' keyword in constraints | **Works** | Self-reference works correctly |
+| Ternary operator in constraints | **Works** | Conditional expressions work |
 | pre/post_randomize callbacks with inheritance | **Fixed** | Bug fix in V3Randomize.cpp |
 | Coverpoint member access (.cp.get_coverage()) | **Fixed** | Bug fix in V3CoverageGroup.cpp |
 | $bits for dynamic arrays/queues | **Works** | Already implemented |
