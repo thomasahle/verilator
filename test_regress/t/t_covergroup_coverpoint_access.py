@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# DESCRIPTION: Verilator: Verilog Test driver/expect definition
+# DESCRIPTION: Verilator: Test coverpoint member access
 #
 # Copyright 2025 by Wilson Snyder. This program is free software; you
 # can redistribute it and/or modify it under the terms of either the GNU
@@ -9,7 +9,10 @@
 
 import vltest_bootstrap
 
-test.scenarios('simulator')
-test.compile()
-test.execute()
+test.scenarios('vlt')
+
+test.compile(verilator_flags2=['--binary', '--coverage'])
+
+test.execute(check_finished=True)
+
 test.passes()

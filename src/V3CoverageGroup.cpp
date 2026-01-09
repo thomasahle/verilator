@@ -2099,30 +2099,15 @@ class CoverageGroupVisitor final : public VNVisitor {
             const string& cpName = cpPair.first;
             const std::vector<CovBinInfo>& binInfos = cpPair.second;
 
-            // Skip auto-generated names that match pattern "cp" + digits only
-            // This means the coverpoint had no name AND no simple varref expression
-            if (cpName.length() >= 3 && cpName[0] == 'c' && cpName[1] == 'p') {
-                const char* rest = cpName.c_str() + 2;
-                bool allDigits = (*rest != '\0');
-                while (*rest) {
-                    if (!isdigit(*rest)) {
-                        allDigits = false;
-                        break;
-                    }
-                    rest++;
-                }
-                if (allDigits) continue;  // Skip "cp0", "cp1", etc.
-            }
-
-            UINFO(4, "Creating coverpoint member: " << cpName << " with " << binInfos.size()
-                                                    << " bins" << endl);
-
             // 1. Create per-coverpoint coverage function
             const string funcName = "__Vcp_" + cpName + "_get_inst_coverage";
 
-            UINFO(4, "Looking for placeholder function: " << funcName << endl);
+            UINFO(4, "Looking for placeholder function: " << funcName << " for coverpoint "
+                                                          << cpName << " with " << binInfos.size()
+                                                          << " bins" << endl);
 
             // Check if function already exists (created by V3Width as placeholder)
+            // V3Width creates placeholder when user accesses coverpoint like cg.cp.get_coverage()
             AstFunc* cpFuncp = nullptr;
             for (AstNode* memberp = m_classp->membersp(); memberp; memberp = memberp->nextp()) {
                 if (AstFunc* const funcp = VN_CAST(memberp, Func)) {
@@ -2135,28 +2120,11 @@ class CoverageGroupVisitor final : public VNVisitor {
                 }
             }
 
+            // Only generate function body if a placeholder was created by V3Width
+            // (meaning the user actually accessed this coverpoint's coverage method)
             if (!cpFuncp) {
-                UINFO(4, "  Creating new function (no placeholder found)" << endl);
-                // Return type: real (double)
-                AstBasicDType* const realDtypep
-                    = new AstBasicDType{fl, VBasicDTypeKwd::DOUBLE};
-                v3Global.rootp()->typeTablep()->addTypesp(realDtypep);
-
-                // Create function return variable (use MEMBER type to avoid being deleted by V3Dead)
-                AstVar* const funcRetp
-                    = new AstVar{fl, VVarType::MEMBER, funcName, realDtypep};
-                funcRetp->funcLocal(true);
-                funcRetp->funcReturn(true);
-                funcRetp->direction(VDirection::OUTPUT);
-                funcRetp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
-
-                // Create function
-                cpFuncp = new AstFunc{fl, funcName, nullptr, funcRetp};
-                cpFuncp->dtypep(realDtypep);
-                cpFuncp->classMethod(true);
-
-                // Add function to class
-                m_classp->addMembersp(cpFuncp);
+                UINFO(4, "  No placeholder found, skipping coverpoint " << cpName << endl);
+                continue;
             }
 
             // Generate coverage expression for this coverpoint
