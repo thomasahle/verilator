@@ -648,6 +648,10 @@ Features needed:
 | return | **Works** | Function/task early return |
 | preprocessor | **Works** | `ifdef, `ifndef, `else, `endif, `define |
 | $bits | **Works** | Size in bits of type/expression |
+| replication operator | **Works** | {n{expr}} bit replication |
+| concatenation | **Works** | {a, b, c} bit concatenation |
+| reduction operators | **Works** | &, |, ^, ~& |~, ~^ unary reduction |
+| shift operators | **Works** | <<, >>, <<<, >>> logical/arithmetic |
 
 ### Known Limitations
 
