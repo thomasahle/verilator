@@ -4,6 +4,24 @@
 // any use, without warranty, 2024 by Antmicro.
 // SPDX-License-Identifier: CC0-1.0
 
+// Test where both rand vars are in the same class (no inheritance)
+class SameClass;
+   rand int a;
+   rand int b;
+
+   function void test_same_class;
+      logic ok = 0;
+      a = 100;
+      b = 200;
+      for (int i = 0; i < 20; i++) begin
+         void'(randomize(b));  // Only randomize 'b'
+         if (a != 100) $stop;  // 'a' should stay unchanged
+         if (b != 200) ok = 1;  // 'b' should change
+      end
+      if (!ok) $stop;  // 'b' should have changed at least once
+   endfunction
+endclass
+
 class Foo;
    rand int zero;
    int two;
@@ -72,10 +90,14 @@ endclass
 
 module t;
    initial begin
+      SameClass sc = new;
       Boo boo = new;
       Bar bar = boo;
       Qux qux = new;
       logic[2:0] ok = '0;
+
+      // Test same-class randomize(variable_list)
+      sc.test_same_class;
 
       bar.test;
 

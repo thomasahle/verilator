@@ -557,7 +557,21 @@ class RandomizeMarkVisitor final : public VNVisitor {
             }
         }
         if (classp) {
-            if (!classp->user1()) classp->user1(IS_RANDOMIZED);
+            // Check if there are variable arguments (not just 'with' clause)
+            // If so, mark as IS_RANDOMIZED_INLINE so all rand vars get usesMode
+            bool hasVarArgs = false;
+            for (AstNode* pinp = nodep->pinsp(); pinp; pinp = pinp->nextp()) {
+                if (VN_IS(pinp, Arg)) {
+                    hasVarArgs = true;
+                    break;
+                }
+            }
+            if (!classp->user1()) {
+                classp->user1(hasVarArgs ? IS_RANDOMIZED_INLINE : IS_RANDOMIZED);
+            } else if (hasVarArgs && classp->user1() == IS_RANDOMIZED) {
+                // Upgrade to IS_RANDOMIZED_INLINE if we have args
+                classp->user1(IS_RANDOMIZED_INLINE);
+            }
             markMembers(classp);
             // Clone constraints from all IS_RANDOMIZED_GLOBAL members
             classp->foreachMember([&](AstClass* const, AstVar* const memberVarp) {
