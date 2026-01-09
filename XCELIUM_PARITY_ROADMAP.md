@@ -404,6 +404,7 @@ Features needed:
 | DPI-C imports | **Works** | C function calls from SV |
 | always_comb/always_ff/always_latch | **Works** | Synthesis-friendly always blocks |
 | String methods | **Works** | len, getc, toupper, tolower, substr, compare, putc, atoi, atohex |
+| $display/$sformatf formatting | **Works** | %d, %h, %b, %o, %f, %e, %g, %s, %c, %t, width, precision |
 
 ### Known Limitations
 
