@@ -486,6 +486,8 @@ Features needed:
 | $swrite/$swriteh/b/o | **Works** | String write with format/hex/binary/octal |
 | $cast | **Works** | Dynamic class casting with success check |
 | $signed/$unsigned | **Works** | Signedness conversion functions |
+| bind construct | **Works** | Bind checker modules to design instances |
+| clocking blocks | **Works** | Clocking block with @(cb), cb.signal |
 
 ### Known Limitations
 
