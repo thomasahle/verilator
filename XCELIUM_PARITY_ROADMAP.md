@@ -523,6 +523,7 @@ Features needed:
 | Port type declarations | **Works** | input wire, input logic, output reg, etc |
 | alias statement | **Works** | Net aliasing for short-circuit connection |
 | macromodule | **Works** | Same as module, hint for flattening |
+| timeunit/timeprecision | **Works** | SV time declarations in modules |
 
 ### Known Limitations
 
