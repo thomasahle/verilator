@@ -483,6 +483,7 @@ Features needed:
 | $countbits | **Works** | Count bits matching specified value |
 | Static local variables | **Works** | `static` inside automatic functions |
 | $printtimescale | **Works** | Prints module's timescale setting |
+| $swrite/$swriteh/b/o | **Works** | String write with format/hex/binary/octal |
 
 ### Known Limitations
 
