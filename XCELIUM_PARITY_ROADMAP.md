@@ -412,6 +412,7 @@ Features needed:
 | Generate blocks | **Works** | generate for, generate if, genvar |
 | $sscanf | **Works** | String scanning with format specifiers |
 | Part selects | **Works** | Fixed [a:b], indexed [i +: w], [i -: w] |
+| Concatenation/replication | **Works** | {a,b,c}, {n{x}}, nested, LHS assignment |
 
 ### Known Limitations
 
