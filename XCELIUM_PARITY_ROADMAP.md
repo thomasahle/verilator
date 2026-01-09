@@ -546,6 +546,7 @@ Features needed:
 | interface arrays | **Works** | Array of interface instances |
 | `ifdef/`ifndef/`else/`endif | **Works** | Preprocessor conditionals |
 | `define macros with args | **Works** | Parameterized macros |
+| `default_nettype directive | **Works** | Sets default net type (none, wire, etc.) |
 | task with ref arguments | **Works** | Pass by reference in tasks |
 | multiple initial blocks | **Works** | All initial blocks run |
 | parameter arrays | **Works** | Array-type parameters |
