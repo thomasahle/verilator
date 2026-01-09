@@ -593,6 +593,10 @@ Features needed:
 | $sscanf | **Works** | Parse string with format |
 | $time/$realtime | **Works** | Get simulation time |
 | $onehot/$onehot0 | **Works** | One-hot encoding check |
+| $countones | **Works** | Count bits set to 1 |
+| $clog2 | **Works** | Ceiling log base 2 |
+| $ln/$exp/$sqrt | **Works** | Math functions |
+| $itor/$rtoi | **Works** | Int/real conversion |
 
 ### Known Limitations
 
