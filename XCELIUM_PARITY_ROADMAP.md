@@ -332,6 +332,12 @@ Features needed:
 | modport export | **Works** | Interface function export to modules |
 | stream operators on class members | **Works** | `{>> {p.data, p.addr}}` works |
 | Multiplication in constraints | **Fixed** | `b == a * 2` now works in constraints |
+| Division/modulo in constraints | **Works** | `b == a / 2`, `b == a % 10` work |
+| Bitwise ops in constraints | **Works** | AND, OR, XOR work in constraints |
+| Shift ops in constraints | **Works** | `<<`, `>>` work in constraints |
+| constraint_mode() | **Works** | Enable/disable constraints at runtime |
+| solve before | **Works** | Generates warning but constraint works |
+| unique constraint with ranges | **Fixed** | Bug fix in constraint expansion |
 
 ### Known Limitations
 
