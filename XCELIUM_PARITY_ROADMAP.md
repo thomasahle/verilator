@@ -390,6 +390,12 @@ Features needed:
 | $test$plusargs/$value$plusargs | **Works** | Runtime plusarg checking |
 | bind construct | **Works** | Attach checkers/monitors to modules |
 | File I/O | **Works** | $fopen, $fwrite, $fclose, $fgets, $feof, $fscanf |
+| $readmemh/$readmemb | **Works** | Memory file initialization |
+| $time/$stime/$realtime | **Works** | Time value access |
+| $clog2 | **Works** | Ceiling log2 computation |
+| $countones | **Works** | Population count |
+| $onehot/$onehot0 | **Works** | One-hot detection |
+| $signed/$unsigned | **Works** | Signedness conversion |
 
 ### Known Limitations
 
