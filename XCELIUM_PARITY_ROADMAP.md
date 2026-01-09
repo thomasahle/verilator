@@ -555,6 +555,9 @@ Features needed:
 | class constructor defaults | **Works** | function new(arg=default) |
 | async reset pattern | **Works** | @(posedge clk or negedge rst_n) |
 | case default clause | **Works** | case/default for catch-all |
+| `elsif directive | **Works** | Chained preprocessor conditionals |
+| wire continuous assign | **Works** | assign wire = expr |
+| ** power operator | **Works** | a ** b exponentiation |
 
 ### Known Limitations
 
