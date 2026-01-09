@@ -440,6 +440,13 @@ Features needed:
 | Assignment patterns | **Works** | '{...} for structs/arrays, named, default patterns |
 | Trig/hyperbolic functions | **Works** | $tan, $asin, $acos, $atan, $atan2, $sinh, $cosh, $tanh, $asinh, $acosh, $atanh, $hypot |
 | return/continue statements | **Works** | Early return in functions, continue in loops |
+| File positioning functions | **Works** | $ftell, $fseek, $frewind, $fflush |
+| Increment/decrement operators | **Works** | ++x, x++, --x, x-- (pre/post, in expressions, arrays) |
+| localparam | **Works** | Computed from parameters, string/real types |
+| Bitwise operators | **Works** | &, |, ^, ~, NAND, NOR, XNOR |
+| Shift operators | **Works** | <<, >>, <<<, >>> (logical and arithmetic) |
+| Ternary operator | **Works** | cond ? a : b, nested, in expressions |
+| Logical operators | **Works** | &&, ||, ! (and complex expressions) |
 
 ### Known Limitations
 
