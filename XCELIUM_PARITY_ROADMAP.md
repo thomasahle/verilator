@@ -408,6 +408,8 @@ Features needed:
 | Packed/unpacked arrays | **Works** | Multi-dimensional packed, mixed arrays |
 | Automatic/recursive functions | **Works** | function automatic, recursion, static |
 | Module parameters | **Works** | parameter, localparam, string params, overrides |
+| case inside | **Works** | Set membership matching with ranges |
+| Generate blocks | **Works** | generate for, generate if, genvar |
 
 ### Known Limitations
 
