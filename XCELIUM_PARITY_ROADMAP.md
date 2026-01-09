@@ -338,6 +338,9 @@ Features needed:
 | constraint_mode() | **Works** | Enable/disable constraints at runtime |
 | solve before | **Works** | Generates warning but constraint works |
 | unique constraint with ranges | **Fixed** | Bug fix in constraint expansion |
+| Implication constraints (->) | **Works** | `a > 0 -> b > a` works correctly |
+| if-else constraints | **Works** | Conditional constraints work |
+| Distribution constraints (dist) | **Works** | Weighted distribution works |
 
 ### Known Limitations
 
