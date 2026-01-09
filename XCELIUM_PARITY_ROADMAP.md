@@ -452,6 +452,7 @@ Features needed:
 | Bit/part select | **Works** | [n], [m:n], [idx+:w], [idx-:w], variable index |
 | Associative arrays | **Works** | num, exists, first, next, last, prev, delete |
 | Class inheritance | **Works** | extends, super.new(), multi-level inheritance |
+| Interface class (implements) | **Works** | Interface class with pure virtual, implements |
 | Polymorphism/$cast | **Works** | Virtual methods, base class handles, $cast |
 | Interface modports | **Works** | master/slave ports, input/output directions |
 | wait statements | **Works** | wait(expr), multiple sequential waits |
@@ -470,6 +471,7 @@ Features needed:
 | casez | **Works** | Wildcard case with ? matching any value |
 | casex | **Works** | Don't-care case with x/z treated as don't-care |
 | Immediate assertions | **Works** | assert, assume, cover statements |
+| assert final | **Works** | End-of-simulation assertion check |
 | final block | **Works** | Executes at end of simulation |
 | $fatal task | **Works** | Severity levels 0-2, optional message |
 | $finish with exit code | **Works** | $finish(0), $finish(1), etc. |
