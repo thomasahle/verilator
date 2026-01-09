@@ -540,6 +540,7 @@ Features needed:
 | const variables | **Works** | Compile-time constants |
 | chandle type | **Works** | C pointer storage type |
 | void function | **Works** | Functions returning void |
+| void' cast | **Works** | Discard function return value with void'() |
 | tri net type | **Works** | Tri-state net declaration |
 | hierarchical references | **Works** | Cross-module signal access |
 | parameter type | **Works** | Type as module parameter |
