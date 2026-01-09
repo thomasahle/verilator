@@ -643,6 +643,11 @@ Features needed:
 | constraint_mode() | **Works** | Enable/disable constraints |
 | rand_mode() | **Works** | Enable/disable field randomization |
 | soft constraint | **Works** | Override-able default constraints |
+| break | **Works** | Loop early exit |
+| continue | **Works** | Loop iteration skip |
+| return | **Works** | Function/task early return |
+| preprocessor | **Works** | `ifdef, `ifndef, `else, `endif, `define |
+| $bits | **Works** | Size in bits of type/expression |
 
 ### Known Limitations
 
