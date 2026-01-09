@@ -785,6 +785,15 @@ Features needed:
 | assoc last/prev | **Works** | Iterate backward through keys |
 | assoc delete | **Works** | Delete element by key |
 | assoc num/size | **Works** | Get number of elements |
+| class static method | **Works** | Static class methods |
+| class static variable | **Works** | Static class variables |
+| parameterized class | **Works** | Generic class with type/value params |
+| class extends/virtual | **Works** | Inheritance with polymorphism |
+| class $cast | **Works** | Dynamic type casting |
+| randomize (basic) | **Works** | Constraint-based randomization |
+| randomize with | **Works** | Inline constraint expressions |
+| rand_mode | **Works** | Enable/disable random variables |
+| constraint_mode | **Works** | Enable/disable constraints |
 
 ### Known Limitations
 
