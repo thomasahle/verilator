@@ -456,6 +456,10 @@ Features needed:
 | Interface modports | **Works** | master/slave ports, input/output directions |
 | wait statements | **Works** | wait(expr), multiple sequential waits |
 | Process control | **Works** | process::self(), status(), await() |
+| Integer types | **Works** | byte, shortint, int, longint (signed/unsigned) |
+| $system task | **Works** | Execute shell commands, return status |
+| Soft constraints | **Works** | soft keyword, yielding to hard constraints |
+| Queue methods | **Works** | push_back/front, pop_back/front, insert, delete, size |
 
 ### Known Limitations
 
