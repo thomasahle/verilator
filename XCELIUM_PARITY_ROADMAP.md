@@ -331,6 +331,7 @@ Features needed:
 | extern function | **Works** | Out-of-body class method definitions |
 | modport export | **Works** | Interface function export to modules |
 | stream operators on class members | **Works** | `{>> {p.data, p.addr}}` works |
+| Multiplication in constraints | **Fixed** | `b == a * 2` now works in constraints |
 
 ### Known Limitations
 
