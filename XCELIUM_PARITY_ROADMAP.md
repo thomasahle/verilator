@@ -607,6 +607,19 @@ Features needed:
 | localparam | **Works** | Local parameters |
 | generate block | **Works** | generate for loop |
 | case inside | **Works** | case with range matching |
+| interface (basic) | **Works** | Basic interface with signals |
+| associative array | **Works** | String/int keys, size(), exists() |
+| priority case | **Works** | Priority case statement |
+| unique case | **Works** | Unique case statement |
+| modport | **Works** | Interface modport with master/slave |
+| wildcard equality | **Works** | ==? and !=? operators |
+| $info, $warning | **Works** | Severity system tasks |
+| $test$plusargs | **Works** | Command line argument testing |
+| $value$plusargs | **Works** | Command line argument value extraction |
+| package | **Works** | Package with typedef, function, parameter |
+| enum | **Works** | Enum with .name(), .next() methods |
+| struct packed | **Works** | Packed struct with aggregate assignment |
+| union packed | **Works** | Packed union overlaying word/bytes |
 
 ### Known Limitations
 
