@@ -474,6 +474,8 @@ Features needed:
 | $fatal task | **Works** | Severity levels 0-2, optional message |
 | $finish with exit code | **Works** | $finish(0), $finish(1), etc. |
 | $timeformat | **Works** | Time display format with units, precision, suffix |
+| SVA disable iff | **Works** | Property disabling condition with reset |
+| program blocks | **Works** | Testbench program encapsulation |
 
 ### Known Limitations
 
