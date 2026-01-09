@@ -476,6 +476,8 @@ Features needed:
 | $timeformat | **Works** | Time display format with units, precision, suffix |
 | SVA disable iff | **Works** | Property disabling condition with reset |
 | program blocks | **Works** | Testbench program encapsulation |
+| $sampled | **Works** | Samples value in preponed region |
+| let declarations | **Works** | Expression macros with formal arguments |
 
 ### Known Limitations
 
