@@ -462,6 +462,8 @@ Features needed:
 | Queue methods | **Works** | push_back/front, pop_back/front, insert, delete, size |
 | Dynamic arrays | **Works** | new[], resize, delete, foreach, size |
 | Solve before | **Works** | Parsing accepted, imperfect distribution (warning) |
+| constraint_mode | **Works** | Enable/disable constraints, query state |
+| rand_mode | **Works** | Enable/disable rand vars, query state |
 
 ### Known Limitations
 
