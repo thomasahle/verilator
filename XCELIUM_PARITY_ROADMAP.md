@@ -479,6 +479,8 @@ Features needed:
 | $sampled | **Works** | Samples value in preponed region |
 | let declarations | **Works** | Expression macros with formal arguments |
 | Wildcard port connections | **Works** | .* connects all ports by name |
+| $assertoff/$asserton | **Works** | Runtime assertion control |
+| $countbits | **Works** | Count bits matching specified value |
 
 ### Known Limitations
 
