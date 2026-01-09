@@ -684,6 +684,14 @@ Features needed:
 | sensitivity list | **Works** | Multiple signals with or |
 | always @(*) | **Works** | Implicit sensitivity list |
 | wait statement | **Works** | Wait for condition |
+| force/release | **Works** | Force and release statements |
+| event control @ | **Works** | Wait for edge events |
+| modulus operator | **Works** | % operator for integers |
+| power operator | **Works** | ** operator for int/real |
+| comparison operators | **Works** | <, >, <=, >=, ==, != |
+| logical operators | **Works** | &&, ||, ! |
+| bitwise operators | **Works** | &, |, ^, ~, ~^ |
+| increment/decrement | **Works** | ++, -- (pre and post) |
 
 ### Known Limitations
 
