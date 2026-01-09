@@ -439,6 +439,7 @@ Features needed:
 | $sformat | **Works** | In-place string formatting with format specifiers |
 | Assignment patterns | **Works** | '{...} for structs/arrays, named, default patterns |
 | Trig/hyperbolic functions | **Works** | $tan, $asin, $acos, $atan, $atan2, $sinh, $cosh, $tanh, $asinh, $acosh, $atanh, $hypot |
+| return/continue statements | **Works** | Early return in functions, continue in loops |
 
 ### Known Limitations
 
