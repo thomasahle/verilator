@@ -316,6 +316,7 @@ Features needed:
 
 | Feature | Status | Notes |
 |---------|--------|-------|
+| randomize(variable_list) same-class | **Fixed** | Bug fix: only listed vars randomized |
 | pre/post_randomize callbacks with inheritance | **Fixed** | Bug fix in V3Randomize.cpp |
 | Coverpoint member access (.cp.get_coverage()) | **Fixed** | Bug fix in V3CoverageGroup.cpp |
 | $bits for dynamic arrays/queues | **Works** | Already implemented |
