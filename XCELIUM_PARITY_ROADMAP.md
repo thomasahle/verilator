@@ -385,6 +385,7 @@ Features needed:
 | SVA ## delay operator | **Works** | ##1, ##[1:3] range delays |
 | SVA implication (|->) | **Works** | Property implication |
 | SVA sequences | **Works** | Named sequence definitions |
+| Type parameters in classes | **Works** | class #(type T) works with int/string/object |
 
 ### Known Limitations
 
