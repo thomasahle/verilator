@@ -499,6 +499,8 @@ Features needed:
 | unique0 case | **Works** | Like unique but allows no match |
 | $ferror | **Works** | File error checking with string message |
 | $fgetc/$ungetc | **Works** | Character-level file I/O |
+| $fread | **Works** | Binary file read into variables/arrays |
+| VCD dump functions | **Works** | $dumpfile, $dumpvars, $dumpoff, $dumpon, $dumpall, $dumpflush |
 
 ### Known Limitations
 
