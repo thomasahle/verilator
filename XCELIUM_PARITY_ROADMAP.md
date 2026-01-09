@@ -732,6 +732,10 @@ Features needed:
 | real math functions | **Works** | sqrt, floor, ceil, sin, cos, ln, exp |
 | $atan/$atan2 | **Works** | Arctangent functions |
 | $realtobits/$bitstoreal | **Works** | IEEE 754 conversion |
+| $isunknown | **Works** | Unknown value detection (2-state) |
+| $sampled | **Works** | Sampled value in assertions |
+| $rose/$fell | **Works** | Edge detection functions |
+| $stable | **Works** | Value stability check |
 
 ### Known Limitations
 
