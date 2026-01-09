@@ -365,7 +365,7 @@ Features needed:
 | Feature | Status | Workaround |
 |---------|--------|------------|
 | randc | **Works** | Cyclic random properly implemented |
-| $psprintf with class args | Limited | Use $sformatf instead |
+| $sformatf %p with class objects | **Works** | Prints object structure correctly |
 
 ### AVIP Test Results (mbits-mirafra)
 
