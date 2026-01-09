@@ -341,6 +341,8 @@ Features needed:
 | Implication constraints (->) | **Works** | `a > 0 -> b > a` works correctly |
 | if-else constraints | **Works** | Conditional constraints work |
 | Distribution constraints (dist) | **Works** | Weighted distribution works |
+| Soft constraints | **Works** | Soft constraints with overrides |
+| Nested class randomization | **Works** | rand class members work |
 
 ### Known Limitations
 
