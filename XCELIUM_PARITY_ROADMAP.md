@@ -434,6 +434,8 @@ Features needed:
 | Timing delays | **Works** | assign #delay, <= #delay in always blocks |
 | $writememh/$writememb | **Works** | Write memory to file with optional range |
 | Type casting | **Works** | width'(), signed'(), unsigned'(), int'(), real'(), shortint'() |
+| Real math functions | **Works** | $rtoi, $itor, $ceil, $floor, $sqrt, $ln, $log10, $exp, $pow, $sin, $cos |
+| $realtobits/$bitstoreal | **Works** | IEEE 754 real <-> 64-bit conversion |
 
 ### Known Limitations
 
