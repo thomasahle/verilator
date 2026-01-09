@@ -524,6 +524,17 @@ Features needed:
 | alias statement | **Works** | Net aliasing for short-circuit connection |
 | macromodule | **Works** | Same as module, hint for flattening |
 | timeunit/timeprecision | **Works** | SV time declarations in modules |
+| $isunknown | **Works** | Test for X/Z values (always 0 in 2-state) |
+| unique if / priority if | **Works** | Synthesis-friendly if statements |
+| '0 '1 fill literals | **Works** | Context-dependent fill values |
+| bit type | **Works** | 2-state data type, signed/unsigned |
+| const variables | **Works** | Compile-time constants |
+| chandle type | **Works** | C pointer storage type |
+| void function | **Works** | Functions returning void |
+| tri net type | **Works** | Tri-state net declaration |
+| hierarchical references | **Works** | Cross-module signal access |
+| parameter type | **Works** | Type as module parameter |
+| real type | **Works** | IEEE 754 double precision |
 
 ### Known Limitations
 
