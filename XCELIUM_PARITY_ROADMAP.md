@@ -466,6 +466,7 @@ Features needed:
 | rand_mode | **Works** | Enable/disable rand vars, query state |
 | this keyword | **Works** | Member access, returning this, constructor |
 | super keyword | **Works** | super.new(), super.method() calls |
+| foreach loop | **Works** | Fixed, dynamic, assoc, multi-dimensional arrays |
 
 ### Known Limitations
 
