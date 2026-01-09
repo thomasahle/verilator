@@ -410,6 +410,8 @@ Features needed:
 | Module parameters | **Works** | parameter, localparam, string params, overrides |
 | case inside | **Works** | Set membership matching with ranges |
 | Generate blocks | **Works** | generate for, generate if, genvar |
+| $sscanf | **Works** | String scanning with format specifiers |
+| Part selects | **Works** | Fixed [a:b], indexed [i +: w], [i -: w] |
 
 ### Known Limitations
 
