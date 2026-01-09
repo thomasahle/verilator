@@ -368,6 +368,11 @@ Features needed:
 | Clocking blocks | **Works** | Clocking drives and samples work |
 | Virtual classes/pure virtual methods | **Works** | Polymorphic method dispatch works |
 | Conflicting constraint detection | **Works** | randomize() returns 0 on conflict |
+| extern constraint | **Works** | Out-of-body constraint definitions |
+| fork-join_any | **Works** | First process to complete unblocks |
+| fork-join_none | **Works** | Immediately continues |
+| wait fork | **Works** | Waits for all forked processes |
+| disable fork | **Works** | Kills all forked processes |
 
 ### Known Limitations
 
