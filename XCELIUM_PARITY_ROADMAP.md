@@ -736,6 +736,10 @@ Features needed:
 | $sampled | **Works** | Sampled value in assertions |
 | $rose/$fell | **Works** | Edge detection functions |
 | $stable | **Works** | Value stability check |
+| $changed | **Works** | Value change detection |
+| $past | **Works** | Previous value access |
+| $random | **Works** | Random number generation |
+| $system/$swrite | **Works** | System call and string write |
 
 ### Known Limitations
 
