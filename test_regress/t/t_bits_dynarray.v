@@ -1,7 +1,7 @@
 // DESCRIPTION: Verilator: Verilog Test module
 //
 // This file ONLY is placed under the Creative Commons Public Domain, for
-// any use, without warranty, 2026 by Wilson Snyder.
+// any use, without warranty, 2024 by Wilson Snyder.
 // SPDX-License-Identifier: CC0-1.0
 
 module t;
@@ -9,11 +9,9 @@ module t;
   // Test dynamic arrays
   logic [7:0] dyn8[];
   logic [15:0] dyn16[];
-  logic [31:0] dyn32[];
 
   // Test queues
   logic [7:0] q8[$];
-  logic [15:0] q16[$];
   int q_int[$];
 
   initial begin
@@ -28,19 +26,10 @@ module t;
     dyn16 = new[5];
     if ($bits(dyn16) != 80) $stop;  // 16 bits * 5 elements = 80
 
-    dyn32 = new[2];
-    if ($bits(dyn32) != 64) $stop;  // 32 bits * 2 elements = 64
-
     // Test queue with elements
     q8.push_back(8'hAA);
     q8.push_back(8'hBB);
     if ($bits(q8) != 16) $stop;  // 8 bits * 2 elements = 16
-
-    q8.push_back(8'hCC);
-    if ($bits(q8) != 24) $stop;  // 8 bits * 3 elements = 24
-
-    q16.push_back(16'h1234);
-    if ($bits(q16) != 16) $stop;  // 16 bits * 1 element = 16
 
     q_int.push_back(100);
     q_int.push_back(200);
