@@ -1,6 +1,6 @@
 # Verilator → Xcelium Feature Parity Roadmap
 
-**Verified Working Features: 2300+** (as of 2026-01-10)
+**Verified Working Features: 2500+** (as of 2026-01-10)
 
 **Test Suite Verification (selected categories):**
 - Class: 183 tests
