@@ -1,0 +1,8 @@
+%Error-UNSUPPORTED: t/t_stream_with_slice.v:22:27: Unsupported: with[] stream expression
+   22 |       bytes = {>> {data32 with [8]}};
+      |                           ^~~~
+                    ... For error description see https://verilator.org/warn/UNSUPPORTED?v=latest
+%Error-UNSUPPORTED: t/t_stream_with_slice.v:43:27: Unsupported: with[] stream expression
+   43 |       result = {>> {bytes with [8]}};
+      |                           ^~~~
+%Error: Exiting due to
