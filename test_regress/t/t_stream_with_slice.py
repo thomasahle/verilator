@@ -11,11 +11,7 @@ import vltest_bootstrap
 
 test.scenarios('simulator')
 
-# Currently expected to fail - stream with [] not yet supported
-test.compile(fails=test.vlt_all, expect_filename=test.golden_filename)
-
-# When implemented, change to:
-# test.compile()
-# test.execute()
+test.compile()
+test.execute()
 
 test.passes()

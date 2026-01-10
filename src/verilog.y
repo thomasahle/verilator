@@ -5415,27 +5415,28 @@ stream_concatenation<nodeExprp>:    // ==IEEE: stream_concatenation
 
 stream_expression<nodeExprp>:   // ==IEEE: stream_expression
         //                      // IEEE: array_range_expression expanded below
+        //                      // with[] selects subset of expression to stream
                 expr                                    { $$ = $1; }
         |       expr yWITH__BRA '[' expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelBit{$3, $1, $4}; }
         |       expr yWITH__BRA '[' expr ':' expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelExtract{$3, $1, $4, $6}; }
         |       expr yWITH__BRA '[' expr yP_PLUSCOLON  expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelPlus{$3, $1, $4, $6}; }
         |       expr yWITH__BRA '[' expr yP_MINUSCOLON expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelMinus{$3, $1, $4, $6}; }
         ;
 
 stream_expressionOrDataType<nodep>:     // IEEE: from streaming_concatenation
                 exprOrDataType                          { $$ = $1; }
         |       expr yWITH__BRA '[' expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelBit{$3, $1, $4}; }
         |       expr yWITH__BRA '[' expr ':' expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelExtract{$3, $1, $4, $6}; }
         |       expr yWITH__BRA '[' expr yP_PLUSCOLON  expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelPlus{$3, $1, $4, $6}; }
         |       expr yWITH__BRA '[' expr yP_MINUSCOLON expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelMinus{$3, $1, $4, $6}; }
         ;
 
 //************************************************
