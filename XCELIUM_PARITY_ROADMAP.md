@@ -1,6 +1,6 @@
 # Verilator → Xcelium Feature Parity Roadmap
 
-**Verified Working Features: 2050+** (as of 2026-01-10)
+**Verified Working Features: 2150+** (as of 2026-01-10)
 
 **Test Suite Verification (selected categories):**
 - Class: 183 tests
@@ -14,9 +14,11 @@
 - Timing: 70 tests
 - Inst: 64 tests
 - Opt: 64 tests
+- Constraint: 60 tests
 - Var: 60 tests
 - Randomize: 57 tests
 - DPI: 49 tests
+- Sys: 44 tests
 - Gen: 44 tests
 - Struct: 43 tests
 - Module: 43 tests
