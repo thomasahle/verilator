@@ -477,6 +477,19 @@ public:
         return *this;
     }
 
+    // Allow conversion from queue with different element type (e.g., CData to IData)
+    // This supports Verilog implicit type widening for map() results
+    template <typename T_Other, size_t N_RhsMaxSize = 0,
+              typename = typename std::enable_if<!std::is_same<T_Other, T_Value>::value>::type>
+    VlQueue& operator=(const VlQueue<T_Other, N_RhsMaxSize>& rhs) {
+        m_deque.clear();
+        for (const auto& val : rhs.privateDeque()) {
+            m_deque.push_back(static_cast<T_Value>(val));
+        }
+        if (VL_UNLIKELY(N_MaxSize && N_MaxSize < m_deque.size())) m_deque.resize(N_MaxSize - 1);
+        return *this;
+    }
+
     // Construct new object from _V_alue and/or _C_ontainer child objects
     static VlQueue consV(const T_Value& lhs) {
         VlQueue out;

@@ -9,18 +9,10 @@
 
 import vltest_bootstrap
 
-# Note: The map method is partially implemented but has a type handling bug
-# when the with expression returns a different type than the array elements.
-# This test exposes that bug - the comparison (el == 200) returns boolean
-# but the destination array is int[].
-# See t_array_map.v for working map tests.
-
 test.scenarios('simulator')
 
-# Currently fails during C++ compilation due to type mismatch
-test.compile(make_main=False, make_top_shell=False, verilator_make_gmake=False)
+test.compile()
 
-# Skip execution until the bug is fixed
-#test.execute()
+test.execute()
 
 test.passes()

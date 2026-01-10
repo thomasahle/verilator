@@ -21,5 +21,8 @@ module t;
       `checkh(res[0], 0);
       `checkh(res[1], 1);
       `checkh(res[2], 0);
+
+      $write("*-* All Finished *-*\n");
+      $finish;
    end
 endmodule

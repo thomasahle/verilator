@@ -9,13 +9,10 @@
 
 import vltest_bootstrap
 
-# Note: The map method is partially implemented but has a type handling bug
-# when the with expression returns a different type than the array elements.
-# See t_array_map.v for working map tests.
+test.scenarios('simulator')
 
-test.scenarios('vlt')
+test.compile()
 
-# Currently just test that parsing works - C++ compilation has type mismatch issues
-test.lint()
+test.execute()
 
 test.passes()

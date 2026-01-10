@@ -13,11 +13,14 @@ module t;
       int res[];
       int a[int] = '{1: 100, 2: 200, 3: 300};
 
-      // TODO results not known to be correct
-      res = a.map(el) with (el == 2);
+      // map iterates over values (100, 200, 300), not keys
+      res = a.map(el) with (el == 200);
       `checkh(res.size, 3);
       `checkh(res[0], 0);
       `checkh(res[1], 1);
       `checkh(res[2], 0);
+
+      $write("*-* All Finished *-*\n");
+      $finish;
    end
 endmodule
