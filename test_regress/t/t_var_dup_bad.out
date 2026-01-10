@@ -86,20 +86,21 @@
 %Error: t/t_var_dup_bad.v:41:9: Can't find definition of variable: 'bad_duport'
    41 |    sub0 sub0(.*);
       |         ^~~~
-%Error: t/t_var_dup_bad.v:41:9: Duplicate pin connection: 'bad_duport'
+%Error-PINDUP: t/t_var_dup_bad.v:41:9: Duplicate pin connection: 'bad_duport'
    41 |    sub0 sub0(.*);
       |         ^~~~
-        t/t_var_dup_bad.v:41:9: ... Location of original pin connection
+               t/t_var_dup_bad.v:41:9: ... Location of original pin connection
    41 |    sub0 sub0(.*);
       |         ^~~~
+               ... For error description see https://verilator.org/warn/PINDUP?v=latest
 %Error: t/t_var_dup_bad.v:42:9: Can't find definition of variable: 'bad_mixport'
                               : ... Suggested alternative: 'bad_duport'
    42 |    sub1 sub1(.*);
       |         ^~~~
-%Error: t/t_var_dup_bad.v:42:9: Duplicate pin connection: 'bad_mixport'
+%Error-PINDUP: t/t_var_dup_bad.v:42:9: Duplicate pin connection: 'bad_mixport'
    42 |    sub1 sub1(.*);
       |         ^~~~
-        t/t_var_dup_bad.v:42:9: ... Location of original pin connection
+               t/t_var_dup_bad.v:42:9: ... Location of original pin connection
    42 |    sub1 sub1(.*);
       |         ^~~~
 %Error: t/t_var_dup_bad.v:43:9: Can't find definition of variable: 'bad_reout_port'
