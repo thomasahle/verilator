@@ -1,6 +1,6 @@
 # Verilator → Xcelium Feature Parity Roadmap
 
-**Verified Working Features: 2900+** (as of 2026-01-10)
+**Verified Working Features: 3100+** (as of 2026-01-10)
 
 **Test Suite Verification (selected categories):**
 - Class: 183 tests
@@ -50,11 +50,17 @@
 - Semaphore: 9 tests
 - Mailbox: 8 tests
 - Wire: 8 tests
+- VPI: 37 tests
+- Clocking: 22 tests
 - Disable: 21 tests
+- Unopt: 15 tests
+- Unroll: 14 tests
 - Delay: 9 tests
+- Bind: 8 tests
 - Randsequence: 7 tests
 - Wait: 6 tests
 - Let: 4 tests
+- PLI: 2 tests
 - AVIP: SPI, AHB, AXI4 working
 
 ## Current State Summary
