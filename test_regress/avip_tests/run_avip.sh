@@ -50,27 +50,38 @@ run_avip() {
     fi
 
     # Find compile.f file (handles various naming conventions)
-    # Try: apb_compile.f, SpiCompile.f, I2sCompile.f, *Project.f, compile.f
+    # Prefer CamelCase Compile.f (e.g., SpiCompile.f) over *_verilator_compile.f
     local compile_f_name=""
+    # First try: lowercase_compile.f (e.g., apb_compile.f)
     if [[ -f "$sim_dir/${avip}_compile.f" ]]; then
         compile_f_name="${avip}_compile.f"
-    else
-        # Try CamelCase Compile versions
+    fi
+    # Then try CamelCase Compile.f (e.g., SpiCompile.f), but NOT *_verilator_compile.f
+    if [[ -z "$compile_f_name" ]]; then
         for f in "$sim_dir"/*[Cc]ompile.f; do
+            if [[ -f "$f" ]] && [[ ! "$(basename "$f")" == *_verilator_compile.f ]]; then
+                compile_f_name="$(basename "$f")"
+                break
+            fi
+        done
+    fi
+    # Try Project.f versions (e.g., Axi4LiteProject.f)
+    if [[ -z "$compile_f_name" ]]; then
+        for f in "$sim_dir"/*[Pp]roject.f; do
             if [[ -f "$f" ]]; then
                 compile_f_name="$(basename "$f")"
                 break
             fi
         done
-        # Try Project.f versions (e.g., Axi4LiteProject.f)
-        if [[ -z "$compile_f_name" ]]; then
-            for f in "$sim_dir"/*[Pp]roject.f; do
-                if [[ -f "$f" ]]; then
-                    compile_f_name="$(basename "$f")"
-                    break
-                fi
-            done
-        fi
+    fi
+    # Finally, try *_verilator_compile.f as fallback
+    if [[ -z "$compile_f_name" ]]; then
+        for f in "$sim_dir"/*_verilator_compile.f; do
+            if [[ -f "$f" ]]; then
+                compile_f_name="$(basename "$f")"
+                break
+            fi
+        done
     fi
 
     if [[ -z "$compile_f_name" ]]; then
@@ -104,8 +115,8 @@ endmodule
 EOF
 
     # Convert relative paths in compile.f to absolute paths
-    # The compile.f uses paths like ../../src relative to sim/ directory
-    sed "s|^\.\./\.\./|${avip_dir}/|g; s|+incdir+\.\./\.\./|+incdir+${avip_dir}/|g" \
+    # The compile.f uses paths like ../../src or ../src relative to sim/ directory
+    sed "s|^\.\./\.\./|${avip_dir}/|g; s|+incdir+\.\./\.\./|+incdir+${avip_dir}/|g; s|^\.\./src|${avip_dir}/src|g; s|+incdir+\.\./src|+incdir+${avip_dir}/src|g" \
         "$compile_f" > compile.f
 
     # Compile with Verilator
