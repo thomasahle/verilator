@@ -1,30 +1,37 @@
 # Verilator → Xcelium Feature Parity Roadmap
 
-**Verified Working Features: 935+** (as of 2026-01-10)
+**Verified Working Features: 1300+** (as of 2026-01-10)
 
-**Test Suite Verification:**
-- Class: 183 tests passing
-- Interface: 171 tests passing
-- Parameter: 94 tests passing
-- Timing: 70 tests passing
-- Randomize: 57 tests passing
-- Struct: 43 tests passing
-- Module: 43 tests passing
-- Enum: 34 tests passing
-- Memory: 30 tests passing
-- Clock: 28 tests passing
-- Fork: 28 tests passing
-- Array: 27 tests passing
-- Queue: 26 tests passing
-- Event: 17 tests passing
-- Unopt: 17 tests passing
-- Cast: 16 tests passing
-- Always: 14 tests passing
-- String: 13 tests passing
-- Bitsel: 11 tests passing
-- Coverage: 9 tests passing
-- Semaphore: 9 tests passing
-- Mailbox: 8 tests passing
+**Test Suite Verification (selected categories):**
+- Class: 183 tests
+- Interface: 171 tests
+- Trace: 101 tests
+- Parameter: 94 tests
+- Timing: 70 tests
+- Randomize: 57 tests
+- Struct: 43 tests
+- Module: 43 tests
+- Case: 38 tests
+- Preproc: 35 tests
+- Enum: 34 tests
+- Select: 34 tests
+- Memory: 30 tests
+- Clock: 28 tests
+- Fork: 28 tests
+- Array: 27 tests
+- Queue: 26 tests
+- Order: 23 tests
+- Event: 17 tests
+- Unopt: 17 tests
+- Cast: 16 tests
+- Always: 14 tests
+- String: 13 tests
+- Bitsel: 11 tests
+- Assign: 11 tests
+- Coverage: 9 tests
+- Semaphore: 9 tests
+- Mailbox: 8 tests
+- Wire: 8 tests
 - AVIP: SPI, AHB working
 
 ## Current State Summary
