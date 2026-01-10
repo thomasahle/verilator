@@ -4454,13 +4454,15 @@ system_f_or_t_expr_call<nodeExprp>:  // IEEE: part of system_tf_call (can be tas
         |       yD_PAST '(' expr ')'                    { $$ = new AstPast{$1, $3}; }
         |       yD_PAST '(' expr ',' exprE ')'          { $$ = new AstPast{$1, $3, $5}; }
         |       yD_PAST '(' expr ',' exprE ',' exprE ')'
-                        { if ($7) BBUNSUP($1, "Unsupported: $past expr2 and/or clock arguments");
+                        { if ($7) BBUNSUP($1, "Unsupported: $past expr2 argument");
                           DEL($7);
                           $$ = new AstPast{$1, $3, $5}; }
         |       yD_PAST '(' expr ',' exprE ',' exprE ',' clocking_eventE ')'
-                        { if ($7 || $9) BBUNSUP($1, "Unsupported: $past expr2 and/or clock arguments");
-                          DEL($7, $9);
-                          $$ = new AstPast{$1, $3, $5}; }
+                        { if ($7) BBUNSUP($1, "Unsupported: $past expr2 argument");
+                          DEL($7);
+                          // Create SenTree from clocking_event for the clock argument
+                          AstSenTree* const sentreep = $9 ? new AstSenTree{$<fl>9, $9} : nullptr;
+                          $$ = new AstPast{$1, $3, $5, sentreep}; }
         |       yD_PAST_GCLK '(' expr ')'               { $$ = new AstPast{$1, $3, nullptr, GRAMMARP->createGlobalClockSenTree($1)}; }
         |       yD_POW '(' expr ',' expr ')'            { $$ = new AstPowD{$1, $3, $5}; }
         |       yD_RANDOM '(' expr ')'                  { $$ = new AstRand{$1, $3, false}; }
