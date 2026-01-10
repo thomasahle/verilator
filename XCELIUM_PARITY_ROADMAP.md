@@ -44,7 +44,7 @@
 - Semaphore: 9 tests
 - Mailbox: 8 tests
 - Wire: 8 tests
-- AVIP: SPI, AHB working
+- AVIP: SPI, AHB, AXI4 working
 
 ## Current State Summary
 
