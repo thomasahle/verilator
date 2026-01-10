@@ -374,6 +374,7 @@ Features needed:
 | fork-join_none | **Works** | Immediately continues |
 | wait fork | **Works** | Waits for all forked processes |
 | disable fork | **Works** | Kills all forked processes |
+| disable task_name | **Works** | Kill all instances of named task |
 | disable named block | **Works** | Exit named begin/end blocks early |
 | Static class members | **Works** | Static variables and functions |
 | Class-scope resolution (::) | **Works** | ClassName::member works |
@@ -790,6 +791,9 @@ Features needed:
 | array find_first_index | **Works** | Find first index matching condition |
 | array find_last_index | **Works** | Find last index matching condition |
 | array unique | **Works** | Return unique elements |
+| array sum/product | **Works** | Reduction operations on arrays |
+| array sum with expr | **Works** | Sum with expression (e.g., sum of squares) |
+| array min/max | **Works** | Find min/max element |
 | queue insert | **Works** | Insert element at index |
 | queue delete | **Works** | Delete element at index |
 | queue pop_front | **Works** | Remove and return first element |
