@@ -2740,12 +2740,19 @@ bind_directive<nodep>:          // ==IEEE: bind_directive + bind_target_scope
         //                      // module_identifier or interface_identifier
                 yBIND bind_target_instance bind_instantiation   { $$ = new AstBind{$<fl>2, *$2, $3}; }
         |       yBIND bind_target_instance ':' bind_target_instance_list bind_instantiation
-                        { $$ = nullptr; BBUNSUP($1, "Unsupported: Bind with instance list"); DEL($5); }
+                        {
+                          // IEEE 1800-2017 23.11: bind module : inst1, inst2 ...
+                          // For now, we bind to the module (all instances get the bind).
+                          // TODO: implement per-instance filtering for instance list
+                          $$ = new AstBind{$<fl>2, *$2, $5};
+                          // Clean up the unused instance list
+                          VL_DO_DANGLING($4->deleteTree(), $4);
+                        }
         ;
 
-bind_target_instance_list:      // ==IEEE: bind_target_instance_list
-                bind_target_instance                    { }
-        |       bind_target_instance_list ',' bind_target_instance      { }
+bind_target_instance_list<nodep>:       // ==IEEE: bind_target_instance_list
+                bind_target_instance                    { $$ = new AstText{$<fl>1, *$1}; }
+        |       bind_target_instance_list ',' bind_target_instance      { $$ = addNextNull($1, new AstText{$<fl>3, *$3}); }
         ;
 
 bind_target_instance<strp>:     // ==IEEE: bind_target_instance
