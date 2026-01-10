@@ -718,6 +718,7 @@ Features needed:
 | covergroup | **Works** | Coverage bins and sampling |
 | property declaration | **Works** | Named properties with implication |
 | sequence declaration | **Works** | Named sequences with ##delay |
+| first_match | **Works** | First matching sequence occurrence |
 | cover statement | **Works** | Cover property for coverage |
 | assume statement | **Works** | Assumption for formal |
 | restrict statement | **Works** | Restriction for formal |
