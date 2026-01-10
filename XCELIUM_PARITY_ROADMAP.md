@@ -1,22 +1,27 @@
 # Verilator → Xcelium Feature Parity Roadmap
 
-**Verified Working Features: 800+** (as of 2026-01-10)
+**Verified Working Features: 935+** (as of 2026-01-10)
 
 **Test Suite Verification:**
-- Interface: 171 tests passing
-- Timing: 70 tests passing
-- Parameter: 94 tests passing
 - Class: 183 tests passing
+- Interface: 171 tests passing
+- Parameter: 94 tests passing
+- Timing: 70 tests passing
 - Randomize: 57 tests passing
 - Struct: 43 tests passing
 - Module: 43 tests passing
 - Enum: 34 tests passing
+- Memory: 30 tests passing
+- Clock: 28 tests passing
 - Fork: 28 tests passing
 - Array: 27 tests passing
 - Queue: 26 tests passing
 - Event: 17 tests passing
+- Unopt: 17 tests passing
 - Cast: 16 tests passing
+- Always: 14 tests passing
 - String: 13 tests passing
+- Bitsel: 11 tests passing
 - Coverage: 9 tests passing
 - Semaphore: 9 tests passing
 - Mailbox: 8 tests passing
