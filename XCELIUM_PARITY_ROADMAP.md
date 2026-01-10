@@ -1,5 +1,7 @@
 # Verilator → Xcelium Feature Parity Roadmap
 
+**Verified Working Features: 503** (as of 2026-01-10)
+
 ## Current State Summary
 
 | Category | Verilator | Xcelium | Gap |
