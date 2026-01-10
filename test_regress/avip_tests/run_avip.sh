@@ -38,6 +38,22 @@ get_top_modules() {
     esac
 }
 
+# Function to get UVM test name for each AVIP (prefer simpler/shorter tests)
+get_test_name() {
+    case "$1" in
+        apb) echo "apb_8b_write_test" ;;
+        spi) echo "SpiSimpleFd8BitsTest" ;;
+        axi4) echo "axi4_blocking_8b_write_data_test" ;;
+        ahb) echo "AhbSingleWriteTest" ;;
+        i3c) echo "i3c_writeOperationWith8bitsData_test" ;;
+        i2s) echo "I2sBaseTest" ;;
+        uart) echo "UartBaudRate9600Test" ;;
+        axi4Lite) echo "Axi4LiteSimpleWriteTest" ;;
+        jtag) echo "jtag_base_test" ;;
+        *) echo "" ;;  # no specific test
+    esac
+}
+
 run_avip() {
     local avip=$1
     local avip_dir="$MBITS_DIR/${avip}_avip"
@@ -138,9 +154,16 @@ EOF
         return 1
     fi
 
-    # Run the test
-    echo "  Running..."
-    timeout 120 obj_dir/V${avip}_top 2>&1 | tee run.log
+    # Get the test name for this AVIP
+    local test_name="$(get_test_name "$avip")"
+    local test_arg=""
+    if [[ -n "$test_name" ]]; then
+        test_arg="+UVM_TESTNAME=$test_name"
+    fi
+
+    # Run the test (300s timeout for slower tests)
+    echo "  Running ${test_name:-default test}..."
+    timeout 300 obj_dir/V${avip}_top $test_arg 2>&1 | tee run.log
     if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
         echo -e "${RED}  RUN FAILED${NC}"
         popd > /dev/null
