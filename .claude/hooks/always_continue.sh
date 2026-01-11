@@ -9,7 +9,11 @@ fi
 
 # IMPORTANT: write to stderr so Claude Code captures it as the continuation message
 cat >&2 <<'MSG'
-Continue with the overall goal (xcelium parity / full SV+UVM support). Pick the next smallest task, implement it, add/adjust unit tests, run the relevant regression (e.g. in ~/repos/mbits-mirafra), and commit regularly. Do not stop; keep going.
+Great! please update your plan towards full SV and UVM support.
+What limitations do we still have? What features should we build?
+Keep testing on ~/repos/mbits-mirafra.
+Remember to make unit tests as you go along and implement more features, and commit regularly.
+Continue!
 MSG
 
 # Exit 2 = "block stopping and continue"
