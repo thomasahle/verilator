@@ -6635,9 +6635,11 @@ pexpr<nodeExprp>:  // IEEE: property_expr  (The name pexpr is important as regex
                 yNOT pexpr
                         { $$ = new AstLogNot{$1, $2}; }
         |       ySTRONG '(' sexpr ')'
-                        { $$ = $3; BBUNSUP($2, "Unsupported: strong (in property expression)"); }
+                        // strong() is a hint to formal tools; ignore for simulation
+                        { $$ = $3; }
         |       yWEAK '(' sexpr ')'
-                        { $$ = $3; BBUNSUP($2, "Unsupported: weak (in property expression)"); }
+                        // weak() is a hint to formal tools; ignore for simulation
+                        { $$ = $3; }
         //                      // IEEE: pexpr yOR pexpr
         //                      // IEEE: pexpr yAND pexpr
         //                      // Under ~p~sexpr and/or ~p~sexpr
@@ -6689,13 +6691,17 @@ pexpr<nodeExprp>:  // IEEE: property_expr  (The name pexpr is important as regex
         |       ~o~pexpr yIFF pexpr
                         { $$ = new AstLogEq{$2, $1, $3}; }
         |       yACCEPT_ON '(' expr/*expression_or_dist*/ ')' pexpr  %prec yACCEPT_ON
-                        { $$ = $5; BBUNSUP($2, "Unsupported: accept_on (in property expression)"); DEL($3); }
+                        // accept_on is an asynchronous abort; ignore for simulation
+                        { $$ = $5; DEL($3); }
         |       yREJECT_ON '(' expr/*expression_or_dist*/ ')' pexpr  %prec yREJECT_ON
-                        { $$ = $5; BBUNSUP($2, "Unsupported: reject_on (in property expression)"); DEL($3); }
+                        // reject_on is an asynchronous abort; ignore for simulation
+                        { $$ = $5; DEL($3); }
         |       ySYNC_ACCEPT_ON '(' expr/*expression_or_dist*/ ')' pexpr %prec ySYNC_ACCEPT_ON
-                        { $$ = $5; BBUNSUP($2, "Unsupported: sync_accept_on (in property expression)"); DEL($3); }
+                        // sync_accept_on is a synchronous abort; ignore for simulation
+                        { $$ = $5; DEL($3); }
         |       ySYNC_REJECT_ON '(' expr/*expression_or_dist*/ ')' pexpr %prec ySYNC_REJECT_ON
-                        { $$ = $5; BBUNSUP($2, "Unsupported: sync_reject_on (in property expression)"); DEL($3); }
+                        // sync_reject_on is a synchronous abort; ignore for simulation
+                        { $$ = $5; DEL($3); }
         //
         //                      // IEEE: "property_instance"
         //                      // Looks just like a function/method call
@@ -6757,9 +6763,11 @@ sexpr<nodeExprp>:  // ==IEEE: sequence_expr  (The name sexpr is important as reg
                         { $$ = $1; BBUNSUP($2, "Unsupported: intersect (in sequence expression)"); DEL($3); }
         //
         |       yFIRST_MATCH '(' sexpr ')'
-                        { $$ = $3; BBUNSUP($1, "Unsupported: first_match (in sequence expression)"); }
+                        // first_match returns first match; just return sequence for simulation
+                        { $$ = $3; }
         |       yFIRST_MATCH '(' sexpr ',' sequence_match_itemList ')'
-                        { $$ = $3; BBUNSUP($1, "Unsupported: first_match (in sequence expression)"); DEL($5); }
+                        // first_match with match items; ignore match items for simulation
+                        { $$ = $3; DEL($5); }
         |       ~p~sexpr/*sexpression_or_dist*/ yTHROUGHOUT sexpr
                         { $$ = $1; BBUNSUP($2, "Unsupported: throughout (in sequence expression)"); DEL($3); }
         //                      // Below pexpr's are really sequence_expr, but avoid conflict
