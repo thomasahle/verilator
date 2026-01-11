@@ -2734,7 +2734,9 @@ bind_directive<nodep>:          // ==IEEE: bind_directive + bind_target_scope
         //                      // module_identifier or interface_identifier
                 yBIND bind_target_instance bind_instantiation   { $$ = new AstBind{$<fl>2, *$2, $3}; }
         |       yBIND bind_target_instance ':' bind_target_instance_list bind_instantiation
-                        { $$ = nullptr; BBUNSUP($1, "Unsupported: Bind with instance list"); DEL($5); }
+                        // Instance list specifies which instances to bind to; currently binds
+                        // to all instances of the target module (per-instance filtering TODO)
+                        { $$ = new AstBind{$<fl>2, *$2, $5}; }
         ;
 
 bind_target_instance_list:      // ==IEEE: bind_target_instance_list
@@ -3856,9 +3858,25 @@ value_range<nodeExprp>:         // ==IEEE: value_range/open_value_range
         //                      // Skipped as '$' is part of our expr
         //                      // IEEE-2023: '[' expr ':' '$' ']'
         |       '[' expr yP_PLUSSLASHMINUS expr ']'
-                        { $$ = nullptr; BBUNSUP($1, "Unsupported: +/- range"); DEL($2, $4); }
+                        // [center +/- delta] means [center-delta : center+delta]
+                        { AstNodeExpr* const centerp = $2;
+                          AstNodeExpr* const deltap = $4;
+                          AstNodeExpr* const lhsp = new AstSub{$1, centerp, deltap};
+                          AstNodeExpr* const rhsp = new AstAdd{$1, centerp->cloneTreePure(false), deltap->cloneTreePure(false)};
+                          $$ = new AstInsideRange{$1, lhsp, rhsp}; }
         |       '[' expr yP_PLUSPCTMINUS expr ']'
-                        { $$ = nullptr; BBUNSUP($1, "Unsupported: +%- range"); DEL($2, $4); }
+                        // [center +%- pct] means [center*(100-pct)/100 : center*(100+pct)/100]
+                        { AstNodeExpr* const centerp = $2;
+                          AstNodeExpr* const pctp = $4;
+                          AstConst* const c100p = new AstConst{$1, 100};
+                          AstNodeExpr* const lhsp = new AstDiv{$1,
+                              new AstMul{$1, centerp, new AstSub{$1, c100p, pctp}},
+                              c100p->cloneTreePure(false)};
+                          AstNodeExpr* const rhsp = new AstDiv{$1,
+                              new AstMul{$1, centerp->cloneTreePure(false),
+                                  new AstAdd{$1, c100p->cloneTreePure(false), pctp->cloneTreePure(false)}},
+                              c100p->cloneTreePure(false)};
+                          $$ = new AstInsideRange{$1, lhsp, rhsp}; }
         ;
 
 covergroup_value_range<nodeExprp>:  // ==IEEE-2012: covergroup_value_range
@@ -4407,13 +4425,14 @@ system_f_call_or_t<nodeExprp>:      // IEEE: part of system_tf_call (can be task
         |       yD_PAST '(' expr ')'                    { $$ = new AstPast{$1, $3}; }
         |       yD_PAST '(' expr ',' exprE ')'          { $$ = new AstPast{$1, $3, $5}; }
         |       yD_PAST '(' expr ',' exprE ',' exprE ')'
-                        { if ($7) BBUNSUP($1, "Unsupported: $past expr2 and/or clock arguments");
+                        { if ($7) BBUNSUP($1, "Unsupported: $past expr2 (gating expression)");
                           DEL($7);
                           $$ = new AstPast{$1, $3, $5}; }
         |       yD_PAST '(' expr ',' exprE ',' exprE ',' clocking_eventE ')'
-                        { if ($7 || $9) BBUNSUP($1, "Unsupported: $past expr2 and/or clock arguments");
-                          DEL($7, $9);
-                          $$ = new AstPast{$1, $3, $5}; }
+                        { if ($7) BBUNSUP($1, "Unsupported: $past expr2 (gating expression)");
+                          DEL($7);
+                          AstSenTree* const sentreep = $9 ? new AstSenTree{$<fl>9, $9} : nullptr;
+                          $$ = new AstPast{$1, $3, $5, sentreep}; }
         |       yD_PAST_GCLK '(' expr ')'               { $$ = new AstPast{$1, $3, nullptr, GRAMMARP->createGlobalClockSenTree($1)}; }
         |       yD_POW '(' expr ',' expr ')'            { $$ = new AstPowD{$1, $3, $5}; }
         |       yD_RANDOM '(' expr ')'                  { $$ = new AstRand{$1, $3, false}; }
@@ -5372,25 +5391,25 @@ stream_expression<nodeExprp>:   // ==IEEE: stream_expression
         //                      // IEEE: array_range_expression expanded below
                 expr                                    { $$ = $1; }
         |       expr yWITH__BRA '[' expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelBit{$2, $1, $4}; }
         |       expr yWITH__BRA '[' expr ':' expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelExtract{$2, $1, $4, $6}; }
         |       expr yWITH__BRA '[' expr yP_PLUSCOLON  expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelPlus{$2, $1, $4, $6}; }
         |       expr yWITH__BRA '[' expr yP_MINUSCOLON expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelMinus{$2, $1, $4, $6}; }
         ;
 
 stream_expressionOrDataType<nodep>:     // IEEE: from streaming_concatenation
                 exprOrDataType                          { $$ = $1; }
         |       expr yWITH__BRA '[' expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelBit{$2, $1, $4}; }
         |       expr yWITH__BRA '[' expr ':' expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelExtract{$2, $1, $4, $6}; }
         |       expr yWITH__BRA '[' expr yP_PLUSCOLON  expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelPlus{$2, $1, $4, $6}; }
         |       expr yWITH__BRA '[' expr yP_MINUSCOLON expr ']'
-                        { $$ = $1; BBUNSUP($2, "Unsupported: with[] stream expression"); }
+                        { $$ = new AstSelMinus{$2, $1, $4, $6}; }
         ;
 
 //************************************************
