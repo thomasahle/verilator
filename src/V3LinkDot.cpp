@@ -168,6 +168,7 @@ private:
     std::array<ScopeAliasMap, SAMN__MAX> m_scopeAliasMap;  // Map of <lhs,rhs> aliases
     std::vector<VSymEnt*> m_ifaceVarSyms;  // List of AstIfaceRefDType's to be imported
     IfaceModSyms m_ifaceModSyms;  // List of AstIface+Symbols to be processed
+    std::vector<AstModportVarRef*> m_modportExprVarRefs;  // ModportVarRefs with expressions to delete
     const VLinkDotStep m_step;  // Operational step
 
 public:
@@ -509,6 +510,21 @@ public:
     // Track and later insert interface references
     void insertIfaceVarSym(VSymEnt* symp) {  // Where sym is for a VAR of dtype IFACEREFDTYPE
         m_ifaceVarSyms.push_back(symp);
+    }
+    // Track ModportVarRefs with expressions to delete after scope creation
+    void insertModportExprVarRef(AstModportVarRef* nodep) {
+        m_modportExprVarRefs.push_back(nodep);
+    }
+    void deleteModportExprVarRefs() {
+        // Delete ModportVarRefs with expressions after scope creation is complete.
+        // These were kept during scope creation so VarXRef resolution could use them.
+        for (AstModportVarRef* nodep : m_modportExprVarRefs) {
+            if (nodep->backp()) {  // Not already deleted
+                nodep->unlinkFrBack();
+                VL_DO_DANGLING(nodep->deleteTree(), nodep);
+            }
+        }
+        m_modportExprVarRefs.clear();
     }
     // Iface for a raw or arrayed iface
     static AstIfaceRefDType* ifaceRefFromArray(AstNodeDType* nodep) {
@@ -2645,18 +2661,28 @@ class LinkDotIfaceVisitor final : public VNVisitor {
         string lookupName = nodep->name();  // Default: port name == var name
         if (nodep->exprp()) {
             // Modport expression: port name differs from variable name
-            if (AstParseRef* const parserefp = VN_CAST(nodep->exprp(), ParseRef)) {
+            // Navigate through any part-selects to find the base variable
+            AstNodeExpr* basep = nodep->exprp();
+            while (AstNodePreSel* const selp = VN_CAST(basep, NodePreSel)) {
+                // For selects like a[7:0], extract the base 'a' from fromp()
+                basep = selp->fromp();
+            }
+            if (AstParseRef* const parserefp = VN_CAST(basep, ParseRef)) {
                 // Extract variable name from the ParseRef
                 lookupName = parserefp->name();
-            } else if (AstVarRef* const varrefp = VN_CAST(nodep->exprp(), VarRef)) {
+            } else if (AstVarRef* const varrefp = VN_CAST(basep, VarRef)) {
                 // iterateChildren may have resolved ParseRef to VarRef
                 lookupName = varrefp->varp()->name();
             } else {
-                // Complex expression (part-select, etc.) - not yet supported
+                // Expression type not yet supported (could be function call, etc.)
                 nodep->v3warn(E_UNSUPPORTED,
-                              "Unsupported: Modport expressions with complex expressions "
+                              "Unsupported: Modport expressions with non-variable expressions "
                               "(IEEE 1800-2017 25.5.4)");
             }
+        } else if (nodep->varp() && nodep->varp()->name() != nodep->name()) {
+            // During scope creation, exprp() may be null but varp() was set during prelinkdot
+            // Use the underlying variable name for lookup
+            lookupName = nodep->varp()->name();
         }
         symp = m_curSymp->findIdFallback(lookupName);
         if (!symp) {
@@ -2665,20 +2691,76 @@ class LinkDotIfaceVisitor final : public VNVisitor {
             // Make symbol under modport that points at the _interface_'s var via the modport.
             // (Need modport still to test input/output markings)
             nodep->varp(varp);
+            // Extract selection bounds from expression and delete the expression tree
+            // The expression tree (SELEXTRACT/PARSEREF) has nodes without dtypes,
+            // which would fail V3Broken checks after V3WidthCommit
+            if (nodep->exprp() && !m_statep->forScopeCreation()) {
+                AstNodeExpr* const basep = nodep->exprp();
+                if (AstSelExtract* const selp = VN_CAST(basep, SelExtract)) {
+                    // Part-select [msb:lsb]
+                    AstConst* const msbConstp = VN_CAST(selp->leftp(), Const);
+                    AstConst* const lsbConstp = VN_CAST(selp->rightp(), Const);
+                    if (msbConstp && lsbConstp) {
+                        nodep->selBounds(msbConstp->toSInt(), lsbConstp->toSInt());
+                        UINFO(9, "Extracted modport part-select: " << nodep->name() << " = "
+                                                                   << varp->name() << "["
+                                                                   << nodep->selMsb() << ":"
+                                                                   << nodep->selLsb() << "]");
+                    } else {
+                        nodep->v3warn(E_UNSUPPORTED,
+                                      "Unsupported: Modport expressions with non-constant "
+                                      "part-selects (IEEE 1800-2017 25.5.4)");
+                    }
+                } else if (AstSelBit* const selp = VN_CAST(basep, SelBit)) {
+                    // Bit-select [idx]
+                    AstConst* const idxConstp = VN_CAST(selp->bitp(), Const);
+                    if (idxConstp) {
+                        const int idx = idxConstp->toSInt();
+                        nodep->selBounds(idx, idx);  // MSB == LSB for bit-select
+                        UINFO(9, "Extracted modport bit-select: " << nodep->name() << " = "
+                                                                  << varp->name() << "[" << idx
+                                                                  << "]");
+                    } else {
+                        nodep->v3warn(E_UNSUPPORTED,
+                                      "Unsupported: Modport expressions with non-constant "
+                                      "bit-selects (IEEE 1800-2017 25.5.4)");
+                    }
+                }
+                // Delete the expression tree (no longer needed - we have varp and selBounds)
+                AstNodeExpr* const exprToDelete = nodep->exprp()->unlinkFrBack();
+                VL_DO_DANGLING(pushDeletep(exprToDelete), exprToDelete);
+            }
             // Insert under port name (not underlying var name for modport expressions)
             m_statep->insertSym(m_curSymp, nodep->name(), nodep, nullptr /*package*/);
         } else if (AstVarScope* const vscp = VN_CAST(symp->nodep(), VarScope)) {
             // Make symbol under modport that points at the _interface_'s var, not the modport.
             nodep->varp(vscp->varp());
-            m_statep->insertSym(m_curSymp, nodep->name(), vscp, nullptr /*package*/);
+            // For modport expressions with part-selects, insert the ModportVarRef in the symbol table
+            // (it has the selection bounds needed for VarXRef resolution)
+            if (!nodep->hasSelection()) {
+                m_statep->insertSym(m_curSymp, nodep->name(), vscp, nullptr /*package*/);
+            } else {
+                // Insert ModportVarRef under port name so VarXRef resolution can find it
+                // and apply the part-select. Also store the VarScope for later lookup.
+                m_statep->insertSym(m_curSymp, nodep->name(), nodep, nullptr /*package*/);
+                UINFO(9, "Inserted ModportVarRef for modport expression: " << nodep->name()
+                                                                           << " hasSelection="
+                                                                           << nodep->hasSelection());
+            }
         } else {
             nodep->v3error("Modport item is not a variable: " << nodep->prettyNameQ());
         }
         if (m_statep->forScopeCreation()) {
-            // Done with AstModportVarRef.
-            // Delete to prevent problems if we dead-delete pointed to variable
-            nodep->unlinkFrBack();
-            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+            if (nodep->hasSelection()) {
+                // Keep nodes with part-selects - they're needed during VarXRef resolution
+                // Track for later deletion after scope creation completes
+                m_statep->insertModportExprVarRef(nodep);
+            } else {
+                // Done with AstModportVarRef.
+                // Delete to prevent problems if we dead-delete pointed to variable
+                nodep->unlinkFrBack();
+                VL_DO_DANGLING(pushDeletep(nodep), nodep);
+            }
         }
     }
     void visit(AstModportClockingRef* nodep) override {  // IfaceVisitor::
@@ -4476,9 +4558,14 @@ class LinkDotResolveVisitor final : public VNVisitor {
 
             bool modport = false;
             VSymEnt* modportSymp = nullptr;  // For modport expression lookup
+            UINFO(1, indent() << "dotSymp->nodep()=" << dotSymp->nodep()
+                              << " dotted=" << nodep->dotted() << " name=" << nodep->name());
             if (const AstVar* varp = VN_CAST(dotSymp->nodep(), Var)) {
+                UINFO(1, indent() << "varp=" << varp << " childDTypep=" << varp->childDTypep());
                 if (const AstIfaceRefDType* const ifaceRefp
                     = VN_CAST(varp->childDTypep(), IfaceRefDType)) {
+                    UINFO(1, indent()
+                              << "ifaceRefp=" << ifaceRefp << " modportp=" << ifaceRefp->modportp());
                     if (ifaceRefp->modportp()) {
                         modportSymp = m_statep->getNodeSym(ifaceRefp->modportp());
                         dotSymp = modportSymp;
@@ -4509,6 +4596,7 @@ class LinkDotResolveVisitor final : public VNVisitor {
 
             if (!m_statep->forScopeCreation()) {
                 VSymEnt* foundp = nullptr;
+                AstModportVarRef* modportVarRefp = nullptr;  // Track for part-select handling
                 if (modport) {
                     // This is a copy of findSymPrefixed with few modifications.
                     // This searches without a fallback like findSymPrefixed but if lookup fails it
@@ -4517,6 +4605,12 @@ class LinkDotResolveVisitor final : public VNVisitor {
                     string prefix = dotSymp->symPrefix();
                     while (!foundp) {
                         foundp = dotSymp->findIdFlat(prefix + nodep->name());
+                        // Check if this is a modport expression (.portname(expr))
+                        if (AstModportVarRef* const mvrefp
+                            = foundp ? VN_CAST(foundp->nodep(), ModportVarRef) : nullptr) {
+                            modportVarRefp = mvrefp;
+                            UINFO(9, "Found ModportVarRef: " << mvrefp);
+                        }
                         if (foundp) break;
                         UASSERT_OBJ(dotSymp->fallbackp(), nodep, "Modports shall have fallback");
                         foundp = dotSymp->fallbackp()->findIdFlat(prefix + nodep->name());
@@ -4553,6 +4647,23 @@ class LinkDotResolveVisitor final : public VNVisitor {
                                    << okSymp->cellErrorScopes(nodep));
                     return;
                 }
+                // For modport expressions with part-selects, set the dtype width
+                // This informs V3Width of the correct width for this reference
+                // The actual part-select will be applied during scope creation
+                UINFO(1, indent() << "Checking modportVarRefp: ptr=" << modportVarRefp
+                                  << " hasSelection="
+                                  << (modportVarRefp ? modportVarRefp->hasSelection() : false));
+                if (modportVarRefp && modportVarRefp->hasSelection()) {
+                    const int width = modportVarRefp->selWidth();
+                    UINFO(1, indent() << "Setting dtype for modport part-select: width=" << width);
+                    // Set the dtype to reflect the part-selected width
+                    nodep->dtypeSetLogicSized(width, VSigning::UNSIGNED);
+                    // Mark as width-processed to prevent V3Width from overwriting dtype
+                    // with the full-width dtype from varp()
+                    nodep->didWidth(true);
+                    UINFO(1, indent() << "After dtypeSetLogicSized: " << nodep->width()
+                                      << " didWidth=" << nodep->didWidth());
+                }
                 // V3Inst may have expanded arrays of interfaces to
                 // AstVarXRef's even though they are in the same module detect
                 // this and convert to normal VarRefs
@@ -4571,6 +4682,7 @@ class LinkDotResolveVisitor final : public VNVisitor {
                 // For scope creation: handle modport expressions (port name != var name)
                 VSymEnt* foundp = nullptr;
                 AstVarScope* vscp = nullptr;
+                AstModportVarRef* modportVarRefp = nullptr;  // Track for part-select handling
                 // Check if we're accessing via a modport (modportSymp set above)
                 if (modportSymp) {
                     UINFO(9, "modportSymp lookup: name=" << nodep->name()
@@ -4593,17 +4705,20 @@ class LinkDotResolveVisitor final : public VNVisitor {
                                    = VN_CAST(modportFoundp->nodep(), ModportVarRef)) {
                             UINFO(9, "found ModportVarRef: mvrefp=" << mvrefp
                                                                     << " varp=" << mvrefp->varp());
+                            modportVarRefp = mvrefp;  // Save for part-select handling
                             // Check if port name differs from underlying var name
                             if (mvrefp->varp() && mvrefp->varp()->name() != nodep->name()) {
-                                // Modport expression: look up underlying variable
+                                // Modport expression: look up underlying variable in interface scope
                                 const string underlyingName = mvrefp->varp()->name();
-                                UINFO(9, "modport expression: underlyingName=" << underlyingName);
-                                VSymEnt* const cellSymp = modportSymp->fallbackp();
-                                if (cellSymp) {
-                                    foundp = m_statep->findSymPrefixed(cellSymp, underlyingName,
+                                UINFO(9, "modport expression: underlyingName=" << underlyingName
+                                         << " fallbackp=" << modportSymp->fallbackp());
+                                // Use fallbackp - during scope creation it points to interface scope
+                                VSymEnt* const ifaceSymp = modportSymp->fallbackp();
+                                if (ifaceSymp) {
+                                    foundp = m_statep->findSymPrefixed(ifaceSymp, underlyingName,
                                                                        baddot, true);
-                                    vscp = foundp ? VN_CAST(foundp->nodep(), VarScope) : nullptr;
                                 }
+                                vscp = foundp ? VN_CAST(foundp->nodep(), VarScope) : nullptr;
                             }
                         }
                     }
@@ -4633,9 +4748,19 @@ class LinkDotResolveVisitor final : public VNVisitor {
                     UINFO(7, indent() << "Resolved " << nodep);  // Also prints taskp
                     AstVarRef* const newvscp
                         = new AstVarRef{nodep->fileline(), vscp, nodep->access()};
-                    nodep->replaceWith(newvscp);
+                    AstNodeExpr* replacement = newvscp;
+                    // For modport expressions with part-selects, wrap in AstSel
+                    if (modportVarRefp && modportVarRefp->hasSelection()) {
+                        const int msb = modportVarRefp->selMsb();
+                        const int lsb = modportVarRefp->selLsb();
+                        const int width = modportVarRefp->selWidth();
+                        UINFO(9, indent() << "Creating AstSel: msb=" << msb << " lsb=" << lsb
+                                          << " width=" << width);
+                        replacement = new AstSel{nodep->fileline(), newvscp, lsb, width};
+                    }
+                    nodep->replaceWith(replacement);
                     VL_DO_DANGLING(pushDeletep(nodep), nodep);
-                    UINFO(9, indent() << "new " << newvscp);  // Also prints taskp
+                    UINFO(9, indent() << "new " << replacement);  // Also prints taskp
                 }
             }
         }
@@ -6025,6 +6150,9 @@ void V3LinkDot::linkDotGuts(AstNetlist* rootp, VLinkDotStep step) {
     state.dumpSelf("linkdot-preresolve");
     LinkDotResolveVisitor visitor{rootp, &state};
     state.dumpSelf("linkdot-done");
+
+    // After SCOPED pass, delete ModportVarRefs with expressions that were kept for VarXRef resolution
+    if (step == LDS_SCOPED) { state.deleteModportExprVarRefs(); }
 
     // After ARRAYED pass, clear all bind source pointers.
     // The bind source scope is needed through ARRAYED for resolving interface port references.

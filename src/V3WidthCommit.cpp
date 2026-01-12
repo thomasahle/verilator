@@ -511,6 +511,13 @@ private:
         // This check could go anywhere after V3Param
         nodep->v3fatalSrc("Presels should have been removed before this point");
     }
+    void visit(AstModportVarRef* nodep) override {
+        // Modport variable references may have part-select expressions (.portname(sig[7:0]))
+        // These are metadata used during linking and should not be iterated through,
+        // as they may contain unresolved presels that aren't actually used in code generation.
+        // Skip children but process the node itself (edit dtype)
+        editDType(nodep);
+    }
     void visit(AstCMethodHard* nodep) override {
         VL_RESTORER(m_dynsizedelem);
         if (nodep->method() == VCMethod::ARRAY_AT || nodep->method() == VCMethod::ARRAY_AT_WRITE

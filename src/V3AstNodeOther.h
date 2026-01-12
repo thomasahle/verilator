@@ -1437,6 +1437,10 @@ class AstModportVarRef final : public AstNode {
     // @astgen ptr := m_varp : Optional[AstVar]  // Link to the actual Var
     string m_name;  // Name of the variable referenced
     const VDirection m_direction;  // Direction of the variable (in/out)
+    // Selection bounds for modport expressions like .portname(signal[7:0])
+    // If both are -1, no selection (full signal). If both are same, bit-select.
+    int m_selMsb = -1;  // MSB of part-select, -1 if no selection
+    int m_selLsb = -1;  // LSB of part-select, -1 if no selection
 public:
     AstModportVarRef(FileLine* fl, const string& name, VDirection::en direction)
         : ASTGEN_SUPER_ModportVarRef(fl)
@@ -1456,6 +1460,15 @@ public:
     VDirection direction() const { return m_direction; }
     AstVar* varp() const VL_MT_STABLE { return m_varp; }  // [After Link] Pointer to variable
     void varp(AstVar* varp) { m_varp = varp; }
+    // Selection bounds accessors
+    int selMsb() const { return m_selMsb; }
+    int selLsb() const { return m_selLsb; }
+    void selBounds(int msb, int lsb) {
+        m_selMsb = msb;
+        m_selLsb = lsb;
+    }
+    bool hasSelection() const { return m_selMsb >= 0 && m_selLsb >= 0; }
+    int selWidth() const { return hasSelection() ? (m_selMsb - m_selLsb + 1) : 0; }
 };
 class AstNetlist final : public AstNode {
     // All modules are under this single top node.

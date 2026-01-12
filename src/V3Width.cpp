@@ -2959,7 +2959,11 @@ class WidthVisitor final : public VNVisitor {
         // UINFOTREE(9, nodep, "", "VRin");
         // UINFOTREE(9, nodep->varp(), "", "forvar");
         // Note genvar's are also entered as integers
-        nodep->dtypeFrom(nodep->varp());
+        // For modport expressions with part-selects, the dtype was already set to the
+        // narrower width in V3LinkDot. Don't overwrite with the full varp() dtype.
+        if (!nodep->dtypep() || nodep->width() >= nodep->varp()->width()) {
+            nodep->dtypeFrom(nodep->varp());
+        }
         if (VN_IS(nodep->backp(), NodeAssign) && nodep->access().isWriteOrRW()) {  // On LHS
             UASSERT_OBJ(nodep->dtypep(), nodep, "LHS var should be dtype completed");
         }
@@ -7661,6 +7665,13 @@ class WidthVisitor final : public VNVisitor {
             m_modep = nodep;
             userIterateChildren(nodep, nullptr);
         }
+    }
+    void visit(AstModportVarRef* nodep) override {
+        // Modport variable references have optional expression children (for modport expressions
+        // like .portname(expr)). These expressions are metadata containing ParseRefs that
+        // haven't been linked yet, so we can't width them normally. The selection bounds
+        // are extracted and used in V3LinkDot during scope creation to wrap VarRef in AstSel.
+        // Do not iterate children - leave the expression as unresolved metadata.
     }
     void visit(AstNode* nodep) override {
         // Default: Just iterate
