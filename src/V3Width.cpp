@@ -2961,7 +2961,16 @@ class WidthVisitor final : public VNVisitor {
         // Note genvar's are also entered as integers
         // For modport expressions with part-selects, the dtype was already set to the
         // narrower width in V3LinkDot. Don't overwrite with the full varp() dtype.
-        if (!nodep->dtypep() || nodep->width() >= nodep->varp()->width()) {
+        // However, for foreach loop variables, the VarRef type may differ from Var type
+        // (e.g., integer vs struct for struct-keyed associative arrays, or different
+        // width for typed associative array keys). Always update for loop index vars.
+        const bool dtypeMismatch
+            = nodep->dtypep() && nodep->varp()->dtypep()
+              && nodep->dtypep()->skipRefp()->type() != nodep->varp()->dtypep()->skipRefp()->type();
+        const bool isLoopIdxWithWrongWidth
+            = nodep->varp()->isUsedLoopIdx() && nodep->width() != nodep->varp()->width();
+        if (!nodep->dtypep() || nodep->width() >= nodep->varp()->width() || dtypeMismatch
+            || isLoopIdxWithWrongWidth) {
             nodep->dtypeFrom(nodep->varp());
         }
         if (VN_IS(nodep->backp(), NodeAssign) && nodep->access().isWriteOrRW()) {  // On LHS
