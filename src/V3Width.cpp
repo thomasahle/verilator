@@ -1833,7 +1833,15 @@ class WidthVisitor final : public VNVisitor {
             bool isUnbounded = false;
             if (VN_IS(nodep->lhsp(), Unbounded)) {
                 isUnbounded = true;
-            } else if (AstNodeDType* const dtypep = nodep->lhsp()->dtypep()) {
+            } else if (const AstVarRef* const varrefp = VN_CAST(nodep->lhsp(), VarRef)) {
+                // Check if VarRef points to a parameter with $ as its value
+                if (AstVar* const varp = varrefp->varp()) {
+                    if (varp->isParam() && VN_IS(varp->valuep(), Unbounded)) {
+                        isUnbounded = true;
+                    }
+                }
+            }
+            if (!isUnbounded) if (AstNodeDType* const dtypep = nodep->lhsp()->dtypep()) {
                 if (const AstQueueDType* const queuep
                     = VN_CAST(dtypep->skipRefp(), QueueDType)) {
                     // Queue is unbounded if no explicit bound, or bound is $
