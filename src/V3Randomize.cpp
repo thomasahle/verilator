@@ -1329,41 +1329,31 @@ class ConstraintExprVisitor final : public VNVisitor {
         FileLine* const fl = nodep->fileline();
         // Adaptive formatting and type handling for associative array keys
         if (VN_IS(nodep->bitp(), VarRef) && VN_AS(nodep->bitp(), VarRef)->isString()) {
-            // Variable string keys are unsupported - can't convert to hex at compile time
-            nodep->v3error("Unsupported: Constrained randomization with variable string key "
-                           "(use constant string keys or non-string associative array)");
-            return;
+            // Variable string keys (e.g., foreach iterator) - format using %32p
+            VNRelinker handle;
+            AstNodeExpr* const idxp = new AstSFormatF{fl, (m_structSel ? "%32p" : "#x%32p"), false,
+                                                      nodep->bitp()->unlinkFrBack(&handle)};
+            handle.relink(idxp);
+            editSMT(nodep, nodep->fromp(), idxp);
         } else if (VN_IS(nodep->bitp(), CvtPackString)
                    && VN_IS(nodep->bitp()->dtypep(), BasicDType)) {
             AstCvtPackString* const stringp = VN_AS(nodep->bitp(), CvtPackString);
-            // Check if this is a variable string key (VarRef) vs constant string key (Const)
-            // Variable string keys can't be converted to hex at compile time
-            const bool isVariableStringKey = VN_IS(stringp->lhsp(), VarRef);
-            if (isVariableStringKey) {
-                // Variable string keys (e.g., foreach index) are unsupported because we can't
-                // convert the string to a consistent hex representation at compile time.
-                // Constant string keys work because they're converted to hex during compilation.
-                nodep->v3error("Unsupported: Constrained randomization with variable string key "
-                               "(use constant string keys or non-string associative array)");
-                return;
-            } else {
-                // Integer type - check size limit and use hex formatting
-                if (const AstConst* const constp = VN_CAST(stringp->lhsp(), Const)) {
-                    const size_t stringSize = constp->width();
-                    if (stringSize > 128) {
-                        stringp->v3warn(
-                            CONSTRAINTIGN,
-                            "Unsupported: Constrained randomization of associative array keys of "
-                                << stringSize << "bits, limit is 128 bits");
-                    }
+            // Check if this is a constant string key - only check size for constants
+            if (const AstConst* const constp = VN_CAST(stringp->lhsp(), Const)) {
+                const size_t stringSize = constp->width();
+                if (stringSize > 128) {
+                    stringp->v3warn(
+                        CONSTRAINTIGN,
+                        "Unsupported: Constrained randomization of associative array keys of "
+                            << stringSize << "bits, limit is 128 bits");
                 }
-                VNRelinker handle;
-                AstNodeExpr* const idxp
-                    = new AstSFormatF{fl, (m_structSel ? "%32x" : "#x%32x"), false,
-                                      stringp->lhsp()->unlinkFrBack(&handle)};
-                handle.relink(idxp);
-                editSMT(nodep, nodep->fromp(), idxp);
             }
+            VNRelinker handle;
+            AstNodeExpr* const idxp
+                = new AstSFormatF{fl, (m_structSel ? "%32x" : "#x%32x"), false,
+                                  stringp->lhsp()->unlinkFrBack(&handle)};
+            handle.relink(idxp);
+            editSMT(nodep, nodep->fromp(), idxp);
         } else {
             if (VN_IS(nodep->bitp()->dtypep(), BasicDType)
                 || (VN_IS(nodep->bitp()->dtypep(), StructDType)
