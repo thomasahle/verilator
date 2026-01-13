@@ -12,6 +12,8 @@ module t;
       if ($bits(a) != 0) $stop;
       a = new [10];
       if ($bits(a) != 10*32) $stop;
+      $write("*-* All Finished *-*\n");
+      $finish;
    end
 
 endmodule
