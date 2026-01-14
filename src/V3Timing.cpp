@@ -298,6 +298,12 @@ class TimingSuspendableVisitor final : public VNVisitor {
         if (m_procp) addFlags(m_procp, T_SUSPENDEE | T_SUSPENDER | T_NEEDS_PROC);
         iterateChildren(nodep);
     }
+    void visit(AstWaitOrder* nodep) override {
+        // wait_order is a timing control statement
+        v3Global.setUsesTiming();
+        if (m_procp) addFlags(m_procp, T_SUSPENDEE | T_SUSPENDER | T_NEEDS_PROC);
+        iterateChildren(nodep);
+    }
     void visit(AstCFunc* nodep) override {
         VL_RESTORER(m_procp);
         m_procp = nodep;
@@ -1242,6 +1248,19 @@ class TimingControlVisitor final : public VNVisitor {
             loopp->addStmtsp(controlp);
             if (stmtsp) AstNode::addNext<AstNode, AstNode>(loopp, stmtsp);
             nodep->replaceWith(loopp);
+        }
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
+    void visit(AstWaitOrder* nodep) override {
+        // wait_order statement is not yet fully supported
+        // For now, issue unsupported warning
+        nodep->v3warn(E_UNSUPPORTED, "Unsupported: wait_order statement");
+        // Replace with fail action if present, else just remove
+        if (AstNode* const failsp = nodep->failsp()) {
+            failsp->unlinkFrBackWithNext();
+            nodep->replaceWith(failsp);
+        } else {
+            nodep->unlinkFrBack();
         }
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }

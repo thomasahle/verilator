@@ -3718,11 +3718,11 @@ statement_item<nodeStmtp>:          // IEEE: statement_item
         |       yWAIT yFORK ';'                         { $$ = new AstWaitFork{$1}; }
         //                      // action_block expanded here
         |       yWAIT_ORDER '(' vrdList ')' stmt %prec prLOWER_THAN_ELSE
-                        { $$ = nullptr; BBUNSUP($4, "Unsupported: wait_order"); DEL($3, $5); }
+                        { $$ = new AstWaitOrder{$1, $3, $5, nullptr}; }
         |       yWAIT_ORDER '(' vrdList ')' stmt yELSE stmt
-                        { $$ = nullptr; BBUNSUP($4, "Unsupported: wait_order"); DEL($3, $5, $7);}
+                        { $$ = new AstWaitOrder{$1, $3, $5, $7}; }
         |       yWAIT_ORDER '(' vrdList ')' yELSE stmt
-                        { $$ = nullptr; BBUNSUP($4, "Unsupported: wait_order"); DEL($3, $6); }
+                        { $$ = new AstWaitOrder{$1, $3, nullptr, $6}; }
         //
         //                      // IEEE: procedural_assertion_statement
         |       procedural_assertion_statement          { $$ = $1; }

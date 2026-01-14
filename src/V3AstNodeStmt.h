@@ -1346,6 +1346,22 @@ public:
     ASTGEN_MEMBERS_AstWaitFork;
     bool isTimingControl() const override { return true; }
 };
+class AstWaitOrder final : public AstNodeStmt {
+    // IEEE 1800-2017 15.4: wait_order statement
+    // Waits for events to trigger in left-to-right order
+    // @astgen op1 := eventsp : List[AstNode]  // List of event references
+    // @astgen op2 := passsp : List[AstNode]   // Statements if events in order
+    // @astgen op3 := failsp : List[AstNode]   // Statements if events out of order
+public:
+    AstWaitOrder(FileLine* fl, AstNode* eventsp, AstNode* passsp, AstNode* failsp)
+        : ASTGEN_SUPER_WaitOrder(fl) {
+        addEventsp(eventsp);
+        addPasssp(passsp);
+        addFailsp(failsp);
+    }
+    ASTGEN_MEMBERS_AstWaitOrder;
+    bool isTimingControl() const override { return true; }
+};
 
 // === AstNodeAssign ===
 class AstAssign final : public AstNodeAssign {
