@@ -631,7 +631,8 @@ public:
 
     void hard(std::string&& constraint, const char* filename = "", int linenum = 0,
               const char* source = "");
-    void soft(std::string&& constraint);
+    void soft(std::string&& constraint, const char* filename = "", int linenum = 0,
+              const char* source = "");
     void clearConstraints();
     void clearAll();  // Clear both constraints and variables
     void set_randmode(const VlQueue<CData>& randmode) { m_randmodep = &randmode; }

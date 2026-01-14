@@ -663,8 +663,13 @@ void VlRandomizer::hard(std::string&& constraint, const char* filename, int line
     }
 }
 
-void VlRandomizer::soft(std::string&& constraint) {
+void VlRandomizer::soft(std::string&& constraint, const char* filename, int linenum,
+                        const char* source) {
     m_softConstraints.emplace_back(std::move(constraint));
+    // Location info currently unused for soft constraints, but available for future diagnostics
+    (void)filename;
+    (void)linenum;
+    (void)source;
 }
 
 void VlRandomizer::clearConstraints() {
