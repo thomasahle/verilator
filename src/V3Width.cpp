@@ -1784,6 +1784,20 @@ class WidthVisitor final : public VNVisitor {
             nodep->dtypeSetBit();
         }
     }
+    void visit(AstPropCase* nodep) override {
+        // Property case expression (IEEE 1800-2017 16.12)
+        if (!m_vup || m_vup->prelim()) {
+            userIterateAndNext(nodep->exprp(), WidthVP{SELF, BOTH}.p());
+            for (AstCaseItem* itemp = nodep->itemsp(); itemp;
+                 itemp = VN_AS(itemp->nextp(), CaseItem)) {
+                for (AstNode* condp = itemp->condsp(); condp; condp = condp->nextp()) {
+                    userIterateAndNext(condp, WidthVP{SELF, BOTH}.p());
+                }
+                userIterateAndNext(itemp->stmtsp(), WidthVP{SELF, BOTH}.p());
+            }
+            nodep->dtypeSetBit();
+        }
+    }
     void visit(AstFirstMatch* nodep) override {
         // SVA first_match(sequence) operator (IEEE 1800-2017 16.9.4)
         // May be called with null m_vup when visiting sequence declarations

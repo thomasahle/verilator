@@ -2124,6 +2124,23 @@ public:
     AstNodeDType* getChildDTypep() const override { return childDTypep(); }
     AstNodeDType* subDTypep() const VL_MT_STABLE { return dtypep() ? dtypep() : childDTypep(); }
 };
+class AstPropCase final : public AstNodeExpr {
+    // Property case expression (IEEE 1800-2017 16.12)
+    // @astgen op1 := exprp : AstNodeExpr  // Condition expression
+    // @astgen op2 := itemsp : List[AstCaseItem]  // Case items
+public:
+    AstPropCase(FileLine* fl, AstNodeExpr* exprp, AstCaseItem* itemsp)
+        : ASTGEN_SUPER_PropCase(fl) {
+        this->exprp(exprp);
+        addItemsp(itemsp);
+    }
+    ASTGEN_MEMBERS_AstPropCase;
+    string emitVerilog() override { return "case (%l) %r endcase"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { V3ERROR_NA_RETURN(false); }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
 class AstPropIf final : public AstNodeExpr {
     // Property if/else expression (IEEE 1800-2017 16.12)
     // @astgen op1 := condp : AstNodeExpr

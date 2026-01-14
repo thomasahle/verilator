@@ -335,6 +335,75 @@ class AssertPropIfVisitor final : public VNVisitor {
             VL_DO_DANGLING(nodep->deleteTree(), nodep);
         }
     }
+    void visit(AstPropCase* nodep) override {
+        // Property case expression (IEEE 1800-2017 16.12)
+        // Transform to nested if-else chain
+        iterateChildren(nodep);
+
+        FileLine* const flp = nodep->fileline();
+        AstNodeExpr* const exprp = nodep->exprp()->unlinkFrBack();
+
+        // Build nested if-else chain from case items
+        AstNodeExpr* resultp = nullptr;
+        AstNodeExpr* defaultp = nullptr;
+
+        // Find all items and the default
+        for (AstCaseItem* itemp = nodep->itemsp(); itemp;
+             itemp = VN_AS(itemp->nextp(), CaseItem)) {
+            AstNodeExpr* bodyp = VN_AS(itemp->stmtsp(), NodeExpr);
+            if (bodyp) bodyp = bodyp->unlinkFrBack();
+            if (!bodyp) bodyp = new AstConst{flp, AstConst::BitTrue{}};
+
+            if (itemp->isDefault()) {
+                defaultp = bodyp;
+            } else {
+                // Build OR of all conditions
+                AstNodeExpr* condp = nullptr;
+                for (AstNode* cp = itemp->condsp(); cp;) {
+                    AstNode* nextp = cp->nextp();
+                    AstNodeExpr* const condExprp = VN_AS(cp->unlinkFrBack(), NodeExpr);
+                    AstNodeExpr* const eqp = new AstEq{flp, exprp->cloneTreePure(false), condExprp};
+                    if (condp) {
+                        condp = new AstOr{flp, condp, eqp};
+                    } else {
+                        condp = eqp;
+                    }
+                    cp = nextp;
+                }
+                if (condp) {
+                    // Create PropIf for this case
+                    AstPropIf* propifp;
+                    if (resultp) {
+                        // Chain as else branch
+                        propifp = new AstPropIf{flp, condp, bodyp, resultp};
+                    } else {
+                        // First item, will get default as else
+                        propifp = new AstPropIf{flp, condp, bodyp, nullptr};
+                    }
+                    propifp->dtypeSetBit();
+                    resultp = propifp;
+                }
+            }
+        }
+
+        // Add default as innermost else (or use true if no default)
+        if (!defaultp) defaultp = new AstConst{flp, AstConst::BitTrue{}};
+        if (resultp) {
+            // Find innermost PropIf and set its else branch
+            AstPropIf* innermost = VN_AS(resultp, PropIf);
+            while (innermost && innermost->elsep()) {
+                innermost = VN_CAST(innermost->elsep(), PropIf);
+            }
+            if (innermost) innermost->elsep(defaultp);
+        } else {
+            // No non-default items, just use default
+            resultp = defaultp;
+        }
+
+        VL_DO_DANGLING(exprp->deleteTree(), exprp);
+        nodep->replaceWith(resultp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
     void visit(AstFirstMatch* nodep) override {
         // First transform any children
         iterateChildren(nodep);
