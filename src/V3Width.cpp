@@ -3592,8 +3592,10 @@ class WidthVisitor final : public VNVisitor {
                 pushDeletep(itemp->valuep()->unlinkFrBack());
             }
         }
-        const bool isHardPackedUnion
-            = nodep->packed() && VN_IS(nodep, UnionDType) && !VN_CAST(nodep, UnionDType)->isSoft();
+        const AstUnionDType* const unionp = VN_CAST(nodep, UnionDType);
+        // Hard packed unions require equal sizes, but tagged and soft unions don't
+        const bool isHardPackedUnion = nodep->packed() && unionp && !unionp->isSoft()
+                                       && !unionp->isTagged();
 
         // Determine bit assignments and width
         if (VN_IS(nodep, UnionDType) || nodep->packed()) {
@@ -3620,6 +3622,18 @@ class WidthVisitor final : public VNVisitor {
                     width += itemp->width();
                 }
                 first = false;
+            }
+            // For tagged unions, add discriminant bits (ceil(log2(num_members)))
+            if (unionp && unionp->isTagged()) {
+                int numMembers = 0;
+                for (AstMemberDType* mp = nodep->membersp(); mp;
+                     mp = VN_CAST(mp->nextp(), MemberDType)) {
+                    ++numMembers;
+                }
+                // Discriminant width: ceil(log2(numMembers)), minimum 1 bit
+                int tagWidth = 1;
+                while ((1 << tagWidth) < numMembers) ++tagWidth;
+                width += tagWidth;
             }
             nodep->widthForce(width, width);  // Signing stays as-is, as parsed from declaration
         } else {

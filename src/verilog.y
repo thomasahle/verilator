@@ -2102,8 +2102,8 @@ data_typeVirtual<nodeDTypep>:           // ==IEEE: data_type after yVIRTUAL [ yI
 data_type_or_void<nodeDTypep>:  // ==IEEE: data_type_or_void
                 data_typeAny                            { $$ = $1; }
         |       yVOID
-                        { $$ = new AstBasicDType{$1, LOGIC_IMPLICIT};
-                          BBUNSUP($1, "Unsupported: void (for tagged unions)"); }
+                        // Void for tagged unions: 0-width type
+                        { $$ = new AstBasicDType{$1, VBasicDTypeKwd::BIT, VSigning::NOSIGN, 0, 0}; }
         ;
 
 var_data_type<nodeDTypep>:              // ==IEEE: var_data_type
@@ -2134,7 +2134,7 @@ struct_unionDecl<nodeUOrStructDTypep>:  // IEEE: part of data_type
         /*cont*/    struct_union_memberListEnd
                         { $$ = $<nodeUOrStructDTypep>4; $$->addMembersp($5); }
         |       yUNION taggedSoftE packedSigningE '{'
-        /*mid*/         { $<nodeUOrStructDTypep>$ = new AstUnionDType{$1, $2, $3}; }
+        /*mid*/         { $<nodeUOrStructDTypep>$ = new AstUnionDType{$1, $2 == 1, $2 == 2, $3}; }
         /*cont*/    struct_union_memberListEnd
                         { $$ = $<nodeUOrStructDTypep>5; $$->addMembersp($6); }
         ;
@@ -2272,10 +2272,10 @@ random_qualifier<qualifiers>:   // ==IEEE: random_qualifier
         |       yRANDC                                  { $$ = VMemberQualifiers::none(); $$.m_randc = true; }
         ;
 
-taggedSoftE<cbool>:
-                /*empty*/                               { $$ = false; }
-        |       ySOFT                                   { $$ = true; }
-        |       yTAGGED                                 { $$ = false; BBUNSUP($<fl>1, "Unsupported: tagged union"); }
+taggedSoftE<cint>:  // Returns 0=none, 1=soft, 2=tagged
+                /*empty*/                               { $$ = 0; }
+        |       ySOFT                                   { $$ = 1; }
+        |       yTAGGED                                 { $$ = 2; }
         ;
 
 packedSigningE<signstate>:
