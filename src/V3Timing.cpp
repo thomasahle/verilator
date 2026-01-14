@@ -482,6 +482,7 @@ class TimingControlVisitor final : public VNVisitor {
 
     // Unique names
     V3UniqueNames m_dlyforkNames{"__Vdlyfork"};  // Names for temp AssignW vars
+    V3UniqueNames m_blkforkNames{"__Vblkfork"};  // Names for blocking assign intra-timing begins
     V3UniqueNames m_contAsgnTmpNames{"__VassignWtmp"};  // Names for temp AssignW vars
     V3UniqueNames m_contAsgnGenNames{"__VassignWgen"};  // Continuous assign generation name
                                                         // generator
@@ -1064,6 +1065,21 @@ class TimingControlVisitor final : public VNVisitor {
             controlp->replaceWith(forkp);
             AstBegin* beginp = VN_CAST(controlp, Begin);
             if (!beginp) beginp = new AstBegin{nodep->fileline(), "", controlp, false};
+            forkp->addForksp(beginp);
+            controlp = forkp;
+        } else if (controlp) {
+            // Blocking assignment with intra-assignment timing control
+            // Wrap in fork..join so timing is properly scheduled (blocks until timing completes)
+            AstFork* forkp = new AstFork{flp, VJoinType::JOIN};
+            controlp->replaceWith(forkp);
+            AstBegin* beginp = VN_CAST(controlp, Begin);
+            if (!beginp) {
+                beginp = new AstBegin{nodep->fileline(), "", controlp, false};
+            }
+            // Give the begin a name (required by V3SchedTiming)
+            if (beginp->name().empty()) {
+                beginp->name(m_blkforkNames.get(nodep));
+            }
             forkp->addForksp(beginp);
             controlp = forkp;
         }

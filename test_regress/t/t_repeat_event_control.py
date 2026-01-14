@@ -9,10 +9,10 @@
 
 import vltest_bootstrap
 
-test.scenarios('vlt')
+test.scenarios('simulator')
 
-test.lint(verilator_flags2=['--timing'],
-          fails=True,
-          expect_filename=test.golden_filename)
+test.compile(verilator_flags2=['--timing'])
+
+test.execute()
 
 test.passes()
