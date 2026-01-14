@@ -1040,6 +1040,26 @@ public:
     int instrCount() const override { return INSTR_COUNT_BRANCH; }
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
 };
+class AstRepeatEventControl final : public AstNodeStmt {
+    // IEEE: repeat (expr) event_control
+    // Wait for the event control to fire 'count' times
+    // @astgen op1 := countp : AstNodeExpr
+    // @astgen op2 := sentreep : AstSenTree
+    // @astgen op3 := stmtsp : List[AstNode]
+public:
+    AstRepeatEventControl(FileLine* fl, AstNodeExpr* countp, AstSenTree* sentreep,
+                          AstNode* stmtsp = nullptr)
+        : ASTGEN_SUPER_RepeatEventControl(fl) {
+        this->countp(countp);
+        this->sentreep(sentreep);
+        addStmtsp(stmtsp);
+    }
+    ASTGEN_MEMBERS_AstRepeatEventControl;
+    string verilogKwd() const override { return "repeat (...) @(...)"; }
+    bool isTimingControl() const override { return true; }
+    int instrCount() const override { return 0; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
 class AstReturn final : public AstNodeStmt {
     // @astgen op1 := lhsp : Optional[AstNodeExpr]
 public:

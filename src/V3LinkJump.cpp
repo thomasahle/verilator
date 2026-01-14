@@ -373,6 +373,51 @@ class LinkJumpVisitor final : public VNVisitor {
         nodep->replaceWith(beginp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
+    void visit(AstRepeatEventControl* nodep) override {
+        // IEEE repeat(n) @(event) stmtsp
+        // Transform to: for (int i = n; i > 0; i--) { @(event) } stmtsp
+        // Where the event control is the loop body, and stmtsp follows the loop
+        AstNodeExpr* const countp = nodep->countp()->unlinkFrBackWithNext();
+        const string name = "__VrepeatEvt"s + cvtToStr(m_modRepeatNum++);
+        AstBegin* const beginp = new AstBegin{nodep->fileline(), "", nullptr, true};
+        // Spec says value is integral, if negative is ignored
+        AstVar* const varp
+            = new AstVar{nodep->fileline(), VVarType::BLOCKTEMP, name, nodep->findSigned32DType()};
+        varp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
+        varp->usedLoopIdx(true);
+        beginp->addStmtsp(varp);
+        AstNode* initsp = new AstAssign{
+            nodep->fileline(), new AstVarRef{nodep->fileline(), varp, VAccess::WRITE}, countp};
+        AstNode* const decp = new AstAssign{
+            nodep->fileline(), new AstVarRef{nodep->fileline(), varp, VAccess::WRITE},
+            new AstSub{nodep->fileline(), new AstVarRef{nodep->fileline(), varp, VAccess::READ},
+                       new AstConst{nodep->fileline(), 1}}};
+        AstNodeExpr* const zerosp = new AstConst{nodep->fileline(), AstConst::Signed32{}, 0};
+        AstNodeExpr* const condp = new AstGtS{
+            nodep->fileline(), new AstVarRef{nodep->fileline(), varp, VAccess::READ}, zerosp};
+        // The loop body is an empty event control (just wait, no statement)
+        AstSenTree* sentreep = nodep->sentreep();
+        if (sentreep) sentreep = sentreep->unlinkFrBack();
+        AstNode* const eventControlp = new AstEventControl{nodep->fileline(), sentreep, nullptr};
+        FileLine* const flp = nodep->fileline();
+        AstLoop* const loopp = new AstLoop{flp};
+        loopp->addStmtsp(new AstLoopTest{flp, loopp, condp});
+        loopp->addStmtsp(eventControlp);
+        loopp->addContsp(decp);
+        if (!m_unrollFull.isDefault()) loopp->unroll(m_unrollFull);
+        m_unrollFull = VOptionBool::OPT_DEFAULT_FALSE;
+        beginp->addStmtsp(initsp);
+        beginp->addStmtsp(loopp);
+        // Any statements after the repeat event control follow the loop
+        AstNode* const stmtsp = nodep->stmtsp();
+        if (stmtsp) {
+            stmtsp->unlinkFrBackWithNext();
+            beginp->addStmtsp(stmtsp);
+        }
+        // Replacement AstBegin will be iterated next
+        nodep->replaceWith(beginp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
     void visit(AstLoop* nodep) override {
         if (!m_unrollFull.isDefault()) nodep->unroll(m_unrollFull);
         if (m_modp->hasParameterList() || m_modp->hasGParam()) {
