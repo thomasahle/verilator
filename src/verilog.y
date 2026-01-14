@@ -3437,6 +3437,8 @@ senitem<senItemp>:              // IEEE: part of event_expression, non-'OR' ',' 
                         { $$ = new AstSenItem{$<fl>1, VEdgeType::ET_CHANGED, $1}; }
         |       expr yIFF expr
                         { $$ = new AstSenItem{$<fl>1, VEdgeType::ET_CHANGED, $1, $3}; }
+        |       expr yP_ANDANDAND expr
+                        { $$ = new AstSenItem{$<fl>1, VEdgeType::ET_CHANGED, $1, $3}; }
         ;
 
 senitemVar<senItemp>:
@@ -3456,6 +3458,12 @@ senitemEdge<senItemp>:          // IEEE: part of event_expression
         |       yNEGEDGE expr yIFF expr
                         { $$ = new AstSenItem{$1, VEdgeType::ET_NEGEDGE, $2, $4}; }
         |       yEDGE expr yIFF expr
+                        { $$ = new AstSenItem{$1, VEdgeType::ET_BOTHEDGE, $2, $4}; }
+        |       yPOSEDGE expr yP_ANDANDAND expr
+                        { $$ = new AstSenItem{$1, VEdgeType::ET_POSEDGE, $2, $4}; }
+        |       yNEGEDGE expr yP_ANDANDAND expr
+                        { $$ = new AstSenItem{$1, VEdgeType::ET_NEGEDGE, $2, $4}; }
+        |       yEDGE expr yP_ANDANDAND expr
                         { $$ = new AstSenItem{$1, VEdgeType::ET_BOTHEDGE, $2, $4}; }
         ;
 
@@ -5148,8 +5156,8 @@ expr<nodeExprp>:                // IEEE: part of expression/constant_expression/
         //
         //                      // IEEE: cond_predicate - here to avoid reduce problems
         //                      // Note expr includes cond_pattern
-        |       ~l~expr yP_ANDANDAND ~r~expr            { $$ = new AstConst{$2, AstConst::BitFalse{}};
-                                                          BBUNSUP($<fl>2, "Unsupported: &&& expression"); }
+        //                      // &&& is only valid in event expressions (senitem), not general expressions
+        //                      // See senitem and senitemEdge rules for &&& support
         //
         //                      // IEEE: cond_pattern - here to avoid reduce problems
         //                      // "expr yMATCHES pattern"
