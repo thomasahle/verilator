@@ -6689,10 +6689,13 @@ pexpr<nodeExprp>:  // IEEE: property_expr  (The name pexpr is important as regex
         //                      // IEEE-2012: yIF and yCASE
         |       property_statementCaseIf                { $$ = $1; }
         //
+        //                      // IEEE: sequence_expr followed_by_op property_expr
+        //                      // #-# is non-overlapping followed-by (like |->)
+        //                      // #=# is non-overlapping followed-by with delay (like |=>)
         |       ~o~pexpr/*sexpr*/ yP_POUNDMINUSPD pexpr
-                        { $$ = $1; BBUNSUP($2, "Unsupported: #-# (in property expression)"); DEL($3); }
+                        { $$ = new AstImplication{$2, $1, $3, true}; }
         |       ~o~pexpr/*sexpr*/ yP_POUNDEQPD pexpr
-                        { $$ = $1; BBUNSUP($2, "Unsupported: #=# (in property expression)"); DEL($3); }
+                        { $$ = new AstImplication{$2, $1, $3, false}; }
         |       yNEXTTIME pexpr
                         { $$ = new AstNexttime{$1, $2, nullptr, false}; }
         |       yS_NEXTTIME pexpr
