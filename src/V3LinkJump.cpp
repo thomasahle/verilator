@@ -49,9 +49,11 @@ class LinkJumpVisitor final : public VNVisitor {
     //  AstFinish::user1()     -> bool, processed
     //  AstNode::user2()       -> AstJumpBlock*, for this block
     //  AstNodeBegin::user3()  -> bool, true if contains a fork
+    //  AstTask::user4()       -> AstVar*, process queue for disable handling
     const VNUser1InUse m_user1InUse;
     const VNUser2InUse m_user2InUse;
     const VNUser3InUse m_user3InUse;
+    const VNUser4InUse m_user4InUse;
 
     // STATE
     AstNodeModule* m_modp = nullptr;  // Current module
@@ -176,6 +178,45 @@ class LinkJumpVisitor final : public VNVisitor {
         processSelfp->classOrPackagep(processClassp);
         return new AstStmtExpr{
             fl, new AstMethodCall{fl, queueRefp, "push_back", new AstArg{fl, "", processSelfp}}};
+    }
+    void handleDisableOnTask(AstDisable* const nodep, AstTask* const taskp) {
+        // Similar to handleDisableOnFork: For each task that can be disabled, a queue of
+        // processes is declared. At the beginning of the task, its process handle is pushed
+        // to the queue. `disable` statement is replaced with calling `kill()` on each element.
+        FileLine* const fl = nodep->fileline();
+        AstPackage* const topPkgp = v3Global.rootp()->dollarUnitPkgAddp();
+        AstClass* const processClassp
+            = VN_AS(getMemberp(v3Global.rootp()->stdPackagep(), "process"), Class);
+        // Generate unique queue name for this task
+        const string queueName = m_queueNames.get(taskp->name());
+        // Check if we already created a queue for this task (user4 stores the queue var)
+        AstVar* processQueuep = VN_CAST(taskp->user4p(), Var);
+        if (!processQueuep) {
+            // Declare queue of processes (as a global variable for simplicity)
+            processQueuep = new AstVar{
+                fl, VVarType::VAR, queueName, VFlagChildDType{},
+                new AstQueueDType{fl, VFlagChildDType{},
+                                  new AstClassRefDType{fl, processClassp, nullptr}, nullptr}};
+            processQueuep->lifetime(VLifetime::STATIC_EXPLICIT);
+            topPkgp->addStmtsp(processQueuep);
+            taskp->user4p(processQueuep);
+            // Add push_back(process::self()) at start of task body
+            if (taskp->stmtsp()) {
+                AstVarRef* const queueWriteRefp
+                    = new AstVarRef{taskp->fileline(), topPkgp, processQueuep, VAccess::WRITE};
+                AstStmtExpr* const pushCurrentProcessp = getQueuePushProcessSelfp(queueWriteRefp);
+                taskp->stmtsp()->addHereThisAsNext(pushCurrentProcessp);
+            }
+        }
+        // Replace disable with killQueue call
+        AstVarRef* const queueRefp
+            = new AstVarRef{fl, topPkgp, processQueuep, VAccess::READWRITE};
+        AstTaskRef* const killQueueCall
+            = new AstTaskRef{fl, VN_AS(getMemberp(processClassp, "killQueue"), Task),
+                             new AstArg{fl, "", queueRefp}};
+        killQueueCall->classOrPackagep(processClassp);
+        AstStmtExpr* const killStmtp = new AstStmtExpr{fl, killQueueCall};
+        nodep->addNextHere(killStmtp);
     }
     void handleDisableOnFork(AstDisable* const nodep, const std::vector<AstBegin*>& forks) {
         // The support utilizes the process::kill()` method. For each `disable` a queue of
@@ -332,6 +373,51 @@ class LinkJumpVisitor final : public VNVisitor {
         nodep->replaceWith(beginp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
+    void visit(AstRepeatEventControl* nodep) override {
+        // IEEE repeat(n) @(event) stmtsp
+        // Transform to: for (int i = n; i > 0; i--) { @(event) } stmtsp
+        // Where the event control is the loop body, and stmtsp follows the loop
+        AstNodeExpr* const countp = nodep->countp()->unlinkFrBackWithNext();
+        const string name = "__VrepeatEvt"s + cvtToStr(m_modRepeatNum++);
+        AstBegin* const beginp = new AstBegin{nodep->fileline(), "", nullptr, true};
+        // Spec says value is integral, if negative is ignored
+        AstVar* const varp
+            = new AstVar{nodep->fileline(), VVarType::BLOCKTEMP, name, nodep->findSigned32DType()};
+        varp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
+        varp->usedLoopIdx(true);
+        beginp->addStmtsp(varp);
+        AstNode* initsp = new AstAssign{
+            nodep->fileline(), new AstVarRef{nodep->fileline(), varp, VAccess::WRITE}, countp};
+        AstNode* const decp = new AstAssign{
+            nodep->fileline(), new AstVarRef{nodep->fileline(), varp, VAccess::WRITE},
+            new AstSub{nodep->fileline(), new AstVarRef{nodep->fileline(), varp, VAccess::READ},
+                       new AstConst{nodep->fileline(), 1}}};
+        AstNodeExpr* const zerosp = new AstConst{nodep->fileline(), AstConst::Signed32{}, 0};
+        AstNodeExpr* const condp = new AstGtS{
+            nodep->fileline(), new AstVarRef{nodep->fileline(), varp, VAccess::READ}, zerosp};
+        // The loop body is an empty event control (just wait, no statement)
+        AstSenTree* sentreep = nodep->sentreep();
+        if (sentreep) sentreep = sentreep->unlinkFrBack();
+        AstNode* const eventControlp = new AstEventControl{nodep->fileline(), sentreep, nullptr};
+        FileLine* const flp = nodep->fileline();
+        AstLoop* const loopp = new AstLoop{flp};
+        loopp->addStmtsp(new AstLoopTest{flp, loopp, condp});
+        loopp->addStmtsp(eventControlp);
+        loopp->addContsp(decp);
+        if (!m_unrollFull.isDefault()) loopp->unroll(m_unrollFull);
+        m_unrollFull = VOptionBool::OPT_DEFAULT_FALSE;
+        beginp->addStmtsp(initsp);
+        beginp->addStmtsp(loopp);
+        // Any statements after the repeat event control follow the loop
+        AstNode* const stmtsp = nodep->stmtsp();
+        if (stmtsp) {
+            stmtsp->unlinkFrBackWithNext();
+            beginp->addStmtsp(stmtsp);
+        }
+        // Replacement AstBegin will be iterated next
+        nodep->replaceWith(beginp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
     void visit(AstLoop* nodep) override {
         if (!m_unrollFull.isDefault()) nodep->unroll(m_unrollFull);
         if (m_modp->hasParameterList() || m_modp->hasGParam()) {
@@ -418,8 +504,8 @@ class LinkJumpVisitor final : public VNVisitor {
         UINFO(8, "   DISABLE " << nodep);
         AstNode* const targetp = nodep->targetp();
         UASSERT_OBJ(targetp, nodep, "Unlinked disable statement");
-        if (VN_IS(targetp, Task)) {
-            nodep->v3warn(E_UNSUPPORTED, "Unsupported: disabling task by name");
+        if (AstTask* const taskp = VN_CAST(targetp, Task)) {
+            handleDisableOnTask(nodep, taskp);
         } else if (AstFork* const forkp = VN_CAST(targetp, Fork)) {
             std::vector<AstBegin*> forks;
             for (AstBegin* itemp = forkp->forksp(); itemp; itemp = VN_AS(itemp->nextp(), Begin)) {

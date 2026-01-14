@@ -520,6 +520,11 @@ class TimingControlVisitor final : public VNVisitor {
             stmtp->replaceWith(beginp->unlinkFrBack());
             beginp->addStmtsp(stmtp);
             stmtp = beginp;
+        } else if (AstRepeatEventControl* const repeatp = VN_CAST(controlp, RepeatEventControl)) {
+            // Repeat event control on an assignment - put the assignment inside the loop
+            stmtp->replaceWith(repeatp->unlinkFrBack());
+            repeatp->addStmtsp(stmtp);
+            stmtp = repeatp;
         }
         return stmtp == nodep ? nullptr : stmtp;
     }

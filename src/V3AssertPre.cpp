@@ -329,40 +329,100 @@ private:
         }
         if (nodep->stmtsp()) nodep->addNextHere(nodep->stmtsp()->unlinkFrBackWithNext());
         FileLine* const flp = nodep->fileline();
-        AstNodeExpr* valuep = V3Const::constifyEdit(nodep->lhsp()->unlinkFrBack());
-        const AstConst* const constp = VN_CAST(valuep, Const);
-        if (!constp) {
+
+        // Get min delay value
+        AstNodeExpr* minValuep = V3Const::constifyEdit(nodep->lhsp()->unlinkFrBack());
+        const AstConst* const minConstp = VN_CAST(minValuep, Const);
+        if (!minConstp) {
             nodep->v3error(
                 "Delay value is not an elaboration-time constant (IEEE 1800-2023 16.7)");
-        } else if (constp->isZero()) {
-            nodep->v3warn(E_UNSUPPORTED, "Unsupported: ##0 delays");
             VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
-            VL_DO_DANGLING(valuep->deleteTree(), valuep);
+            VL_DO_DANGLING(minValuep->deleteTree(), minValuep);
             return;
         }
+
+        // Check for range delay ##[min:max] or ##[min:$]
+        const bool isRange = nodep->isRangeDelay();
+        uint32_t minVal = minConstp->toUInt();
+        uint32_t maxVal = minVal;  // Default: fixed delay
+        bool isUnbounded = false;  // True for ##[n:$]
+
+        if (isRange) {
+            AstNodeExpr* maxValuep = nodep->rhsp()->unlinkFrBack();
+            // Check for unbounded range (##[n:$])
+            // After width resolution, AstUnbounded may be wrapped in AstExtend
+            const AstNodeExpr* checkp = maxValuep;
+            if (const AstExtend* const extp = VN_CAST(maxValuep, Extend)) {
+                checkp = extp->lhsp();
+            }
+            if (VN_IS(checkp, Unbounded)) {
+                isUnbounded = true;
+                maxVal = UINT32_MAX;  // Use max value to indicate unbounded
+                VL_DO_DANGLING(maxValuep->deleteTree(), maxValuep);
+            } else {
+                maxValuep = V3Const::constifyEdit(maxValuep);
+                const AstConst* const maxConstp = VN_CAST(maxValuep, Const);
+                if (!maxConstp) {
+                    nodep->v3error(
+                        "Range delay max is not an elaboration-time constant (IEEE 1800-2023 16.7)");
+                    VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+                    VL_DO_DANGLING(minValuep->deleteTree(), minValuep);
+                    VL_DO_DANGLING(maxValuep->deleteTree(), maxValuep);
+                    return;
+                }
+                maxVal = maxConstp->toUInt();
+                VL_DO_DANGLING(maxValuep->deleteTree(), maxValuep);
+
+                if (minVal > maxVal) {
+                    nodep->v3error("Range delay min (" + std::to_string(minVal)
+                                   + ") > max (" + std::to_string(maxVal) + ")");
+                    VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+                    VL_DO_DANGLING(minValuep->deleteTree(), minValuep);
+                    return;
+                }
+            }
+        }
+
+        if (minVal == 0 && maxVal == 0) {
+            // ##0 means no delay - just execute the following statements immediately
+            // Statements were already moved to siblings, so just delete the delay
+            VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+            VL_DO_DANGLING(minValuep->deleteTree(), minValuep);
+            return;
+        }
+
         AstSenItem* sensesp = nullptr;
         if (!m_defaultClockingp) {
             if (!m_inPExpr) {
                 nodep->v3error("Usage of cycle delays requires default clocking"
                                " (IEEE 1800-2023 14.11)");
                 VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
-                VL_DO_DANGLING(valuep->deleteTree(), valuep);
+                VL_DO_DANGLING(minValuep->deleteTree(), minValuep);
                 return;
             }
             sensesp = m_senip;
+            if (!sensesp) {
+                nodep->v3error("Cycle delay requires property clocking event"
+                               " (IEEE 1800-2023 16.7)");
+                VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+                VL_DO_DANGLING(minValuep->deleteTree(), minValuep);
+                return;
+            }
         } else {
             sensesp = m_defaultClockingp->sensesp();
         }
-        AstEventControl* const controlp = new AstEventControl{
-            nodep->fileline(), new AstSenTree{flp, sensesp->cloneTree(false)}, nullptr};
+
         const std::string delayName = m_cycleDlyNames.get(nodep);
         AstVar* const cntVarp = new AstVar{flp, VVarType::BLOCKTEMP, delayName + "__counter",
                                            nodep->findBasicDType(VBasicDTypeKwd::UINT32)};
         cntVarp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
         AstBegin* const beginp = new AstBegin{flp, delayName + "__block", cntVarp, true};
-        beginp->addStmtsp(new AstAssign{flp, new AstVarRef{flp, cntVarp, VAccess::WRITE}, valuep});
+        beginp->addStmtsp(new AstAssign{flp, new AstVarRef{flp, cntVarp, VAccess::WRITE}, minValuep});
 
+        // Wait for min cycles
         {
+            AstEventControl* const controlp = new AstEventControl{
+                flp, new AstSenTree{flp, sensesp->cloneTree(false)}, nullptr};
             AstLoop* const loopp = new AstLoop{flp};
             loopp->addStmtsp(new AstLoopTest{
                 flp, loopp,
@@ -374,6 +434,116 @@ private:
                                          new AstConst{flp, 1}}});
             beginp->addStmtsp(loopp);
         }
+
+        // For range delays, we need to check the following expression at each cycle
+        // in the range [min, max]. The following expression is in the next sibling.
+        // For unbounded (##[n:$]), we keep checking until the condition is met.
+        if ((isRange && maxVal > minVal) || isUnbounded) {
+            // Get the next sibling (should be an AstIf checking the sequence expression)
+            AstNode* const nextp = nodep->nextp();
+            if (nextp && VN_IS(nextp, If)) {
+                AstIf* const checkIfp = VN_AS(nextp, If);
+
+                // Create matched flag
+                AstVar* const matchedVarp = new AstVar{
+                    flp, VVarType::BLOCKTEMP, delayName + "__matched",
+                    nodep->findBasicDType(VBasicDTypeKwd::BIT)};
+                matchedVarp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
+                beginp->addStmtsp(matchedVarp);
+                beginp->addStmtsp(new AstAssign{
+                    flp, new AstVarRef{flp, matchedVarp, VAccess::WRITE},
+                    new AstConst{flp, AstConst::BitFalse{}}});
+
+                // For bounded ranges, create attempts counter
+                // For ##[min:max], we have (max - min + 1) chances to match
+                AstVar* attemptsVarp = nullptr;
+                if (!isUnbounded) {
+                    const uint32_t numAttempts = maxVal - minVal + 1;
+                    attemptsVarp = new AstVar{
+                        flp, VVarType::BLOCKTEMP, delayName + "__attempts",
+                        nodep->findBasicDType(VBasicDTypeKwd::UINT32)};
+                    attemptsVarp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
+                    beginp->addStmtsp(attemptsVarp);
+                    beginp->addStmtsp(new AstAssign{
+                        flp, new AstVarRef{flp, attemptsVarp, VAccess::WRITE},
+                        new AstConst{flp, numAttempts}});
+                }
+
+                // Unlink the check from its current position
+                checkIfp->unlinkFrBack();
+
+                // Create the retry loop structure
+                AstLoop* const tryLoop = new AstLoop{flp};
+
+                // Loop test: continue while not matched
+                // For bounded delays, also check that attempts > 0 (haven't exhausted all tries)
+                AstNodeExpr* loopCondp
+                    = new AstNot{flp, new AstVarRef{flp, matchedVarp, VAccess::READ}};
+                if (!isUnbounded) {
+                    // For bounded: !matched && attempts > 0
+                    // attempts starts at (maxVal - minVal + 1), decremented each failed attempt
+                    loopCondp = new AstAnd{
+                        flp, loopCondp,
+                        new AstGt{flp, new AstVarRef{flp, attemptsVarp, VAccess::READ},
+                                  new AstConst{flp, 0}}};
+                }
+                tryLoop->addStmtsp(new AstLoopTest{flp, tryLoop, loopCondp});
+
+                // Clone the condition for checking
+                AstNodeExpr* const condp = checkIfp->condp()->cloneTreePure(false);
+
+                AstNode* retryStmts = nullptr;
+                if (isUnbounded) {
+                    // For unbounded: just wait one cycle (keep trying forever)
+                    retryStmts = new AstEventControl{
+                        flp, new AstSenTree{flp, sensesp->cloneTree(false)}, nullptr};
+                } else {
+                    // For bounded: decrement attempts and wait one cycle if attempts > 1
+                    // (attempts == 1 means this is our last chance, no need to wait)
+                    AstAssign* const decrement = new AstAssign{
+                        flp, new AstVarRef{flp, attemptsVarp, VAccess::WRITE},
+                        new AstSub{flp, new AstVarRef{flp, attemptsVarp, VAccess::READ},
+                                   new AstConst{flp, 1}}};
+                    AstEventControl* const retryControl = new AstEventControl{
+                        flp, new AstSenTree{flp, sensesp->cloneTree(false)}, nullptr};
+                    // Wait only if we have more attempts after decrement
+                    AstIf* const waitIf = new AstIf{
+                        flp,
+                        new AstGt{flp, new AstVarRef{flp, attemptsVarp, VAccess::READ},
+                                  new AstConst{flp, 0}},
+                        retryControl};
+                    decrement->addNextHere(waitIf);
+                    retryStmts = decrement;
+                }
+
+                // Success case: condition true - set matched flag
+                // Else branch: retry (unbounded) or retry if attempts > 0 (bounded)
+                AstIf* const successIf = new AstIf{
+                    flp, condp,
+                    new AstAssign{flp, new AstVarRef{flp, matchedVarp, VAccess::WRITE},
+                                  new AstConst{flp, AstConst::BitTrue{}}},
+                    retryStmts};
+
+                tryLoop->addStmtsp(successIf);
+                beginp->addStmtsp(tryLoop);
+
+                // After loop: if matched, execute success path; else execute fail path
+                AstNode* const thenp = checkIfp->thensp()
+                                           ? checkIfp->thensp()->cloneTree(true)
+                                           : nullptr;
+                AstNode* const elsep = checkIfp->elsesp()
+                                           ? checkIfp->elsesp()->cloneTree(true)
+                                           : nullptr;
+                AstIf* const resultIf = new AstIf{
+                    flp, new AstVarRef{flp, matchedVarp, VAccess::READ},
+                    thenp, elsep};
+                beginp->addStmtsp(resultIf);
+
+                // Delete the original check (we've cloned what we need)
+                VL_DO_DANGLING(checkIfp->deleteTree(), checkIfp);
+            }
+        }
+
         nodep->replaceWith(beginp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
@@ -651,6 +821,16 @@ private:
             iterateChildren(nodep);
         }
     }
+    void visit(AstSExprClocked* nodep) override {
+        // Clocked sequence expression: @(event) sexpr
+        // Set m_senip so cycle delays within can use this clock
+        // Also set m_inPExpr so cycle delay handler knows we're in a valid context
+        VL_RESTORER(m_senip);
+        VL_RESTORER(m_inPExpr);
+        m_senip = nodep->sensesp();
+        m_inPExpr = true;  // Clocked sequence acts like a property expression for delays
+        iterateChildren(nodep);
+    }
     void visit(AstNodeModule* nodep) override {
         VL_RESTORER(m_defaultClockingp);
         VL_RESTORER(m_defaultDisablep);
@@ -679,6 +859,11 @@ private:
     void visit(AstProperty* nodep) override {
         // The body will be visited when will be substituted in place of property reference
         // (AstFuncRef)
+        VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
+    }
+    void visit(AstSequence* nodep) override {
+        // Sequence bodies are already substituted/inlined by V3LinkResolve.
+        // Delete the original to prevent visiting cycle delays without proper context.
         VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
     }
     void visit(AstNode* nodep) override { iterateChildren(nodep); }

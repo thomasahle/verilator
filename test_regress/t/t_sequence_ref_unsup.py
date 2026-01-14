@@ -11,6 +11,8 @@ import vltest_bootstrap
 
 test.scenarios('vlt')
 
-test.lint(expect_filename=test.golden_filename, fails=True)
+# Sequence declarations now parse; event control with sequence does not
+# yet work at runtime, so we only do lint-only test
+test.lint(verilator_flags2=['--timing'])
 
 test.passes()

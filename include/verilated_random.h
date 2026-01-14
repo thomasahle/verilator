@@ -84,6 +84,7 @@ public:
     mutable std::shared_ptr<const ArrayInfoMap> m_arrVarsRefp;
     void setArrayInfo(const std::shared_ptr<const ArrayInfoMap>& arrVarsRefp) const {
         m_arrVarsRefp = arrVarsRefp;
+        count_cache.clear();  // Clear cache when array info changes (two-phase solving)
     }
     mutable std::map<std::string, int> count_cache;
     int countMatchingElements(const ArrayInfoMap& arr_vars, const std::string& base_name) const {
@@ -170,10 +171,24 @@ public:
                 for (int i = 0; i < dimension(); ++i) s << ")";
             }
         } else {
-            VL_FATAL_MT(__FILE__, __LINE__, "randomize", "indexed_name not found in m_arr_vars");
+            // Empty dynamic array (queue/dyn array) - emit as Array with 32-bit index
+            // This allows the solver to work even when no elements are recorded yet
+            if (dimension() > 0) {
+                for (int i = 0; i < dimension(); ++i) {
+                    s << "(Array (_ BitVec 32) ";
+                }
+                s << "(_ BitVec " << width() << ")";
+                for (int i = 0; i < dimension(); ++i) s << ")";
+            } else {
+                s << "(_ BitVec " << width() << ")";
+            }
         }
     }
     int totalWidth() const override {
+        if (!m_arrVarsRefp) {
+            // Not set (empty dynamic array) - return 0
+            return 0;
+        }
         const int elementCounts = countMatchingElements(*m_arrVarsRefp, name());
         return width() * elementCounts;
     }
@@ -199,9 +214,10 @@ public:
 // Object holding constraints and variable references.
 class VlRandomizer VL_NOT_FINAL {
     // MEMBERS
-    std::vector<std::string> m_constraints;  // Solver-dependent constraints
+    std::vector<std::string> m_constraints;  // Hard constraints (must be satisfied)
     std::vector<std::string>
         m_constraints_line;  // fileline content of the constraint for unsat constraints
+    std::vector<std::string> m_softConstraints;  // Soft constraints (optional, best-effort)
     std::map<std::string, std::shared_ptr<const VlRandomVar>> m_vars;  // Solver-dependent
                                                                        // variables
     ArrayInfoMap m_arr_vars;  // Tracks each element in array structures for iteration
@@ -338,13 +354,17 @@ public:
     }
 
     // Register queue of non-struct types
-    template <typename T>
+    template <typename T, size_t N_MaxSize>
     typename std::enable_if<!VlContainsCustomStruct<T>::value, void>::type
-    write_var(VlQueue<T>& var, int width, const char* name, int dimension,
+    write_var(VlQueue<T, N_MaxSize>& var, int width, const char* name, int dimension,
               std::uint32_t randmodeIdx = std::numeric_limits<std::uint32_t>::max()) {
-        if (m_vars.find(name) != m_vars.end()) return;
-        m_vars[name] = std::make_shared<const VlRandomArrayVarTemplate<VlQueue<T>>>(
-            name, width, &var, dimension, randmodeIdx);
+        // Register variable only once in m_vars
+        if (m_vars.find(name) == m_vars.end()) {
+            m_vars[name] = std::make_shared<const VlRandomArrayVarTemplate<VlQueue<T, N_MaxSize>>>(
+                name, width, &var, dimension, randmodeIdx);
+        }
+        // Always re-record array elements (needed for two-phase solving with foreach constraints)
+        // After queue resize, this updates m_arr_vars with the new elements
         if (dimension > 0) {
             m_index = 0;
             record_arr_table(var, name, dimension, {}, {});
@@ -352,11 +372,27 @@ public:
     }
 
     // Register queue of structs
-    template <typename T>
+    template <typename T, size_t N_MaxSize>
     typename std::enable_if<VlContainsCustomStruct<T>::value, void>::type
-    write_var(VlQueue<T>& var, int width, const char* name, int dimension,
+    write_var(VlQueue<T, N_MaxSize>& var, int width, const char* name, int dimension,
               std::uint32_t randmodeIdx = std::numeric_limits<std::uint32_t>::max()) {
         if (dimension > 0) record_struct_arr(var, name, dimension, {}, {});
+    }
+
+    // Register queue of class references - only size is randomizable, not the pointers
+    // Class instances should be randomized via their own randomize() method
+    template <typename T, size_t N_MaxSize>
+    void write_var(VlQueue<VlClassRef<T>, N_MaxSize>& var, int /*width*/, const char* name,
+                   int dimension,
+                   std::uint32_t randmodeIdx = std::numeric_limits<std::uint32_t>::max()) {
+        // Register the queue variable for size constraints only (width=32 for size)
+        // Don't record elements - class references shouldn't be randomized directly
+        if (m_vars.find(name) == m_vars.end()) {
+            m_vars[name]
+                = std::make_shared<const VlRandomArrayVarTemplate<VlQueue<VlClassRef<T>, N_MaxSize>>>(
+                    name, 32, &var, dimension, randmodeIdx);
+        }
+        // Skip record_arr_table - class references are not randomizable primitives
     }
 
     // Register unpacked array of non-struct types
@@ -379,6 +415,19 @@ public:
     write_var(VlUnpacked<T, N_Depth>& var, int width, const char* name, int dimension,
               std::uint32_t randmodeIdx = std::numeric_limits<std::uint32_t>::max()) {
         if (dimension > 0) record_struct_arr(var, name, dimension, {}, {});
+    }
+
+    // Register unpacked array of class references
+    template <typename T, std::size_t N_Depth>
+    void write_var(VlUnpacked<VlClassRef<T>, N_Depth>& var, int /*width*/, const char* name,
+                   int dimension,
+                   std::uint32_t randmodeIdx = std::numeric_limits<std::uint32_t>::max()) {
+        // Register for size constraints only - class references aren't randomizable directly
+        if (m_vars.find(name) == m_vars.end()) {
+            m_vars[name] = std::make_shared<
+                const VlRandomArrayVarTemplate<VlUnpacked<VlClassRef<T>, N_Depth>>>(
+                name, 32, &var, dimension, randmodeIdx);
+        }
     }
 
     // Register associative array of non-struct types
@@ -416,6 +465,15 @@ public:
         ++m_index;
     }
 
+    // Record a VlClassRef (class reference) element - these are pointers to objects
+    // and should not be recorded for randomization directly. The contained objects
+    // should handle their own randomization via their own randomize() method.
+    template <typename T>
+    void record_arr_table(VlClassRef<T>& /*var*/, const std::string& /*name*/, int /*dimension*/,
+                          std::vector<IData> /*indices*/, std::vector<size_t> /*idxWidths*/) {
+        // Class references are pointers - don't record them for direct randomization
+    }
+
     // Recursively record all elements in an unpacked array
     template <typename T, std::size_t N_Depth>
     void record_arr_table(VlUnpacked<T, N_Depth>& var, const std::string& name, int dimension,
@@ -433,8 +491,8 @@ public:
     }
 
     // Recursively record all elements in a queue
-    template <typename T>
-    void record_arr_table(VlQueue<T>& var, const std::string& name, int dimension,
+    template <typename T, size_t N_MaxSize>
+    void record_arr_table(VlQueue<T, N_MaxSize>& var, const std::string& name, int dimension,
                           std::vector<IData> indices, std::vector<size_t> idxWidths) {
         if ((dimension > 0) && (var.size() != 0)) {
             idxWidths.push_back(32);
@@ -507,8 +565,8 @@ public:
     }
 
     // Recursively process VlQueue of structs
-    template <typename T>
-    void record_struct_arr(VlQueue<T>& var, const std::string& name, int dimension,
+    template <typename T, size_t N_MaxSize>
+    void record_struct_arr(VlQueue<T, N_MaxSize>& var, const std::string& name, int dimension,
                            std::vector<IData> indices, std::vector<size_t> idxWidths) {
         if ((dimension > 0) && (var.size() != 0)) {
             idxWidths.push_back(32);
@@ -572,6 +630,8 @@ public:
     }
 
     void hard(std::string&& constraint, const char* filename = "", int linenum = 0,
+              const char* source = "");
+    void soft(std::string&& constraint, const char* filename = "", int linenum = 0,
               const char* source = "");
     void clearConstraints();
     void clearAll();  // Clear both constraints and variables

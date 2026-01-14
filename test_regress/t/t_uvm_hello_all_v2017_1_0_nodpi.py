@@ -21,6 +21,7 @@ test.compile(v_flags2=[
     "-j 0",
     "--CFLAGS -O0",
     "-Wall",
+    "-Wno-REDEFMACRO",  # UVM 2017 redefines UVM_VERSION from t/uvm
     "+incdir+t/uvm",  #
     "t/uvm/uvm_pkg_all_v2017_1_0_nodpi.svh",
 ])

@@ -17,12 +17,15 @@ test.pli_filename = "t/uvm/v2017_1_0/dpi/uvm_dpi.cc"
 if test.have_dev_gcov:
     test.skip("Test suite intended for full dev coverage without needing this test")
 
+# Suppress sprintf deprecation warnings from upstream UVM code on macOS/clang
 test.compile(v_flags2=[
     "--binary",
     "--vpi",
     "-j 0",
     "--CFLAGS -O0",
+    "-CFLAGS", "-Wno-deprecated-declarations",
     "-Wall",
+    "-Wno-REDEFMACRO",  # UVM 2017 redefines UVM_VERSION from t/uvm
     "+incdir+t/uvm",  #
     "t/uvm/uvm_pkg_all_v2017_1_0_dpi.svh",
     test.pli_filename

@@ -275,6 +275,36 @@ constexpr VAssertType::en operator|(VAssertType::en lhs, VAssertType::en rhs) {
 
 // ######################################################################
 
+class VCoverBinType final {
+public:
+    // IEEE 1800-2017 19.5 - covergroup bins types
+    enum en : uint8_t {
+        BINS,         // Normal bins
+        ILLEGAL_BINS, // illegal_bins - generate error when hit
+        IGNORE_BINS,  // ignore_bins - excluded from coverage
+    };
+    enum en m_e;
+    VCoverBinType()
+        : m_e{BINS} {}
+    // cppcheck-suppress noExplicitConstructor
+    constexpr VCoverBinType(en _e)
+        : m_e{_e} {}
+    string ascii() const {
+        switch (m_e) {
+        case BINS: return "bins";
+        case ILLEGAL_BINS: return "illegal_bins";
+        case IGNORE_BINS: return "ignore_bins";
+        }
+        return "?";
+    }
+    constexpr operator en() const { return m_e; }
+};
+constexpr bool operator==(const VCoverBinType& lhs, const VCoverBinType& rhs) {
+    return lhs.m_e == rhs.m_e;
+}
+
+// ######################################################################
+
 class VAttrType final {
 public:
     // clang-format off
@@ -729,6 +759,7 @@ public:
         ARRAY_FIRST,
         ARRAY_INSIDE,
         ARRAY_LAST,
+        ARRAY_MAP,
         ARRAY_MAX,
         ARRAY_MIN,
         ARRAY_NEXT,
@@ -787,6 +818,7 @@ public:
         RANDOMIZER_CLEARCONSTRAINTS,
         RANDOMIZER_CLEARALL,
         RANDOMIZER_HARD,
+        RANDOMIZER_SOFT,
         RANDOMIZER_WRITE_VAR,
         RNG_GET_RANDSTATE,
         RNG_SET_RANDSTATE,
@@ -858,6 +890,7 @@ inline std::ostream& operator<<(std::ostream& os, const VCMethod& rhs) {
            {ARRAY_FIRST, "first", false}, \
            {ARRAY_INSIDE, "inside", true}, \
            {ARRAY_LAST, "last", false}, \
+           {ARRAY_MAP, "map", true}, \
            {ARRAY_MAX, "max", true}, \
            {ARRAY_MIN, "min", true}, \
            {ARRAY_NEXT, "next", false}, \
@@ -916,6 +949,7 @@ inline std::ostream& operator<<(std::ostream& os, const VCMethod& rhs) {
            {RANDOMIZER_CLEARCONSTRAINTS, "clearConstraints", false}, \
            {RANDOMIZER_CLEARALL, "clearAll", false}, \
            {RANDOMIZER_HARD, "hard", false}, \
+           {RANDOMIZER_SOFT, "soft", false}, \
            {RANDOMIZER_WRITE_VAR, "write_var", false}, \
            {RNG_GET_RANDSTATE, "__Vm_rng.get_randstate", true}, \
            {RNG_SET_RANDSTATE, "__Vm_rng.set_randstate", false}, \

@@ -1,0 +1,10 @@
+SymEnt Dump:
++ '$root'                         se0x1039734f0  fallb=se0x0  [E]  n=NETLIST 0x10396b160 <e1#> {a0aa}  $root [NONE/NONE]
+| + '__GLOBAL'                      se0x79706c240  fallb=se0x0  [E]  n=NETLIST 0x10396b160 <e1#> {a0aa}  $root [NONE/NONE]
+| | + '__024unit'                     se0x79706c360  fallb=se0x0  [E]  n=PACKAGE 0x7970edf40 <e876#> {a0aa} u1=0x79706c4e0  __024unit  L2 D3 [LIB] [NONE]
+| | + 'std'                           se0x79706c2a0  fallb=se0x0  [E]  n=PACKAGE 0x103971400 <e8#> {d31aj} u1=0x79706c480  std  L2 D3 [LIB] [NONE]
+| | + 't'                             se0x79706c420  fallb=se0x0  [E]  n=MODULE 0x7970ef480 <e1426#> {e73ai} u1=0x79706c540  t  L1 D2 [NONE]
+| + 'work'                          se0x79706c180  fallb=se0x0  [E]  n=NETLIST 0x10396b160 <e1#> {a0aa}  $root [NONE/NONE]
+| | + '__024unit'                     se0x79706c300  fallb=se0x0  [E]  n=PACKAGE 0x7970edf40 <e876#> {a0aa} u1=0x79706c4e0  __024unit  L2 D3 [LIB] [NONE]
+| | + 'std'                           se0x79706c1e0  fallb=se0x0  [E]  n=PACKAGE 0x103971400 <e8#> {d31aj} u1=0x79706c480  std  L2 D3 [LIB] [NONE]
+| | + 't'                             se0x79706c3c0  fallb=se0x0  [E]  n=MODULE 0x7970ef480 <e1426#> {e73ai} u1=0x79706c540  t  L1 D2 [NONE]

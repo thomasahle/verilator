@@ -1,0 +1,5 @@
+%Error-UNSUPPORTED: t/t_repeat_event_control.v:29:16: Unsupported: repeat event control
+   29 |       result = repeat(3) @(posedge clk) value;
+      |                ^~~~~~
+                    ... For error description see https://verilator.org/warn/UNSUPPORTED?v=latest
+%Error: Exiting due to

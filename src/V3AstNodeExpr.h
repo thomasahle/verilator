@@ -521,6 +521,32 @@ public:
     bool cleanOut() const override { return true; }
     AstCFunc* funcp() const { return m_funcp; }
 };
+class AstAlwaysProp final : public AstNodeExpr {
+    // SVA always property operator (IEEE 1800-2017 16.12.7)
+    // "always p" - property p holds at every clock tick
+    // "always [m:n] p" - property p holds at every tick in range
+    // "s_always [m:n] p" - strong version (requires range)
+    // @astgen op1 := propp : AstNodeExpr  // Property expression
+    // @astgen op2 := rangep : Optional[AstNodeRange]  // Optional range
+    bool m_isStrong = false;  // True if s_always
+public:
+    AstAlwaysProp(FileLine* fl, AstNodeExpr* propp, AstNodeRange* rangep, bool isStrong)
+        : ASTGEN_SUPER_AlwaysProp(fl)
+        , m_isStrong{isStrong} {
+        this->propp(propp);
+        this->rangep(rangep);
+    }
+    ASTGEN_MEMBERS_AstAlwaysProp;
+    string emitVerilog() override { return m_isStrong ? "s_always(%l)" : "always(%l)"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* samep) const override {
+        const AstAlwaysProp* const sp = VN_DBG_AS(samep, AlwaysProp);
+        return m_isStrong == sp->m_isStrong;
+    }
+    bool isStrong() const { return m_isStrong; }
+};
 class AstArg final : public AstNodeExpr {
     // An argument to a function/task, which is either an expression, or is a placeholder for an
     // omitted argument.
@@ -946,6 +972,28 @@ public:
     int instrCount() const override { return widthInstrs(); }
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
 };
+class AstConsecRep final : public AstNodeExpr {
+    // SVA consecutive repetition operator (IEEE 1800-2017 16.9.2)
+    // expr[*n] or expr[*m:n] - boolean is true for n consecutive cycles
+    // @astgen op1 := exprp : AstNodeExpr  // Boolean expression
+    // @astgen op2 := countp : AstNodeExpr // Repetition count (or min for range)
+    // @astgen op3 := maxp : Optional[AstNodeExpr] // Max count for range (null if not range)
+public:
+    AstConsecRep(FileLine* fl, AstNodeExpr* exprp, AstNodeExpr* countp,
+                 AstNodeExpr* maxp = nullptr)
+        : ASTGEN_SUPER_ConsecRep(fl) {
+        this->exprp(exprp);
+        this->countp(countp);
+        this->maxp(maxp);
+    }
+    ASTGEN_MEMBERS_AstConsecRep;
+    string emitVerilog() override { return "%l[*%r]"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+    bool isRange() const { return maxp() != nullptr; }
+};
 class AstConst final : public AstNodeExpr {
     // A constant
     V3Number m_num;  // Constant value
@@ -1131,6 +1179,29 @@ public:
     string emitC() final override { V3ERROR_NA_RETURN(""); }
     bool cleanOut() const final override { V3ERROR_NA_RETURN(true); }
 };
+class AstCovTolerance final : public AstNodeExpr {
+    // Tolerance range in coverage bins ([value +/- tol] or [value +%- pct])
+    // Parents: AstCoverBin (in rangesp) or AstCovTransition (in stepsp)
+    // @astgen op1 := centerp : AstNodeExpr  // Center value
+    // @astgen op2 := tolerancep : AstNodeExpr  // Tolerance value
+    bool m_isPercent;  // True for +%-, false for +/-
+public:
+    AstCovTolerance(FileLine* fl, AstNodeExpr* centerp, AstNodeExpr* tolerancep, bool isPercent)
+        : ASTGEN_SUPER_CovTolerance(fl)
+        , m_isPercent{isPercent} {
+        this->centerp(centerp);
+        this->tolerancep(tolerancep);
+    }
+    ASTGEN_MEMBERS_AstCovTolerance;
+    void dump(std::ostream& str) const override;
+    void dumpJson(std::ostream& str) const override;
+    bool isPercent() const { return m_isPercent; }
+    const char* opString() const { return m_isPercent ? "+%-" : "+/-"; }
+    string emitVerilog() override { return m_isPercent ? "[%l +%%- %r]" : "[%l +/- %r]"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return false; }
+    bool hasDType() const override { return true; }  // Has dtype for inside operator support
+};
 class AstCvtArrayToArray final : public AstNodeExpr {
     // Copy/Cast from dynamic/unpacked types to dynamic/unpacked types
     // @astgen op1 := fromp : AstNodeExpr
@@ -1313,6 +1384,32 @@ public:
     bool cleanOut() const override { return true; }
     AstNodeModule* classOrPackagep() const { return m_classOrPackagep; }
     void classOrPackagep(AstNodeModule* nodep) { m_classOrPackagep = nodep; }
+};
+class AstEventually final : public AstNodeExpr {
+    // SVA eventually property operator (IEEE 1800-2017 16.12.8-16.12.9)
+    // "s_eventually p" - property p eventually holds (strong)
+    // "s_eventually [m:n] p" - property p eventually holds within range (strong)
+    // "eventually [m:n] p" - property p eventually holds within range (weak)
+    // @astgen op1 := propp : AstNodeExpr  // Property expression
+    // @astgen op2 := rangep : Optional[AstNodeRange]  // Optional range
+    bool m_isStrong = false;  // True if s_eventually
+public:
+    AstEventually(FileLine* fl, AstNodeExpr* propp, AstNodeRange* rangep, bool isStrong)
+        : ASTGEN_SUPER_Eventually(fl)
+        , m_isStrong{isStrong} {
+        this->propp(propp);
+        this->rangep(rangep);
+    }
+    ASTGEN_MEMBERS_AstEventually;
+    string emitVerilog() override { return m_isStrong ? "s_eventually(%l)" : "eventually(%l)"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* samep) const override {
+        const AstEventually* const sp = VN_DBG_AS(samep, Eventually);
+        return m_isStrong == sp->m_isStrong;
+    }
+    bool isStrong() const { return m_isStrong; }
 };
 class AstExprStmt final : public AstNodeExpr {
     // Perform a statement, often assignment inside an expression node,
@@ -1555,6 +1652,22 @@ public:
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
     bool isSystemFunc() const override { return true; }
 };
+class AstFirstMatch final : public AstNodeExpr {
+    // SVA first_match(sequence) operator (IEEE 1800-2017 16.9.4)
+    // Evaluates the sequence and terminates on the earliest match
+    // @astgen op1 := seqp : AstNodeExpr  // Inner sequence expression
+public:
+    AstFirstMatch(FileLine* fl, AstNodeExpr* seqp)
+        : ASTGEN_SUPER_FirstMatch(fl) {
+        this->seqp(seqp);
+    }
+    ASTGEN_MEMBERS_AstFirstMatch;
+    string emitVerilog() override { return "first_match(%l)"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
 class AstFuture final : public AstNodeExpr {
     // Verilog $future_gclk
     // @astgen op1 := exprp : AstNodeExpr
@@ -1588,6 +1701,29 @@ public:
     string emitVerilog() override { return "%l"; }
     string emitC() override { V3ERROR_NA_RETURN(""); }
     bool cleanOut() const override { return true; }
+};
+class AstGotoRep final : public AstNodeExpr {
+    // SVA goto repetition operator (IEEE 1800-2017 16.9.2)
+    // expr[->n] or expr[->m:n] - boolean is true exactly n times (not necessarily consecutive)
+    // Match completes on the n-th true occurrence
+    // @astgen op1 := exprp : AstNodeExpr  // Boolean expression
+    // @astgen op2 := countp : AstNodeExpr // Repetition count (or min for range)
+    // @astgen op3 := maxp : Optional[AstNodeExpr] // Max count for range (null if not range)
+public:
+    AstGotoRep(FileLine* fl, AstNodeExpr* exprp, AstNodeExpr* countp,
+               AstNodeExpr* maxp = nullptr)
+        : ASTGEN_SUPER_GotoRep(fl) {
+        this->exprp(exprp);
+        this->countp(countp);
+        this->maxp(maxp);
+    }
+    ASTGEN_MEMBERS_AstGotoRep;
+    string emitVerilog() override { return "%l[->%r]"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+    bool isRange() const { return maxp() != nullptr; }
 };
 class AstImplication final : public AstNodeExpr {
     // Verilog Implication Operator
@@ -1691,6 +1827,25 @@ public:
     // Create AstAnd(AstGte(...), AstLte(...))
     AstNodeExpr* newAndFromInside(AstNodeExpr* exprp, AstNodeExpr* lhsp, AstNodeExpr* rhsp);
 };
+class AstIntersect final : public AstNodeExpr {
+    // SVA intersect operator (IEEE 1800-2017 16.9.6)
+    // "seq1 intersect seq2" - both sequences must start at the same time and
+    // end at the same time, with both being satisfied
+    // @astgen op1 := lhsp : AstNodeExpr  // First sequence
+    // @astgen op2 := rhsp : AstNodeExpr  // Second sequence
+public:
+    AstIntersect(FileLine* fl, AstNodeExpr* lhsp, AstNodeExpr* rhsp)
+        : ASTGEN_SUPER_Intersect(fl) {
+        this->lhsp(lhsp);
+        this->rhsp(rhsp);
+    }
+    ASTGEN_MEMBERS_AstIntersect;
+    string emitVerilog() override { return "%l intersect %r"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
 class AstLambdaArgRef final : public AstNodeExpr {
     // Lambda argument usage
     // These are not AstVarRefs because we need to be able to delete/clone lambdas during
@@ -1777,6 +1932,32 @@ public:
     bool cleanOut() const override { return true; }
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
     int instrCount() const override { return widthInstrs(); }
+};
+class AstNexttime final : public AstNodeExpr {
+    // SVA nexttime property operator (IEEE 1800-2017 16.12.10)
+    // "nexttime p" - property p holds at the next clock tick
+    // "nexttime[n] p" - property p holds after n clock ticks
+    // "s_nexttime p" / "s_nexttime[n] p" - strong versions (for formal)
+    // @astgen op1 := propp : AstNodeExpr  // Property expression
+    // @astgen op2 := countp : Optional[AstNodeExpr]  // Optional cycle count
+    bool m_isStrong = false;  // True if s_nexttime
+public:
+    AstNexttime(FileLine* fl, AstNodeExpr* propp, AstNodeExpr* countp, bool isStrong)
+        : ASTGEN_SUPER_Nexttime(fl)
+        , m_isStrong{isStrong} {
+        this->propp(propp);
+        this->countp(countp);
+    }
+    ASTGEN_MEMBERS_AstNexttime;
+    string emitVerilog() override { return m_isStrong ? "s_nexttime(%l)" : "nexttime(%l)"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* samep) const override {
+        const AstNexttime* const sp = VN_DBG_AS(samep, Nexttime);
+        return m_isStrong == sp->m_isStrong;
+    }
+    bool isStrong() const { return m_isStrong; }
 };
 class AstPExpr final : public AstNodeExpr {
     // Property expression
@@ -1907,6 +2088,25 @@ public:
     AstNodeDType* getChildDTypep() const override { return childDTypep(); }
     AstNodeDType* subDTypep() const VL_MT_STABLE { return dtypep() ? dtypep() : childDTypep(); }
 };
+class AstPropIf final : public AstNodeExpr {
+    // Property if/else expression (IEEE 1800-2017 16.12)
+    // @astgen op1 := condp : AstNodeExpr
+    // @astgen op2 := thenp : AstNodeExpr
+    // @astgen op3 := elsep : Optional[AstNodeExpr]
+public:
+    AstPropIf(FileLine* fl, AstNodeExpr* condp, AstNodeExpr* thenp, AstNodeExpr* elsep)
+        : ASTGEN_SUPER_PropIf(fl) {
+        this->condp(condp);
+        this->thenp(thenp);
+        this->elsep(elsep);
+    }
+    ASTGEN_MEMBERS_AstPropIf;
+    string emitVerilog() override { return "if (%l) %r else %t"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { V3ERROR_NA_RETURN(false); }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
 class AstRand final : public AstNodeExpr {
     // $random/$random(seed) or $urandom/$urandom(seed)
     // Return a random number, based upon width()
@@ -2036,6 +2236,25 @@ public:
     string emitC() override { V3ERROR_NA_RETURN(""); }
     bool cleanOut() const override { V3ERROR_NA_RETURN(""); }
     int instrCount() const override { return widthInstrs(); }
+};
+class AstSExprClocked final : public AstNodeExpr {
+    // Clocked sequence expression: @(posedge clk) sexpr
+    // IEEE 1800-2017 16.9: clocking_event sequence_expr
+    // @astgen op1 := sensesp : AstSenItem
+    // @astgen op2 := exprp : AstNodeExpr
+public:
+    AstSExprClocked(FileLine* fl, AstSenItem* sensesp, AstNodeExpr* exprp)
+        : ASTGEN_SUPER_SExprClocked(fl) {
+        this->sensesp(sensesp);
+        this->exprp(exprp);
+    }
+    ASTGEN_MEMBERS_AstSExprClocked;
+    string emitVerilog() override { V3ERROR_NA_RETURN(""); }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    string emitSimpleOperator() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { V3ERROR_NA_RETURN(""); }
+    int instrCount() const override { return widthInstrs(); }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
 };
 class AstSFormatF final : public AstNodeExpr {
     // Convert format to string, generally under an AstDisplay or AstSFormat
@@ -2306,6 +2525,23 @@ public:
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
     bool isSystemFunc() const override { return true; }
 };
+class AstStrong final : public AstNodeExpr {
+    // SVA strong sequence qualifier (IEEE 1800-2017 16.12.1)
+    // "strong(seq)" - the sequence must complete (not match infinitely)
+    // For simulation (as opposed to formal), this is essentially a no-op
+    // @astgen op1 := seqp : AstNodeExpr  // Sequence expression
+public:
+    AstStrong(FileLine* fl, AstNodeExpr* seqp)
+        : ASTGEN_SUPER_Strong(fl) {
+        this->seqp(seqp);
+    }
+    ASTGEN_MEMBERS_AstStrong;
+    string emitVerilog() override { return "strong(%l)"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
 class AstStructSel final : public AstNodeExpr {
     // Unpacked struct/union member access
     // Parents: math|stmt
@@ -2412,6 +2648,24 @@ public:
     bool cleanOut() const override { return true; }
     AstNodeDType* getChildDTypep() const override { return childDTypep(); }
 };
+class AstThroughout final : public AstNodeExpr {
+    // SVA throughout operator (IEEE 1800-2017 16.9.8)
+    // "a throughout seq" - expression a must hold at every clock tick during seq
+    // @astgen op1 := condp : AstNodeExpr  // Condition that must hold throughout
+    // @astgen op2 := seqp : AstNodeExpr   // Sequence being evaluated
+public:
+    AstThroughout(FileLine* fl, AstNodeExpr* condp, AstNodeExpr* seqp)
+        : ASTGEN_SUPER_Throughout(fl) {
+        this->condp(condp);
+        this->seqp(seqp);
+    }
+    ASTGEN_MEMBERS_AstThroughout;
+    string emitVerilog() override { return "%l throughout %r"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
 class AstTimePrecision final : public AstNodeExpr {
     // Verilog $timeprecision
 public:
@@ -2479,6 +2733,37 @@ public:
     string emitC() override { V3ERROR_NA_RETURN(""); }
     bool cleanOut() const override { V3ERROR_NA_RETURN(true); }
 };
+class AstUntil final : public AstNodeExpr {
+    // SVA Until Operators (IEEE 1800-2017 16.12.15)
+    // until, s_until (strong), until_with, s_until_with
+    // "a until b" - a holds at every cycle until b holds
+    // "with" variants require a to also hold when b holds
+    // "s_" variants are strong (b must eventually hold)
+    // @astgen op1 := lhsp : AstNodeExpr
+    // @astgen op2 := rhsp : AstNodeExpr
+
+private:
+    const bool m_isStrong;  // True if strong (s_until*)
+    const bool m_isWith;    // True if _with variant
+
+public:
+    AstUntil(FileLine* fl, AstNodeExpr* lhsp, AstNodeExpr* rhsp, bool isStrong, bool isWith)
+        : ASTGEN_SUPER_Until(fl)
+        , m_isStrong{isStrong}
+        , m_isWith{isWith} {
+        this->lhsp(lhsp);
+        this->rhsp(rhsp);
+    }
+    ASTGEN_MEMBERS_AstUntil;
+    string emitVerilog() override { V3ERROR_NA_RETURN(""); }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    string emitSimpleOperator() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { V3ERROR_NA_RETURN(""); }
+    int instrCount() const override { return widthInstrs(); }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+    bool isStrong() const { return m_isStrong; }
+    bool isWith() const { return m_isWith; }
+};
 class AstValuePlusArgs final : public AstNodeExpr {
     // Search expression. If nullptr then this is a $test$plusargs instead of $value$plusargs.
     // @astgen op1 := searchp : Optional[AstNode]
@@ -2498,6 +2783,23 @@ public:
     bool isPure() override { return !outp(); }
     bool isSystemFunc() const override { return true; }
     bool cleanOut() const override { return true; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
+class AstWeak final : public AstNodeExpr {
+    // SVA weak sequence qualifier (IEEE 1800-2017 16.12.1)
+    // "weak(seq)" - the sequence is allowed to match infinitely (not required to complete)
+    // For simulation (as opposed to formal), this is essentially a no-op
+    // @astgen op1 := seqp : AstNodeExpr  // Sequence expression
+public:
+    AstWeak(FileLine* fl, AstNodeExpr* seqp)
+        : ASTGEN_SUPER_Weak(fl) {
+        this->seqp(seqp);
+    }
+    ASTGEN_MEMBERS_AstWeak;
+    string emitVerilog() override { return "weak(%l)"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
 };
 class AstWith final : public AstNodeExpr {
@@ -2553,6 +2855,25 @@ public:
     string emitVerilog() override { V3ERROR_NA_RETURN(""); }
     string emitC() override { V3ERROR_NA_RETURN(""); }
     bool cleanOut() const override { V3ERROR_NA_RETURN(true); }
+};
+class AstWithin final : public AstNodeExpr {
+    // SVA within operator (IEEE 1800-2017 16.9.7)
+    // "seq1 within seq2" - seq1 occurs within the bounds of seq2
+    // seq1 must start at or after seq2 starts, and end at or before seq2 ends
+    // @astgen op1 := lhsp : AstNodeExpr  // Inner sequence (seq1)
+    // @astgen op2 := rhsp : AstNodeExpr  // Outer sequence (seq2)
+public:
+    AstWithin(FileLine* fl, AstNodeExpr* lhsp, AstNodeExpr* rhsp)
+        : ASTGEN_SUPER_Within(fl) {
+        this->lhsp(lhsp);
+        this->rhsp(rhsp);
+    }
+    ASTGEN_MEMBERS_AstWithin;
+    string emitVerilog() override { return "%l within %r"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
 };
 
 // === AstNodeBiop ===
@@ -4064,6 +4385,7 @@ public:
     }
     string emitVerilog() override { return "%k(%l %f* %r)"; }
     string emitC() override { return "VL_MULS_%nq%lq%rq(%lw, %P, %li, %ri)"; }
+    string emitSMT() const override { return "(bvmul %l %r)"; }
     string emitSimpleOperator() override { return ""; }
     bool emitCheckMaxWords() override { return true; }
     bool cleanOut() const override { return false; }
@@ -5251,6 +5573,12 @@ public:
     void numberOperate(V3Number& out, const V3Number& lhs) override { out.opOneHot(lhs); }
     string emitVerilog() override { return "%f$onehot(%l)"; }
     string emitC() override { return "VL_ONEHOT_%lq(%lW, %P, %li)"; }
+    string emitSMT() const override {
+        // OneHot is true if exactly one bit is set: x != 0 AND (x & (x-1)) == 0
+        const string w = cvtToStr(lhsp()->width());
+        return "(__Vbv (and (not (= %l (_ bv0 " + w + "))) "
+               "(= (bvand %l (bvsub %l (_ bv1 " + w + "))) (_ bv0 " + w + "))))";
+    }
     bool cleanOut() const override { return true; }
     bool cleanLhs() const override { return true; }
     bool sizeMattersLhs() const override { return false; }
@@ -5268,6 +5596,11 @@ public:
     void numberOperate(V3Number& out, const V3Number& lhs) override { out.opOneHot0(lhs); }
     string emitVerilog() override { return "%f$onehot0(%l)"; }
     string emitC() override { return "VL_ONEHOT0_%lq(%lW, %P, %li)"; }
+    string emitSMT() const override {
+        // OneHot0 is true if at most one bit is set: (x & (x-1)) == 0
+        const string w = cvtToStr(lhsp()->width());
+        return "(__Vbv (= (bvand %l (bvsub %l (_ bv1 " + w + "))) (_ bv0 " + w + ")))";
+    }
     bool cleanOut() const override { return true; }
     bool cleanLhs() const override { return true; }
     bool sizeMattersLhs() const override { return false; }
@@ -5336,6 +5669,10 @@ public:
     void numberOperate(V3Number& out, const V3Number& lhs) override { out.opRedAnd(lhs); }
     string emitVerilog() override { return "%f(& %l)"; }
     string emitC() override { return "VL_REDAND_%nq%lq(%lw, %P, %li)"; }
+    string emitSMT() const override {
+        // RedAnd is true if all bits are 1: expr == ~0
+        return "(__Vbv (= %l (bvnot (_ bv0 " + cvtToStr(lhsp()->width()) + "))))";
+    }
     bool cleanOut() const override { return true; }
     bool cleanLhs() const override { return true; }
     bool sizeMattersLhs() const override { return false; }
@@ -5350,6 +5687,10 @@ public:
     void numberOperate(V3Number& out, const V3Number& lhs) override { out.opRedOr(lhs); }
     string emitVerilog() override { return "%f(| %l)"; }
     string emitC() override { return "VL_REDOR_%lq(%lW, %P, %li)"; }
+    string emitSMT() const override {
+        // RedOr is true if any bit is 1: expr != 0
+        return "(__Vbv (not (= %l (_ bv0 " + cvtToStr(lhsp()->width()) + "))))";
+    }
     bool cleanOut() const override { return true; }
     bool cleanLhs() const override { return true; }
     bool sizeMattersLhs() const override { return false; }

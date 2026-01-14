@@ -1106,10 +1106,145 @@ public:
 };
 
 //######################################################################
+// FSM Coverage Visitor
+
+class FsmCoverageVisitor final : public VNVisitor {
+    // NODE STATE
+    const VNUser1InUse m_inuser1;
+
+    // STATE
+    AstNodeModule* m_modp = nullptr;  // Current module
+    AstVar* m_currStateVarp = nullptr;  // Current state variable in case
+    string m_currStateName;  // Name of current case item state
+    std::unordered_map<std::string, uint32_t> m_varnames;  // Uniquify variable names
+    int m_fsmNum = 0;  // FSM counter for uniquification
+
+    // METHODS
+    string traceNameForFsm(const AstNode* nodep, const string& type) {
+        string name = "vlCoverageFsmTrace_" + nodep->fileline()->filebasenameNoExt() + "__"
+                      + cvtToStr(nodep->fileline()->lineno()) + "_" + type;
+        if (const uint32_t suffix = m_varnames[name]++) name += "_" + cvtToStr(suffix);
+        return name;
+    }
+
+    AstCoverInc* newCoverInc(FileLine* fl, AstNodeCoverDecl* const declp,
+                             const string& trace_var_name) {
+        AstCoverInc* const incp = new AstCoverInc{fl, declp};
+        if (!trace_var_name.empty() && v3Global.opt.traceCoverage()
+            && !VN_IS(m_modp, Class)) {
+            FileLine* const fl_nowarn = new FileLine{incp->fileline()};
+            fl_nowarn->modifyWarnOff(V3ErrorCode::UNUSEDSIGNAL, true);
+            AstVar* const varp = new AstVar{fl_nowarn, VVarType::MODULETEMP, trace_var_name,
+                                            incp->findUInt32DType()};
+            varp->setIgnoreSchedWrite();
+            varp->trace(true);
+            m_modp->addStmtsp(varp);
+            AstAssign* const assp = new AstAssign{
+                incp->fileline(), new AstVarRef{incp->fileline(), varp, VAccess::WRITE},
+                new AstAdd{incp->fileline(), new AstVarRef{incp->fileline(), varp, VAccess::READ},
+                           new AstConst{incp->fileline(), AstConst::WidthedValue{}, 32, 1}}};
+            AstNode::addNext<AstNode, AstNode>(incp, assp);
+        }
+        return incp;
+    }
+
+    bool isEnumType(const AstVar* varp) {
+        if (!varp || !varp->dtypep()) return false;
+        const AstNodeDType* const dtypep = varp->dtypep()->skipRefToEnump();
+        return VN_IS(dtypep, EnumDType);
+    }
+
+    string getEnumItemName(const AstNodeExpr* exprp) {
+        // Get the name of an enum item from various expression types
+        if (const AstEnumItemRef* const refp = VN_CAST(exprp, EnumItemRef)) {
+            return refp->itemp()->name();
+        }
+        if (const AstConst* const constp = VN_CAST(exprp, Const)) {
+            return "state_" + constp->num().ascii();
+        }
+        return "";
+    }
+
+    // VISITORS
+    void visit(AstNodeModule* nodep) override {
+        VL_RESTORER(m_modp);
+        m_modp = nodep;
+        m_varnames.clear();
+        iterateChildren(nodep);
+    }
+
+    void visit(AstCase* nodep) override {
+        // Only process if FSM coverage is enabled
+        if (!v3Global.opt.coverageFsm()) {
+            iterateChildren(nodep);
+            return;
+        }
+
+        // Check if the case expression is a variable reference to an enum
+        const AstVarRef* const varRefp = VN_CAST(nodep->exprp(), VarRef);
+        if (!varRefp || !isEnumType(varRefp->varp())) {
+            iterateChildren(nodep);
+            return;
+        }
+
+        // This looks like an FSM case statement
+        AstVar* const stateVarp = varRefp->varp();
+        UINFO(4, "FSM Coverage: Found FSM case on " << stateVarp->prettyName() << endl);
+
+        ++m_fsmNum;
+        const string fsmName = stateVarp->prettyName();
+        const string pageName = "v_fsm/" + m_modp->prettyName() + "/" + fsmName;
+
+        // Add state coverage for each case item
+        for (AstCaseItem* itemp = nodep->itemsp(); itemp;
+             itemp = VN_AS(itemp->nextp(), CaseItem)) {
+            if (itemp->isDefault()) {
+                // Add coverage for default case
+                AstCoverOtherDecl* const declp = new AstCoverOtherDecl{
+                    itemp->fileline(), pageName, "default", "", 0};
+                m_modp->addStmtsp(declp);
+                AstNode* const newp
+                    = newCoverInc(itemp->fileline(), declp, traceNameForFsm(itemp, "default"));
+                itemp->addStmtsp(newp);
+            } else {
+                // Get state name from condition expressions
+                for (AstNodeExpr* condp = itemp->condsp(); condp;
+                     condp = VN_AS(condp->nextp(), NodeExpr)) {
+                    string stateName = getEnumItemName(condp);
+                    if (stateName.empty()) {
+                        // Try to emit as Verilog for name
+                        std::stringstream ss;
+                        V3EmitV::verilogForTree(condp, ss);
+                        stateName = ss.str();
+                    }
+
+                    AstCoverOtherDecl* const declp = new AstCoverOtherDecl{
+                        itemp->fileline(), pageName, stateName, "", 0};
+                    m_modp->addStmtsp(declp);
+                    AstNode* const newp = newCoverInc(itemp->fileline(), declp,
+                                                      traceNameForFsm(itemp, stateName));
+                    itemp->addStmtsp(newp);
+                    UINFO(5, "FSM State Coverage: " << stateName << " in " << fsmName << endl);
+                }
+            }
+        }
+
+        iterateChildren(nodep);
+    }
+
+    void visit(AstNode* nodep) override { iterateChildren(nodep); }
+
+public:
+    explicit FsmCoverageVisitor(AstNetlist* rootp) { iterateChildren(rootp); }
+    ~FsmCoverageVisitor() override = default;
+};
+
+//######################################################################
 // Coverage class functions
 
 void V3Coverage::coverage(AstNetlist* rootp) {
     UINFO(2, __FUNCTION__ << ":");
     { CoverageVisitor{rootp}; }  // Destruct before checking
+    if (v3Global.opt.coverageFsm()) { FsmCoverageVisitor{rootp}; }
     V3Global::dumpCheckGlobalTree("coverage", 0, dumpTreeEitherLevel() >= 3);
 }

@@ -638,6 +638,7 @@ class AstCell final : public AstNode {
     // @astgen op4 := intfRefsp : List[AstIntfRef] // List of interface references, for tracing
     //
     // @astgen ptr := m_modp : Optional[AstNodeModule]  // [AfterLink] Pointer to module instanced
+    // @astgen ptr := m_bindSourcep : Optional[AstNodeModule]  // Module where bind statement was (if bound)
     FileLine* m_modNameFileline;  // Where module the cell instances token was
     string m_name;  // Cell name
     string m_origName;  // Original name before dot addition
@@ -676,6 +677,8 @@ public:
     FileLine* modNameFileline() const { return m_modNameFileline; }
     AstNodeModule* modp() const { return m_modp; }  // [AfterLink] = Pointer to module instantiated
     void modp(AstNodeModule* nodep) { m_modp = nodep; }
+    AstNodeModule* bindSourcep() const { return m_bindSourcep; }  // Module where bind originated
+    void bindSourcep(AstNodeModule* nodep) { m_bindSourcep = nodep; }
     bool hasIfaceVar() const { return m_hasIfaceVar; }
     void hasIfaceVar(bool flag) { m_hasIfaceVar = flag; }
     void trace(bool flag) { m_trace = flag; }
@@ -998,23 +1001,249 @@ public:
     bool isPredictOptimizable() const override { return false; }
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
 };
+class AstCovBinsof final : public AstNode {
+    // binsof() expression in cross coverage bin selection
+    // Parents: AstCoverBin (in cross coverage)
+    // @astgen op1 := intersectp : List[AstNode]  // Intersect ranges (optional)
+    // @astgen op2 := withp : Optional[AstNodeExpr]  // With expression (optional)
+    string m_coverpointName;  // Coverpoint name (may include bin: "cp.binname")
+    bool m_negate;  // Negated (!binsof)
+    // Helper to extract name from idDotted expression and delete it
+    static string extractNameAndDelete(AstNodeExpr* refp);
+public:
+    AstCovBinsof(FileLine* fl, AstNodeExpr* refp, AstNode* intersectp, bool negate = false,
+                 AstNodeExpr* withExpr = nullptr)
+        : ASTGEN_SUPER_CovBinsof(fl)
+        , m_coverpointName{extractNameAndDelete(refp)}
+        , m_negate{negate} {
+        addIntersectp(intersectp);
+        this->withp(withExpr);
+    }
+    ASTGEN_MEMBERS_AstCovBinsof;
+    void dump(std::ostream& str) const override;
+    void dumpJson(std::ostream& str) const override;
+    string coverpointName() const { return m_coverpointName; }
+    void coverpointName(const string& name) { m_coverpointName = name; }
+    bool negate() const { return m_negate; }
+    void negate(bool flag) { m_negate = flag; }
+};
+// Repetition types for coverage
+enum class VCovRepetitionType : uint8_t {
+    CONSECUTIVE,  // [* N] or [* N:M] - value repeats consecutively
+    GOTO,  // [-> N] or [-> N:M] - non-consecutive with eventual match
+    NONCONSEC  // [= N] or [= N:M] - non-consecutive repetition
+};
+class AstCovRepetition final : public AstNode {
+    // Repetition in coverage transition bins ([*N], [->N], [=N])
+    // Parents: AstCoverBin (in rangesp) as part of trans_range_list
+    // @astgen op1 := itemp : AstNode  // The item being repeated
+    // @astgen op2 := countp : AstNodeExpr  // Repetition count (or low bound)
+    // @astgen op3 := count2p : Optional[AstNodeExpr]  // High bound for range (if present)
+    VCovRepetitionType m_type;  // Repetition type
+public:
+    AstCovRepetition(FileLine* fl, VCovRepetitionType type, AstNode* itemp, AstNodeExpr* countp,
+                     AstNodeExpr* count2p = nullptr)
+        : ASTGEN_SUPER_CovRepetition(fl)
+        , m_type{type} {
+        this->itemp(itemp);
+        this->countp(countp);
+        this->count2p(count2p);
+    }
+    ASTGEN_MEMBERS_AstCovRepetition;
+    void dump(std::ostream& str) const override;
+    void dumpJson(std::ostream& str) const override;
+    VCovRepetitionType repType() const { return m_type; }
+    bool isRange() const { return count2p() != nullptr; }
+    const char* repTypeString() const {
+        switch (m_type) {
+        case VCovRepetitionType::CONSECUTIVE: return "[*";
+        case VCovRepetitionType::GOTO: return "[->";
+        case VCovRepetitionType::NONCONSEC: return "[=";
+        }
+        return "??";  // LCOV_EXCL_LINE
+    }
+};
+class AstCovSelectAnd final : public AstNode {
+    // binsof() && binsof() expression in cross coverage bin selection
+    // Parents: AstCoverBin (in cross coverage), or another AstCovSelect*
+    // @astgen op1 := lhsp : AstNode  // Left side of &&
+    // @astgen op2 := rhsp : AstNode  // Right side of &&
+public:
+    AstCovSelectAnd(FileLine* fl, AstNode* lhsp, AstNode* rhsp)
+        : ASTGEN_SUPER_CovSelectAnd(fl) {
+        this->lhsp(lhsp);
+        this->rhsp(rhsp);
+    }
+    ASTGEN_MEMBERS_AstCovSelectAnd;
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
+class AstCovSelectOr final : public AstNode {
+    // binsof() || binsof() expression in cross coverage bin selection
+    // Parents: AstCoverBin (in cross coverage), or another AstCovSelect*
+    // @astgen op1 := lhsp : AstNode  // Left side of ||
+    // @astgen op2 := rhsp : AstNode  // Right side of ||
+public:
+    AstCovSelectOr(FileLine* fl, AstNode* lhsp, AstNode* rhsp)
+        : ASTGEN_SUPER_CovSelectOr(fl) {
+        this->lhsp(lhsp);
+        this->rhsp(rhsp);
+    }
+    ASTGEN_MEMBERS_AstCovSelectOr;
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
+class AstCovTransition final : public AstNode {
+    // Transition coverage sequence (value1 => value2 => value3)
+    // Parents: AstCoverBin (in rangesp)
+    // @astgen op1 := stepsp : List[AstNode]  // List of transition steps (each step is value ranges)
+public:
+    AstCovTransition(FileLine* fl, AstNode* stepsp)
+        : ASTGEN_SUPER_CovTransition(fl) {
+        addStepsp(stepsp);
+    }
+    ASTGEN_MEMBERS_AstCovTransition;
+    void dump(std::ostream& str) const override;
+    void dumpJson(std::ostream& str) const override;
+    // Append another step to the transition sequence
+    void appendStep(AstNode* stepp) { addStepsp(stepp); }
+    // Get number of steps in the transition
+    int numSteps() const {
+        int count = 0;
+        for (AstNode* np = stepsp(); np; np = np->nextp()) ++count;
+        return count;
+    }
+};
+class AstCoverBin final : public AstNode {
+    // Coverage bin definition inside a coverpoint
+    // Parents: AstCoverpoint
+    // @astgen op1 := rangesp : List[AstNode]  // Value ranges for this bin
+    // @astgen op2 := iffp : Optional[AstNodeExpr]  // iff condition
+    string m_name;  // Bin name
+    VCoverBinType m_type;  // bins/illegal_bins/ignore_bins
+    bool m_isArray;  // bins b[] = ...
+    bool m_isDefault;  // default bin
+    bool m_isDefaultSeq;  // default sequence bin
+    bool m_isWildcard;  // wildcard bins (use mask-based matching)
+public:
+    AstCoverBin(FileLine* fl, const string& name, VCoverBinType type, AstNode* rangesp,
+                AstNodeExpr* iffp, bool isArray = false, bool isDefault = false,
+                bool isDefaultSeq = false, bool isWildcard = false)
+        : ASTGEN_SUPER_CoverBin(fl)
+        , m_name{name}
+        , m_type{type}
+        , m_isArray{isArray}
+        , m_isDefault{isDefault}
+        , m_isDefaultSeq{isDefaultSeq}
+        , m_isWildcard{isWildcard} {
+        addRangesp(rangesp);
+        this->iffp(iffp);
+    }
+    ASTGEN_MEMBERS_AstCoverBin;
+    void dump(std::ostream& str) const override;
+    void dumpJson(std::ostream& str) const override;
+    string name() const override VL_MT_STABLE { return m_name; }
+    void name(const string& name) override { m_name = name; }
+    VCoverBinType binType() const { return m_type; }
+    bool isArray() const { return m_isArray; }
+    bool isDefault() const { return m_isDefault; }
+    bool isDefaultSeq() const { return m_isDefaultSeq; }
+    bool isWildcard() const { return m_isWildcard; }
+};
+class AstCoverCross final : public AstNode {
+    // Cross coverage inside a covergroup
+    // Parents: AstClass (covergroup)
+    // @astgen op1 := itemsp : List[AstText]  // Coverpoint/variable names being crossed
+    // @astgen op2 := binsp : List[AstCoverBin]  // Cross bins
+    // @astgen op3 := iffp : Optional[AstNodeExpr]  // iff condition
+    // @astgen op4 := optionsp : List[AstCgOptionAssign]  // Options
+    string m_name;  // Cross name
+public:
+    // Constructor separates bins from options in cross_body
+    AstCoverCross(FileLine* fl, const string& name, AstText* itemsp, AstNodeExpr* iffp,
+                  AstNode* crossbodyp)
+        : ASTGEN_SUPER_CoverCross(fl)
+        , m_name{name} {
+        addItemsp(itemsp);
+        this->iffp(iffp);
+        // Separate bins from options in the cross body
+        // Parser creates linked list. We must break it apart first,
+        // since adding nodes to new parents modifies the list structure.
+        for (AstNode* nodep : AstNode::breakSiblingList(crossbodyp)) {
+            if (AstCoverBin* const binp = VN_CAST(nodep, CoverBin)) {
+                addBinsp(binp);
+            } else if (AstCgOptionAssign* const optp = VN_CAST(nodep, CgOptionAssign)) {
+                addOptionsp(optp);
+            } else {
+                // Function declarations are already warned about in grammar, just delete
+                VL_DO_DANGLING(nodep->deleteTree(), nodep);
+            }
+        }
+    }
+    ASTGEN_MEMBERS_AstCoverCross;
+    void dump(std::ostream& str) const override;
+    void dumpJson(std::ostream& str) const override;
+    string name() const override VL_MT_STABLE { return m_name; }
+    void name(const string& name) override { m_name = name; }
+};
+class AstCoverpoint final : public AstNode {
+    // Coverpoint inside a covergroup
+    // Parents: AstClass (covergroup)
+    // @astgen op1 := exprp : AstNodeExpr  // Expression being sampled
+    // @astgen op2 := binsp : List[AstCoverBin]  // List of bins
+    // @astgen op3 := iffp : Optional[AstNodeExpr]  // iff condition
+    // @astgen op4 := optionsp : List[AstCgOptionAssign]  // Options
+    string m_name;  // Coverpoint name
+public:
+    AstCoverpoint(FileLine* fl, const string& name, AstNodeExpr* exprp, AstNodeExpr* iffp,
+                  AstNode* binsp)
+        : ASTGEN_SUPER_Coverpoint(fl)
+        , m_name{name} {
+        this->exprp(exprp);
+        this->iffp(iffp);
+        // Separate bins from options in the input list (grammar returns mixed list).
+        // Clone each node individually (without nextp links) to proper list, then delete originals.
+        for (AstNode* nodep = binsp; nodep; nodep = nodep->nextp()) {
+            if (VN_IS(nodep, CoverBin)) {
+                addBinsp(static_cast<AstCoverBin*>(nodep->cloneTree(false)));
+            } else if (VN_IS(nodep, CgOptionAssign)) {
+                addOptionsp(static_cast<AstCgOptionAssign*>(nodep->cloneTree(false)));
+            }
+            // Unknown node types are silently ignored (will be deleted with original list)
+        }
+        if (binsp) VL_DO_DANGLING(binsp->deleteTree(), binsp);
+    }
+    ASTGEN_MEMBERS_AstCoverpoint;
+    void dump(std::ostream& str) const override;
+    void dumpJson(std::ostream& str) const override;
+    string name() const override VL_MT_STABLE { return m_name; }
+    void name(const string& name) override { m_name = name; }
+};
 class AstDefParam final : public AstNode {
     // A defparam assignment
     // Parents: MODULE
     // @astgen op1 := rhsp : AstNodeExpr
+    // @astgen op2 := pathp : Optional[AstNodeExpr]  // Hierarchical path (may be null for simple path)
     string m_name;  // Name of variable getting set
-    string m_path;  // Dotted cellname to set parameter of
+    string m_path;  // Dotted cellname to set parameter of (legacy string form)
 public:
+    // Legacy constructor: path as string
     AstDefParam(FileLine* fl, const string& path, const string& name, AstNodeExpr* rhsp)
         : ASTGEN_SUPER_DefParam(fl)
         , m_name{name}
         , m_path{path} {
         this->rhsp(rhsp);
     }
+    // New constructor: path as AST tree
+    AstDefParam(FileLine* fl, AstNodeExpr* pathp, const string& name, AstNodeExpr* rhsp)
+        : ASTGEN_SUPER_DefParam(fl)
+        , m_name{name} {
+        this->rhsp(rhsp);
+        this->pathp(pathp);
+    }
     string name() const override VL_MT_STABLE { return m_name; }  // * = Scope name
     ASTGEN_MEMBERS_AstDefParam;
     bool sameNode(const AstNode*) const override { return true; }
     string path() const { return m_path; }
+    bool hasAstPath() const { return pathp() != nullptr; }
 };
 class AstDefaultDisable final : public AstNode {
     // @astgen op1 := condp : AstNodeExpr
@@ -1208,6 +1437,10 @@ class AstModportVarRef final : public AstNode {
     // @astgen ptr := m_varp : Optional[AstVar]  // Link to the actual Var
     string m_name;  // Name of the variable referenced
     const VDirection m_direction;  // Direction of the variable (in/out)
+    // Selection bounds for modport expressions like .portname(signal[7:0])
+    // If both are -1, no selection (full signal). If both are same, bit-select.
+    int m_selMsb = -1;  // MSB of part-select, -1 if no selection
+    int m_selLsb = -1;  // LSB of part-select, -1 if no selection
 public:
     AstModportVarRef(FileLine* fl, const string& name, VDirection::en direction)
         : ASTGEN_SUPER_ModportVarRef(fl)
@@ -1227,6 +1460,15 @@ public:
     VDirection direction() const { return m_direction; }
     AstVar* varp() const VL_MT_STABLE { return m_varp; }  // [After Link] Pointer to variable
     void varp(AstVar* varp) { m_varp = varp; }
+    // Selection bounds accessors
+    int selMsb() const { return m_selMsb; }
+    int selLsb() const { return m_selLsb; }
+    void selBounds(int msb, int lsb) {
+        m_selMsb = msb;
+        m_selLsb = lsb;
+    }
+    bool hasSelection() const { return m_selMsb >= 0 && m_selLsb >= 0; }
+    int selWidth() const { return hasSelection() ? (m_selMsb - m_selLsb + 1) : 0; }
 };
 class AstNetlist final : public AstNode {
     // All modules are under this single top node.
@@ -2534,6 +2776,7 @@ public:
 // === AstNodeModule ===
 class AstClass final : public AstNodeModule {
     // @astgen op4 := extendsp : List[AstClassExtends]
+    // @astgen op3 := coverClockEventp : Optional[AstSenItem]  // Covergroup clocking event
     // MEMBERS
     // @astgen ptr := m_classOrPackagep : Optional[AstClassPackage]  // Package to be emitted with
     uint32_t m_declTokenNum;  // Declaration token number

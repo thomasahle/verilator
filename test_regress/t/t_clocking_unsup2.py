@@ -11,6 +11,7 @@ import vltest_bootstrap
 
 test.scenarios('linter')
 
-test.lint(fails=True, expect_filename=test.golden_filename)
+# Default clocking with ##0 delay now supported
+test.lint(verilator_flags2=["--timing"])
 
 test.passes()

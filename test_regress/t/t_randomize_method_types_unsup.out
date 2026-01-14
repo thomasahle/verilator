@@ -3,7 +3,7 @@
       |                 ^~~~
                         ... For warning description see https://verilator.org/warn/CONSTRAINTIGN?v=latest
                         ... Use "/* verilator lint_off CONSTRAINTIGN */" and lint_on around source to disable this message.
-%Warning-CONSTRAINTIGN: t/t_randomize_method_types_unsup.v:27:9: Size constraint combined with element constraint may not work correctly
+%Warning-CONSTRAINTIGN: t/t_randomize_method_types_unsup.v:27:9: Size constraint combined with element constraint (foreach) may not work correctly: element constraints are generated before the size is solved. Consider pre-sizing the array or using separate randomization calls
                                                                : ... note: In instance 't'
    27 |       q.size < 5;
       |         ^~~~
@@ -12,7 +12,4 @@
    15 |    rand Cls cls;
       |             ^~~
                     ... For error description see https://verilator.org/warn/UNSUPPORTED?v=latest
-%Warning-CONSTRAINTIGN: t/t_randomize_method_types_unsup.v:43:43: Unsupported: randomizing this expression, treating as state
-   43 |       res = obj.randomize() with { dynarr.size > 2; };
-      |                                           ^~~~
 %Error: Exiting due to

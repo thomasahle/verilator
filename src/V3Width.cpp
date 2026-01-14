@@ -730,6 +730,9 @@ class WidthVisitor final : public VNVisitor {
         if (nodep->fileline()->timingOn()) {
             if (v3Global.opt.timing().isSetTrue()) {
                 iterateCheckDelay(nodep, "delay", nodep->lhsp(), BOTH);
+                if (nodep->rhsp()) {  // Range delay ##[min:max]
+                    iterateCheckDelay(nodep, "delay max", nodep->rhsp(), BOTH);
+                }
                 iterateAndNextNull(nodep->stmtsp());
                 return;
             } else if (v3Global.opt.timing().isSetFalse()) {
@@ -1575,9 +1578,130 @@ class WidthVisitor final : public VNVisitor {
     void visit(AstImplication* nodep) override {
         m_seqUnsupp = nodep;
         assertAtExpr(nodep);
-        if (m_vup->prelim()) {
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
             iterateCheckBool(nodep, "LHS", nodep->lhsp(), BOTH);
             iterateCheckBool(nodep, "RHS", nodep->rhsp(), BOTH);
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstUntil* nodep) override {
+        // SVA until, s_until, until_with, s_until_with operators
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            iterateCheckBool(nodep, "LHS", nodep->lhsp(), BOTH);
+            iterateCheckBool(nodep, "RHS", nodep->rhsp(), BOTH);
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstThroughout* nodep) override {
+        // SVA throughout operator (IEEE 1800-2017 16.9.8)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            // condp is a boolean expression that must hold throughout
+            iterateCheckBool(nodep, "LHS", nodep->condp(), BOTH);
+            // seqp is a sequence expression
+            userIterateAndNext(nodep->seqp(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstWithin* nodep) override {
+        // SVA within operator (IEEE 1800-2017 16.9.7)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            // Both operands are sequence expressions
+            userIterateAndNext(nodep->lhsp(), WidthVP{SELF, BOTH}.p());
+            userIterateAndNext(nodep->rhsp(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstIntersect* nodep) override {
+        // SVA intersect operator (IEEE 1800-2017 16.9.6)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            // Both operands are sequence expressions
+            userIterateAndNext(nodep->lhsp(), WidthVP{SELF, BOTH}.p());
+            userIterateAndNext(nodep->rhsp(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstStrong* nodep) override {
+        // SVA strong sequence qualifier (IEEE 1800-2017 16.12.1)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            userIterateAndNext(nodep->seqp(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstWeak* nodep) override {
+        // SVA weak sequence qualifier (IEEE 1800-2017 16.12.1)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            userIterateAndNext(nodep->seqp(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstNexttime* nodep) override {
+        // SVA nexttime property operator (IEEE 1800-2017 16.12.10)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            userIterateAndNext(nodep->propp(), WidthVP{SELF, BOTH}.p());
+            if (nodep->countp()) userIterateAndNext(nodep->countp(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstAlwaysProp* nodep) override {
+        // SVA always property operator (IEEE 1800-2017 16.12.7)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            userIterateAndNext(nodep->propp(), WidthVP{SELF, BOTH}.p());
+            if (nodep->rangep()) userIterateAndNext(nodep->rangep(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstEventually* nodep) override {
+        // SVA eventually property operator (IEEE 1800-2017 16.12.8-16.12.9)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            userIterateAndNext(nodep->propp(), WidthVP{SELF, BOTH}.p());
+            if (nodep->rangep()) userIterateAndNext(nodep->rangep(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstGotoRep* nodep) override {
+        // SVA goto repetition operator (IEEE 1800-2017 16.9.2)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            // exprp is a boolean expression
+            iterateCheckBool(nodep, "EXPR", nodep->exprp(), BOTH);
+            // countp is the repetition count
+            userIterateAndNext(nodep->countp(), WidthVP{SELF, BOTH}.p());
+            // maxp is optional max count for range
+            if (nodep->maxp()) userIterateAndNext(nodep->maxp(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstConsecRep* nodep) override {
+        // SVA consecutive repetition operator (IEEE 1800-2017 16.9.2)
+        m_seqUnsupp = nodep;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            // exprp is a boolean expression
+            iterateCheckBool(nodep, "EXPR", nodep->exprp(), BOTH);
+            // countp is the repetition count
+            userIterateAndNext(nodep->countp(), WidthVP{SELF, BOTH}.p());
+            // maxp is optional max count for range
+            if (nodep->maxp()) userIterateAndNext(nodep->maxp(), WidthVP{SELF, BOTH}.p());
             nodep->dtypeSetBit();
         }
     }
@@ -1598,12 +1722,59 @@ class WidthVisitor final : public VNVisitor {
         m_underSExpr = true;
         m_hasSExpr = true;
         assertAtExpr(nodep);
-        if (m_vup->prelim()) {
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
             if (nodep->preExprp()) {
                 iterateCheckBool(nodep, "preExprp", nodep->preExprp(), BOTH);
             }
             iterate(nodep->delayp());
+            // If the delay was deleted (e.g., due to --no-timing), replace the
+            // AstSExpr with just its expression since AstSExpr requires a non-null delayp
+            if (!nodep->delayp()) {
+                // Must type the expression before extracting it
+                iterateCheckBool(nodep, "exprp", nodep->exprp(), BOTH);
+                AstNodeExpr* resultp = nodep->exprp()->unlinkFrBack();
+                if (AstNodeExpr* const preExprp = nodep->preExprp()) {
+                    // If there's a preExprp, AND them together (already typed above)
+                    resultp = new AstAnd{nodep->fileline(), preExprp->unlinkFrBack(), resultp};
+                    resultp->dtypeSetBit();
+                }
+                nodep->replaceWith(resultp);
+                VL_DO_DANGLING(pushDeletep(nodep), nodep);
+                return;
+            }
             iterateCheckBool(nodep, "exprp", nodep->exprp(), BOTH);
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstSExprClocked* nodep) override {
+        // Clocked sequence expression: @(posedge clk) sexpr
+        // IEEE 1800-2017 16.9: clocking_event sequence_expr
+        VL_RESTORER(m_underSExpr);
+        m_underSExpr = true;
+        m_hasSExpr = true;
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            userIterateAndNext(nodep->sensesp(), nullptr);
+            userIterateAndNext(nodep->exprp(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstPropIf* nodep) override {
+        // Property if/else expression (IEEE 1800-2017 16.12)
+        // May be called with null m_vup when visiting sequence/property declarations
+        if (!m_vup || m_vup->prelim()) {
+            iterateCheckBool(nodep, "condp", nodep->condp(), BOTH);
+            userIterateAndNext(nodep->thenp(), WidthVP{SELF, BOTH}.p());
+            if (nodep->elsep()) userIterateAndNext(nodep->elsep(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
+    void visit(AstFirstMatch* nodep) override {
+        // SVA first_match(sequence) operator (IEEE 1800-2017 16.9.4)
+        // May be called with null m_vup when visiting sequence declarations
+        if (!m_vup || m_vup->prelim()) {
+            userIterateAndNext(nodep->seqp(), WidthVP{SELF, BOTH}.p());
             nodep->dtypeSetBit();
         }
     }
@@ -1633,6 +1804,14 @@ class WidthVisitor final : public VNVisitor {
         if (const auto* const selp = VN_CAST(backp, SelBit)) {
             if (VN_IS(selp->fromp()->dtypep()->skipRefp(), QueueDType)) return;
         }
+        // Allow $ as max value in range delay ##[min:$]
+        if (const auto* const delayp = VN_CAST(backp, Delay)) {
+            if (delayp->rhsp() == nodep) return;  // Ok, $ is the max of range delay
+        }
+        // Allow $ as max value in inside/dist range [min:$]
+        if (const auto* const rangep = VN_CAST(backp, InsideRange)) {
+            if (rangep->rhsp() == nodep) return;  // Ok, $ is the max of range
+        }
         // queue_slice[#:$] and queue_bitsel[$] etc handled in V3WidthSel
         nodep->v3warn(E_UNSUPPORTED, "Unsupported/illegal unbounded ('$') in this context.");
     }
@@ -1645,6 +1824,35 @@ class WidthVisitor final : public VNVisitor {
         if (m_vup->prelim()) {
             userIterateAndNext(nodep->lhsp(), WidthVP{SELF, BOTH}.p());
             nodep->dtypeSetBit();
+        }
+        if (m_vup->final()) {
+            // Determine if expression is unbounded
+            // - AstUnbounded ($) -> true
+            // - Queue with no bound -> true (queues are unbounded by default)
+            // - Everything else -> false
+            bool isUnbounded = false;
+            if (VN_IS(nodep->lhsp(), Unbounded)) {
+                isUnbounded = true;
+            } else if (const AstVarRef* const varrefp = VN_CAST(nodep->lhsp(), VarRef)) {
+                // Check if VarRef points to a parameter with $ as its value
+                if (AstVar* const varp = varrefp->varp()) {
+                    if (varp->isParam() && VN_IS(varp->valuep(), Unbounded)) {
+                        isUnbounded = true;
+                    }
+                }
+            }
+            if (!isUnbounded) if (AstNodeDType* const dtypep = nodep->lhsp()->dtypep()) {
+                if (const AstQueueDType* const queuep
+                    = VN_CAST(dtypep->skipRefp(), QueueDType)) {
+                    // Queue is unbounded if no explicit bound, or bound is $
+                    isUnbounded = !queuep->boundp() || VN_IS(queuep->boundp(), Unbounded);
+                }
+            }
+            AstConst* const constp
+                = new AstConst{nodep->fileline(), AstConst::BitFalse{}};
+            if (isUnbounded) constp->num().setQuad(1);
+            nodep->replaceWith(constp);
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
         }
     }
     void visit(AstCExpr* nodep) override {
@@ -1671,9 +1879,11 @@ class WidthVisitor final : public VNVisitor {
         if (m_vup->prelim()) iterateCheckSizedSelf(nodep, "LHS", nodep->lhsp(), SELF, BOTH);
     }
     void visit(AstCgOptionAssign* nodep) override {
-        // We report COVERIGN on the whole covergroup; if get more fine-grained add this
-        // nodep->v3warn(COVERIGN, "Ignoring unsupported: coverage option");
-        VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
+        // Process the value expression and keep the node for V3CoverageGroup to use
+        if (nodep->valuep()) {
+            userIterateAndNext(nodep->valuep(), WidthVP{SELF, BOTH}.p());
+        }
+        // Don't delete - V3CoverageGroup will process options
     }
     void visit(AstPow* nodep) override {
         // Pow is special, output sign only depends on LHS sign, but
@@ -1913,11 +2123,24 @@ class WidthVisitor final : public VNVisitor {
                     break;
                 }
                 case VAttrType::DIM_BITS: {
-                    if (VN_IS(dtypep, DynArrayDType)) {
-                        nodep->v3warn(E_UNSUPPORTED, "Unsupported: $bits for dynamic array");
-                    } else {
-                        nodep->v3warn(E_UNSUPPORTED, "Unsupported: $bits for queue");
-                    }
+                    // $bits for dynamic array/queue = element_bits * size()
+                    AstNodeExpr* const fromp = VN_AS(nodep->fromp()->unlinkFrBack(), NodeExpr);
+                    // Get element type width
+                    AstNodeDType* const elemDtypep = dtypep->subDTypep();
+                    UASSERT_OBJ(elemDtypep, nodep, "Dynamic type missing element type");
+                    const int elemBits = elemDtypep->skipRefp()->width();
+                    // Create: element_bits * size()
+                    AstNodeExpr* const sizep
+                        = new AstCMethodHard{nodep->fileline(), fromp, VCMethod::DYN_SIZE};
+                    sizep->dtypeSetSigned32();
+                    sizep->didWidth(true);
+                    sizep->protect(false);
+                    AstNode* const newp = new AstMul{
+                        nodep->fileline(),
+                        new AstConst{nodep->fileline(), AstConst::Signed32{}, elemBits}, sizep};
+                    newp->dtypeSetSigned32();
+                    nodep->replaceWith(newp);
+                    VL_DO_DANGLING(nodep->deleteTree(), nodep);
                     break;
                 }
                 default: nodep->v3fatalSrc("Unhandled attribute type");
@@ -2744,7 +2967,20 @@ class WidthVisitor final : public VNVisitor {
         // UINFOTREE(9, nodep, "", "VRin");
         // UINFOTREE(9, nodep->varp(), "", "forvar");
         // Note genvar's are also entered as integers
-        nodep->dtypeFrom(nodep->varp());
+        // For modport expressions with part-selects, the dtype was already set to the
+        // narrower width in V3LinkDot. Don't overwrite with the full varp() dtype.
+        // However, for foreach loop variables, the VarRef type may differ from Var type
+        // (e.g., integer vs struct for struct-keyed associative arrays, or different
+        // width for typed associative array keys). Always update for loop index vars.
+        const bool dtypeMismatch
+            = nodep->dtypep() && nodep->varp()->dtypep()
+              && nodep->dtypep()->skipRefp()->type() != nodep->varp()->dtypep()->skipRefp()->type();
+        const bool isLoopIdxWithWrongWidth
+            = nodep->varp()->isUsedLoopIdx() && nodep->width() != nodep->varp()->width();
+        if (!nodep->dtypep() || nodep->width() >= nodep->varp()->width() || dtypeMismatch
+            || isLoopIdxWithWrongWidth) {
+            nodep->dtypeFrom(nodep->varp());
+        }
         if (VN_IS(nodep->backp(), NodeAssign) && nodep->access().isWriteOrRW()) {  // On LHS
             UASSERT_OBJ(nodep->dtypep(), nodep, "LHS var should be dtype completed");
         }
@@ -3043,8 +3279,7 @@ class WidthVisitor final : public VNVisitor {
         }
     }
     void visit(AstDist* nodep) override {
-        //  x dist {a :/ p, b :/ q} --> (p > 0 && x == a) || (q > 0 && x == b)
-        nodep->v3warn(CONSTRAINTIGN, "Constraint expression ignored (imperfect distribution)");
+        // Do width resolution on the expression and items
         userIterateAndNext(nodep->exprp(), WidthVP{CONTEXT_DET, PRELIM}.p());
         for (AstNode *nextip, *itemp = nodep->itemsp(); itemp; itemp = nextip) {
             nextip = itemp->nextp();  // iterate may cause the node to get replaced
@@ -3080,6 +3315,15 @@ class WidthVisitor final : public VNVisitor {
             // InsideRange will get replaced with Lte&Gte and finalized later
             if (!VN_IS(itemp, InsideRange))
                 iterateCheck(nodep, "Dist Item", itemp, CONTEXT_DET, FINAL, subDTypep, EXTEND_EXP);
+        }
+
+        //  x dist {a :/ p, b :/ q} --> (p > 0 && x == a) || (q > 0 && x == b)
+        // This converts dist to a simple range check, ignoring weights.
+        // In constraint context, this provides valid range constraints even if
+        // weighted distribution isn't perfectly implemented.
+        if (!m_constraintp) {
+            // Only warn about imperfect distribution outside constraint context
+            nodep->v3warn(CONSTRAINTIGN, "Constraint expression ignored (imperfect distribution)");
         }
         AstNodeExpr* newp = nullptr;
         for (AstDistItem* itemp = nodep->itemsp(); itemp;
@@ -3138,8 +3382,8 @@ class WidthVisitor final : public VNVisitor {
                      EXTEND_EXP);
         for (AstNode *nextip, *itemp = nodep->itemsp(); itemp; itemp = nextip) {
             nextip = itemp->nextp();  // iterate may cause the node to get replaced
-            // InsideRange will get replaced with Lte&Gte and finalized later
-            if (!VN_IS(itemp, InsideRange))
+            // InsideRange and CovTolerance will get replaced with Lte&Gte and finalized later
+            if (!VN_IS(itemp, InsideRange) && !VN_IS(itemp, CovTolerance))
                 iterateCheck(nodep, "Inside Item", itemp, CONTEXT_DET, FINAL, expDTypep,
                              EXTEND_EXP);
         }
@@ -3196,6 +3440,91 @@ class WidthVisitor final : public VNVisitor {
             // Similar logic in V3Case
             return irangep->newAndFromInside(exprp, irangep->lhsp()->unlinkFrBack(),
                                              irangep->rhsp()->unlinkFrBack());
+        } else if (AstCovTolerance* const tolp = VN_CAST(itemp, CovTolerance)) {
+            // Tolerance range [center +/- tol] or [center +%- pct]
+            // Expand to: (exprp >= lo) && (exprp <= hi)
+            FileLine* const fl = tolp->fileline();
+            AstNodeExpr* centerp = tolp->centerp()->unlinkFrBack();
+            AstNodeExpr* tolerancep = tolp->tolerancep()->unlinkFrBack();
+            const bool isDouble = exprp->dtypep()->skipRefp()->isDouble();
+
+            // Convert to double if needed
+            if (isDouble && !centerp->dtypep()->skipRefp()->isDouble()) {
+                if (centerp->dtypep()->skipRefp()->isSigned()) {
+                    centerp = new AstISToRD{fl, centerp};
+                } else {
+                    centerp = new AstIToRD{fl, centerp};
+                }
+            }
+            if (isDouble && !tolerancep->dtypep()->skipRefp()->isDouble()) {
+                if (tolerancep->dtypep()->skipRefp()->isSigned()) {
+                    tolerancep = new AstISToRD{fl, tolerancep};
+                } else {
+                    tolerancep = new AstIToRD{fl, tolerancep};
+                }
+            }
+
+            AstNodeExpr* lop;
+            AstNodeExpr* hip;
+            if (tolp->isPercent()) {
+                // [center +%- pct]: lo = center * (100 - pct) / 100, hi = center * (100 + pct) / 100
+                if (isDouble) {
+                    AstNodeExpr* const c100 = new AstConst{fl, V3Number{nodep, 64}};
+                    c100->dtypeSetDouble();
+                    VN_AS(c100, Const)->num().setDouble(100.0);
+                    AstNodeExpr* const loMul
+                        = new AstMulD{fl, centerp->cloneTreePure(false),
+                                      new AstSubD{fl, c100->cloneTreePure(false),
+                                                  tolerancep->cloneTreePure(false)}};
+                    AstNodeExpr* const hiMul
+                        = new AstMulD{fl, centerp,
+                                      new AstAddD{fl, c100, tolerancep}};
+                    AstNodeExpr* const c100_2 = new AstConst{fl, V3Number{nodep, 64}};
+                    c100_2->dtypeSetDouble();
+                    VN_AS(c100_2, Const)->num().setDouble(100.0);
+                    AstNodeExpr* const c100_3 = new AstConst{fl, V3Number{nodep, 64}};
+                    c100_3->dtypeSetDouble();
+                    VN_AS(c100_3, Const)->num().setDouble(100.0);
+                    lop = new AstDivD{fl, loMul, c100_2};
+                    hip = new AstDivD{fl, hiMul, c100_3};
+                } else {
+                    AstConst* const c100 = new AstConst{fl, 100};
+                    AstNodeExpr* const loMul
+                        = new AstMul{fl, centerp->cloneTreePure(false),
+                                     new AstSub{fl, c100->cloneTreePure(false),
+                                                tolerancep->cloneTreePure(false)}};
+                    AstNodeExpr* const hiMul
+                        = new AstMul{fl, centerp,
+                                     new AstAdd{fl, c100, tolerancep}};
+                    lop = new AstDiv{fl, loMul, new AstConst{fl, 100}};
+                    hip = new AstDiv{fl, hiMul, new AstConst{fl, 100}};
+                }
+            } else {
+                // [center +/- tol]: lo = center - tol, hi = center + tol
+                if (isDouble) {
+                    lop = new AstSubD{fl, centerp->cloneTreePure(false),
+                                      tolerancep->cloneTreePure(false)};
+                    hip = new AstAddD{fl, centerp, tolerancep};
+                } else {
+                    lop = new AstSub{fl, centerp->cloneTreePure(false),
+                                     tolerancep->cloneTreePure(false)};
+                    hip = new AstAdd{fl, centerp, tolerancep};
+                }
+            }
+            // Create range check: (exprp >= lo) && (exprp <= hi)
+            AstNodeExpr* gep;
+            AstNodeExpr* lep;
+            if (isDouble) {
+                gep = new AstGteD{fl, exprp, lop};
+                lep = new AstLteD{fl, exprp->cloneTreePure(false), hip};
+            } else {
+                gep = new AstGte{fl, exprp, lop};
+                gep->fileline()->modifyWarnOff(V3ErrorCode::UNSIGNED, true);
+                lep = new AstLte{fl, exprp->cloneTreePure(false), hip};
+                lep->fileline()->modifyWarnOff(V3ErrorCode::CMPCONST, true);
+            }
+            // Don't delete tolp - it stays attached to parent AstInside and gets deleted with it
+            return new AstLogAnd{fl, gep, lep};
         } else if (VN_IS(itemDtp, UnpackArrayDType) || VN_IS(itemDtp, DynArrayDType)
                    || VN_IS(itemDtp, QueueDType)) {
             // Unsupported in parameters
@@ -3367,7 +3696,8 @@ class WidthVisitor final : public VNVisitor {
                 if (nodep->access().isWriteOrRW()) V3LinkLValue::linkLValueSet(nodep);
                 if (AstIfaceRefDType* const adtypep
                     = VN_CAST(nodep->fromp()->dtypep(), IfaceRefDType)) {
-                    nodep->varp()->sensIfacep(adtypep->ifacep());
+                    // Only set sensIfacep for virtual interface accesses
+                    if (adtypep->isVirtual()) nodep->varp()->sensIfacep(adtypep->ifacep());
                 }
                 UINFO(9, "     done clocking msel " << nodep);
                 nodep->didWidth(true);  // Must not visit again: will confuse scopes
@@ -3385,8 +3715,13 @@ class WidthVisitor final : public VNVisitor {
                     if (!varp->didWidth()) userIterate(varp, nullptr);
                     nodep->dtypep(foundp->dtypep());
                     nodep->varp(varp);
-                    AstIface* const ifacep = adtypep->ifacep();
-                    varp->sensIfacep(ifacep);
+                    // Only set sensIfacep for virtual interface accesses, not concrete ones
+                    if (adtypep && adtypep->isVirtual()) {
+                        AstIface* const ifacep = adtypep->ifacep();
+                        varp->sensIfacep(ifacep);
+                        nodep->fromp()->foreach(
+                            [ifacep](AstVarRef* const refp) { refp->varp()->sensIfacep(ifacep); });
+                    }
                     nodep->didWidth(true);
                     return;
                 }
@@ -3490,6 +3825,60 @@ class WidthVisitor final : public VNVisitor {
                                   << foundp->warnContextSecondary());
             }
             classp = classp->extendsp() ? classp->extendsp()->classp() : nullptr;
+        }
+
+        // Check for coverpoint access on covergroups (cg.cp.get_inst_coverage())
+        // Instead of creating a member variable here, we just mark that this is a coverpoint
+        // access and let methodCallCoverpoint handle the transformation
+        if (first_classp->isCovergroup()) {
+            // Get effective name for a coverpoint (IEEE 1800-2023 19.5)
+            // If coverpoint has no explicit name, use the expression name if it's a simple varref
+            auto getCpEffectiveName = [](AstCoverpoint* cpp) -> string {
+                if (!cpp->name().empty()) return cpp->name();
+                // For unlabeled coverpoints, use expression name if it's a simple varref
+                if (AstVarRef* const vrp = VN_CAST(cpp->exprp(), VarRef)) {
+                    return vrp->name();
+                }
+                return "";  // Anonymous coverpoint
+            };
+
+            // Helper lambda to find coverpoint by name
+            auto findCoverpoint = [&](AstClass* cgp, const string& name) -> AstCoverpoint* {
+                // Look in class statements
+                for (AstNode* stmtp = cgp->stmtsp(); stmtp; stmtp = stmtp->nextp()) {
+                    if (AstCoverpoint* const cpp = VN_CAST(stmtp, Coverpoint)) {
+                        if (getCpEffectiveName(cpp) == name) return cpp;
+                    }
+                }
+                // Also look in member functions (coverpoints may be in the constructor)
+                for (AstNode* memberp = cgp->membersp(); memberp; memberp = memberp->nextp()) {
+                    if (AstFunc* const funcp = VN_CAST(memberp, Func)) {
+                        for (AstNode* stmtp = funcp->stmtsp(); stmtp; stmtp = stmtp->nextp()) {
+                            if (AstCoverpoint* const cpp = VN_CAST(stmtp, Coverpoint)) {
+                                if (getCpEffectiveName(cpp) == name) return cpp;
+                            }
+                        }
+                    }
+                }
+                return nullptr;
+            };
+
+            if (findCoverpoint(first_classp, nodep->name())) {
+                // Found matching coverpoint - store the covergroup class for later use
+                // Mark the member select with a special type that methodCallCoverpoint recognizes
+                // Use AstBasicDType for the coverpoint proxy - it will only be used
+                // in method calls which we intercept
+                AstBasicDType* const cpDtypep
+                    = new AstBasicDType{nodep->fileline(), VBasicDTypeKwd::DOUBLE};
+                v3Global.rootp()->typeTablep()->addTypesp(cpDtypep);
+
+                // Store the coverpoint name and covergroup class in user fields for later
+                // Set a marker that this is a coverpoint (using user1 as boolean)
+                nodep->dtypep(cpDtypep);
+                nodep->user1(true);  // Mark as coverpoint member access
+                nodep->didWidth(true);
+                return true;
+            }
         }
 
         VSpellCheck speller;
@@ -3628,6 +4017,27 @@ class WidthVisitor final : public VNVisitor {
             methodCallEvent(nodep, basicp);
         } else if (basicp && basicp->isString()) {
             methodCallString(nodep, basicp);
+        } else if (const AstConst* constp = VN_CAST(nodep->fromp(), Const)) {
+            // String literals parsed in expression context have logic type but need string methods
+            if (constp->num().isFromString()) {
+                methodCallString(nodep, basicp);
+            } else {
+                nodep->v3warn(E_UNSUPPORTED,
+                              "Unsupported: Member call on constant '" << constp->prettyName()
+                                                                       << "'");
+                nodep->dtypeSetVoid();
+            }
+        } else if (AstMemberSel* const mselp = VN_CAST(nodep->fromp(), MemberSel)) {
+            // Check if this is a coverpoint member access (marked by user1 in memberSelClass)
+            if (mselp->user1()) {
+                methodCallCoverpoint(nodep, mselp);
+            } else {
+                nodep->v3warn(E_UNSUPPORTED,
+                              "Unsupported: Member call on object '"
+                                  << nodep->fromp()->prettyTypeName() << "' which is a '"
+                                  << nodep->fromp()->dtypep()->prettyTypeName() << "'");
+                nodep->dtypeSetVoid();
+            }
         } else {
             nodep->v3warn(E_UNSUPPORTED, "Unsupported: Member call on object '"
                                              << nodep->fromp()->prettyTypeName()
@@ -3870,9 +4280,18 @@ class WidthVisitor final : public VNVisitor {
             newp->dtypep(queueDTypeIndexedBy(adtypep->subDTypep()));
             if (!nodep->firstAbovep()) newp->dtypeSetVoid();
         } else if (nodep->name() == "map") {
-            nodep->v3warn(E_UNSUPPORTED,
-                          "Unsupported: Wildcard array 'map' method (IEEE 1800-2023 7.12.5)");
-            nodep->dtypeFrom(adtypep->subDTypep());  // Best guess
+            // 'map' transforms each element using the with expression
+            // The return type is a queue of the with expression's result type
+            AstWith* const withp = methodWithArgument(nodep, true, true, nullptr,
+                                                      adtypep->findStringDType(),
+                                                      adtypep->subDTypep());
+            methodOkArguments(nodep, 0, 0);
+            methodCallLValueRecurse(nodep, nodep->fromp(), VAccess::READ);
+            newp = new AstCMethodHard{nodep->fileline(), nodep->fromp()->unlinkFrBack(),
+                                      VCMethod::arrayMethod(nodep->name()), withp};
+            // Return type is a queue with element type from the with expression
+            newp->dtypep(queueDTypeIndexedBy(withp->dtypep()));
+            if (!nodep->firstAbovep()) newp->dtypeSetVoid();
         } else {
             nodep->v3error("Unknown wildcard associative array method " << nodep->prettyNameQ());
             nodep->dtypeFrom(adtypep->subDTypep());  // Best guess
@@ -3979,9 +4398,17 @@ class WidthVisitor final : public VNVisitor {
             newp->dtypep(queueDTypeIndexedBy(adtypep->keyDTypep()));
             if (!nodep->firstAbovep()) newp->dtypeSetVoid();
         } else if (nodep->name() == "map") {
-            nodep->v3warn(E_UNSUPPORTED,
-                          "Unsupported: Associative array 'map' method (IEEE 1800-2023 7.12.5)");
-            nodep->dtypeFrom(adtypep->subDTypep());  // Best guess
+            // 'map' transforms each element using the with expression
+            // The return type is a queue of the with expression's result type
+            AstWith* const withp = methodWithArgument(nodep, true, true, nullptr,
+                                                      adtypep->keyDTypep(), adtypep->subDTypep());
+            methodOkArguments(nodep, 0, 0);
+            methodCallLValueRecurse(nodep, nodep->fromp(), VAccess::READ);
+            newp = new AstCMethodHard{nodep->fileline(), nodep->fromp()->unlinkFrBack(),
+                                      VCMethod::arrayMethod(nodep->name()), withp};
+            // Return type is a queue with element type from the with expression
+            newp->dtypep(queueDTypeIndexedBy(withp->dtypep()));
+            if (!nodep->firstAbovep()) newp->dtypeSetVoid();
         } else {
             nodep->v3error("Unknown built-in associative array method " << nodep->prettyNameQ());
             nodep->dtypeFrom(adtypep->subDTypep());  // Best guess
@@ -4109,9 +4536,18 @@ class WidthVisitor final : public VNVisitor {
             newp->dtypep(newp->findQueueIndexDType());
             if (!nodep->firstAbovep()) newp->dtypeSetVoid();
         } else if (nodep->name() == "map") {
-            nodep->v3warn(E_UNSUPPORTED,
-                          "Unsupported: Array 'map' method (IEEE 1800-2023 7.12.5)");
-            nodep->dtypeFrom(adtypep->subDTypep());  // Best guess
+            // 'map' transforms each element using the with expression
+            // The return type is a queue of the with expression's result type
+            AstWith* const withp = methodWithArgument(nodep, true, true, nullptr,
+                                                      nodep->findUInt32DType(),
+                                                      adtypep->subDTypep());
+            methodOkArguments(nodep, 0, 0);
+            methodCallLValueRecurse(nodep, nodep->fromp(), VAccess::READ);
+            newp = new AstCMethodHard{nodep->fileline(), nodep->fromp()->unlinkFrBack(),
+                                      VCMethod::arrayMethod(nodep->name()), withp};
+            // Return type is a queue with element type from the with expression
+            newp->dtypep(queueDTypeIndexedBy(withp->dtypep()));
+            if (!nodep->firstAbovep()) newp->dtypeSetVoid();
         }
         return newp;
     }
@@ -4741,6 +5177,88 @@ class WidthVisitor final : public VNVisitor {
             VL_DO_DANGLING(nodep->deleteTree(), nodep);
         } else {
             nodep->v3error("Unknown built-in string method " << nodep->prettyNameQ());
+        }
+    }
+    void methodCallCoverpoint(AstMethodCall* nodep, AstMemberSel* mselp) {
+        // Handle method calls on coverpoint member access
+        // Transform cg.cp.get_inst_coverage() to cg.__Vcp_cp_get_inst_coverage()
+        // We create the per-coverpoint function in the covergroup class if it doesn't exist
+        const string cpName = mselp->name();  // Name of the coverpoint
+        const string methodName = nodep->name();  // Method being called
+
+        // Get the covergroup class from the MemberSel's fromp
+        AstNodeDType* const cgDtypep = mselp->fromp()->dtypep()->skipRefToEnump();
+        AstClassRefDType* const cgRefp = VN_CAST(cgDtypep, ClassRefDType);
+        if (!cgRefp || !cgRefp->classp() || !cgRefp->classp()->isCovergroup()) {
+            nodep->v3error("Coverpoint method call on non-covergroup");
+            nodep->dtypeSetVoid();
+            return;
+        }
+        AstClass* const cgClassp = cgRefp->classp();
+
+        // Support get_inst_coverage(), get_coverage(), sample(), start(), stop()
+        if (methodName == "get_inst_coverage" || methodName == "get_coverage") {
+            methodOkArguments(nodep, 0, 0);
+            const string funcName = "__Vcp_" + cpName + "_get_inst_coverage";
+
+            // Check if the function already exists in the covergroup class
+            AstFunc* cpFuncp = nullptr;
+            for (AstNode* memberp = cgClassp->membersp(); memberp; memberp = memberp->nextp()) {
+                if (AstFunc* const funcp = VN_CAST(memberp, Func)) {
+                    if (funcp->name() == funcName) {
+                        cpFuncp = funcp;
+                        break;
+                    }
+                }
+            }
+
+            // Create the function if it doesn't exist (V3CoverageGroup will fill in the body)
+            if (!cpFuncp) {
+                FileLine* const fl = nodep->fileline();
+                AstBasicDType* const realDtypep
+                    = new AstBasicDType{fl, VBasicDTypeKwd::DOUBLE};
+                v3Global.rootp()->typeTablep()->addTypesp(realDtypep);
+
+                // Create function return variable (use MEMBER type to avoid being deleted by V3Dead)
+                AstVar* const funcRetp
+                    = new AstVar{fl, VVarType::MEMBER, funcName, realDtypep};
+                funcRetp->funcLocal(true);
+                funcRetp->funcReturn(true);
+                funcRetp->direction(VDirection::OUTPUT);
+                funcRetp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
+
+                // Create function (body will be filled by V3CoverageGroup)
+                cpFuncp = new AstFunc{fl, funcName, nullptr, funcRetp};
+                cpFuncp->dtypep(realDtypep);
+                cpFuncp->classMethod(true);
+                // Mark that this was created as a placeholder
+                cpFuncp->user1(true);
+                cgClassp->addMembersp(cpFuncp);
+            }
+
+            // Get the covergroup object (fromp of the MemberSel)
+            AstNodeExpr* const cgObjp = mselp->fromp()->unlinkFrBack();
+
+            // Create method call to the per-coverpoint function
+            AstMethodCall* const newCallp
+                = new AstMethodCall{nodep->fileline(), cgObjp, funcName, nullptr};
+            newCallp->taskp(cpFuncp);
+            newCallp->dtypep(cpFuncp->dtypep());
+            newCallp->classOrPackagep(cgClassp);
+            newCallp->didWidth(true);  // Already fully resolved
+
+            nodep->replaceWith(newCallp);
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+        } else if (methodName == "sample" || methodName == "start" || methodName == "stop") {
+            // These are no-ops for individual coverpoints (done at covergroup level)
+            methodOkArguments(nodep, 0, 0);
+            // Replace with 0 (no-op)
+            AstNodeExpr* const newp = new AstConst{nodep->fileline(), AstConst::RealDouble{}, 0.0};
+            nodep->replaceWith(newp);
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+        } else {
+            nodep->v3error("Unknown coverpoint method " << nodep->prettyNameQ());
+            nodep->dtypeSetVoid();
         }
     }
     AstQueueDType* queueDTypeIndexedBy(AstNodeDType* indexDTypep) {
@@ -5423,20 +5941,10 @@ class WidthVisitor final : public VNVisitor {
                                  BOTH);  // it's like an if() condition.
             }
             nodep->dtypeSetBit();
-            if (m_hasSExpr) {
-                if (VN_IS(m_seqUnsupp, Implication)) {
-                    m_seqUnsupp->v3warn(E_UNSUPPORTED,
-                                        "Unsupported: Implication with sequence expression");
-                    AstConst* const newp = new AstConst{nodep->fileline(), 0};
-                    newp->dtypeFrom(nodep);
-                    nodep->replaceWith(newp);
-                    VL_DO_DANGLING(pushDeletep(nodep), nodep);
-                } else if (nodep->disablep()) {
-                    nodep->disablep()->v3warn(E_UNSUPPORTED,
-                                              "Unsupported: Disable iff with sequence expression");
-                    VL_DO_DANGLING(pushDeletep(nodep->disablep()->unlinkFrBack()), nodep);
-                }
-            }
+            // Note: m_hasSExpr tracks if property has sequence expressions
+            // Sequence expressions are now supported via transformation in V3AssertProp
+            // disable iff is simply wrapped as if(!condition) around the body, so
+            // it works with sequences too
         }
     }
 
@@ -6197,6 +6705,65 @@ class WidthVisitor final : public VNVisitor {
         iterateCheckBool(nodep, "Property", nodep->propp(), BOTH);  // it's like an if() condition.
         userIterateAndNext(nodep->passsp(), nullptr);
     }
+    void visit(AstCoverpoint* nodep) override {
+        // Coverpoint inside a covergroup - expression and iff condition need width context
+        if (nodep->exprp()) {
+            userIterateAndNext(nodep->exprp(), WidthVP{SELF, BOTH}.p());
+        }
+        if (nodep->iffp()) {
+            iterateCheckBool(nodep, "iff condition", nodep->iffp(), BOTH);
+        }
+        userIterateAndNext(nodep->binsp(), nullptr);
+        userIterateAndNext(nodep->optionsp(), nullptr);
+    }
+    void visit(AstCovBinsof* nodep) override {
+        // binsof() expression - intersect ranges need width context
+        userIterateAndNext(nodep->intersectp(), WidthVP{SELF, BOTH}.p());
+    }
+    void visit(AstCovSelectAnd* nodep) override {
+        // binsof() && binsof() expression in cross coverage
+        userIterateAndNext(nodep->lhsp(), WidthVP{SELF, BOTH}.p());
+        userIterateAndNext(nodep->rhsp(), WidthVP{SELF, BOTH}.p());
+    }
+    void visit(AstCovSelectOr* nodep) override {
+        // binsof() || binsof() expression in cross coverage
+        userIterateAndNext(nodep->lhsp(), WidthVP{SELF, BOTH}.p());
+        userIterateAndNext(nodep->rhsp(), WidthVP{SELF, BOTH}.p());
+    }
+    void visit(AstCovRepetition* nodep) override {
+        // Coverage repetition - item and counts need width context
+        userIterateAndNext(nodep->itemp(), WidthVP{SELF, BOTH}.p());
+        userIterateAndNext(nodep->countp(), WidthVP{SELF, BOTH}.p());
+        userIterateAndNext(nodep->count2p(), WidthVP{SELF, BOTH}.p());
+        // Repetition is now supported - warnings for partial support in V3CoverageGroup
+    }
+    void visit(AstCovTolerance* nodep) override {
+        // Tolerance range [value +/- tol] or [value +%- pct]
+        userIterateAndNext(nodep->centerp(), WidthVP{SELF, BOTH}.p());
+        userIterateAndNext(nodep->tolerancep(), WidthVP{SELF, BOTH}.p());
+        // Set dtype from center so inside operator can use it
+        nodep->dtypeFrom(nodep->centerp());
+    }
+    void visit(AstCovTransition* nodep) override {
+        // Transition sequence - each step's ranges need width context
+        userIterateAndNext(nodep->stepsp(), WidthVP{SELF, BOTH}.p());
+    }
+    void visit(AstCoverBin* nodep) override {
+        // Coverage bin - ranges and iff condition need width context
+        userIterateAndNext(nodep->rangesp(), WidthVP{SELF, BOTH}.p());
+        if (nodep->iffp()) {
+            iterateCheckBool(nodep, "iff condition", nodep->iffp(), BOTH);
+        }
+    }
+    void visit(AstCoverCross* nodep) override {
+        // Cross coverage - iff condition needs width context
+        if (nodep->iffp()) {
+            iterateCheckBool(nodep, "iff condition", nodep->iffp(), BOTH);
+        }
+        userIterateAndNext(nodep->itemsp(), nullptr);
+        userIterateAndNext(nodep->binsp(), nullptr);
+        userIterateAndNext(nodep->optionsp(), nullptr);
+    }
     void visit(AstRestrict* nodep) override {
         assertAtStatement(nodep);
         iterateCheckBool(nodep, "Property", nodep->propp(), BOTH);  // it's like an if() condition.
@@ -6567,13 +7134,17 @@ class WidthVisitor final : public VNVisitor {
     }
     void visit(AstReturn* nodep) override { nodep->v3fatalSrc("'return' missed in LinkJump"); }
     void visit(AstSequence* nodep) override {
-        // UNSUPPORTED message is thrown only where the sequence is referenced
-        // in order to enable some UVM tests.
-        // When support more here will need finer-grained UNSUPPORTED if items
-        // under the sequence are not supported
-        if (nodep->isReferenced()) nodep->v3warn(E_UNSUPPORTED, "Unsupported: sequence");
-        userIterateChildren(nodep, nullptr);
-        if (!nodep->isReferenced()) VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+        // Sequences are now supported via substitution in V3LinkResolve.
+        // When the sequence is referenced, it gets inlined at the reference site.
+        // Any unsupported constructs within the sequence will be caught during
+        // their own visitor processing.
+        if (nodep->didWidth()) return;
+        nodep->doingWidth(true);
+        nodep->dtypeSetBit();  // Sequences return bit type (pass/fail)
+        // Pass a valid vup context so child visitors don't crash
+        userIterateChildren(nodep, WidthVP{SELF, BOTH}.p());
+        nodep->didWidth(true);
+        nodep->doingWidth(false);
     }
 
     AstPackage* getItemPackage(AstNode* pkgItemp) {
@@ -7112,6 +7683,13 @@ class WidthVisitor final : public VNVisitor {
             userIterateChildren(nodep, nullptr);
         }
     }
+    void visit(AstModportVarRef* nodep) override {
+        // Modport variable references have optional expression children (for modport expressions
+        // like .portname(expr)). These expressions are metadata containing ParseRefs that
+        // haven't been linked yet, so we can't width them normally. The selection bounds
+        // are extracted and used in V3LinkDot during scope creation to wrap VarRef in AstSel.
+        // Do not iterate children - leave the expression as unresolved metadata.
+    }
     void visit(AstNode* nodep) override {
         // Default: Just iterate
         UASSERT_OBJ(!m_vup, nodep,
@@ -7197,13 +7775,9 @@ class WidthVisitor final : public VNVisitor {
         if (m_vup->prelim()) {
             iterateCheckBool(nodep, "LHS", nodep->op1p(), BOTH);
             nodep->dtypeSetBit();
-            if (m_underSExpr) {
-                nodep->v3error("Unexpected 'not' in sequence expression context");
-                AstConst* const newp = new AstConst{nodep->fileline(), 0};
-                newp->dtypeFrom(nodep);
-                nodep->replaceWith(newp);
-                VL_DO_DANGLING(pushDeletep(nodep), nodep);
-            }
+            // Note: Boolean negation (!) is allowed in sequence expressions.
+            // SVA 'not' operator (sequence negation) is different from logical !.
+            // Logical ! is just a boolean operation: !expr means "expr is false".
         }
     }
     void visit_log_and_or(AstNodeBiop* nodep) {

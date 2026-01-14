@@ -151,12 +151,14 @@ private:
         if (!m_underSel && !m_contNba.empty()) {
             std::string varType;
             const AstNodeDType* const varDtp = varp->dtypep()->skipRefp();
+            // IEEE 1800-2012 removed the restriction on NBAs to class properties.
+            // Only automatic variables (local procedural variables that could go out of scope)
+            // are restricted. Class instance properties have dynamic lifetime tied to the
+            // object, not the procedural block, so they are allowed.
             if (varp->lifetime().isAutomatic() && !VN_IS(varDtp, IfaceRefDType)
-                && !(varp->isFuncLocal() && varp->isIO()))
+                && !(varp->isFuncLocal() && varp->isIO())
+                && !varp->isClassMember())
                 varType = "Automatic lifetime";
-            else if (varp->isClassMember() && !varp->lifetime().isStatic()
-                     && !VN_IS(varDtp, IfaceRefDType))
-                varType = "Class non-static";
             else if (varDtp->isDynamicallySized() && m_dynsizedelem)
                 varType = "Dynamically-sized";
             if (!varType.empty()) {
@@ -508,6 +510,13 @@ private:
     void visit(AstNodePreSel* nodep) override {  // LCOV_EXCL_LINE
         // This check could go anywhere after V3Param
         nodep->v3fatalSrc("Presels should have been removed before this point");
+    }
+    void visit(AstModportVarRef* nodep) override {
+        // Modport variable references may have part-select expressions (.portname(sig[7:0]))
+        // These are metadata used during linking and should not be iterated through,
+        // as they may contain unresolved presels that aren't actually used in code generation.
+        // Skip children but process the node itself (edit dtype)
+        editDType(nodep);
     }
     void visit(AstCMethodHard* nodep) override {
         VL_RESTORER(m_dynsizedelem);

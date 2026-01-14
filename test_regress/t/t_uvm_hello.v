@@ -9,6 +9,8 @@
 
 // verilator lint_off DECLFILENAME
 
+`include "uvm_macros.svh"
+
 module t;
   import uvm_pkg::*;
   initial begin

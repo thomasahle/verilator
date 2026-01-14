@@ -477,6 +477,19 @@ public:
         return *this;
     }
 
+    // Allow conversion from queue with different element type (e.g., CData to IData)
+    // This supports Verilog implicit type widening for map() results
+    template <typename T_Other, size_t N_RhsMaxSize = 0,
+              typename = typename std::enable_if<!std::is_same<T_Other, T_Value>::value>::type>
+    VlQueue& operator=(const VlQueue<T_Other, N_RhsMaxSize>& rhs) {
+        m_deque.clear();
+        for (const auto& val : rhs.privateDeque()) {
+            m_deque.push_back(static_cast<T_Value>(val));
+        }
+        if (VL_UNLIKELY(N_MaxSize && N_MaxSize < m_deque.size())) m_deque.resize(N_MaxSize - 1);
+        return *this;
+    }
+
     // Construct new object from _V_alue and/or _C_ontainer child objects
     static VlQueue consV(const T_Value& lhs) {
         VlQueue out;
@@ -762,6 +775,19 @@ public:
             --index;
         }
         return VlQueue<IData>{};
+    }
+
+    // Map/transform operations
+    template <typename T_Func>
+    auto map(T_Func with_func) const {
+        using R = decltype(with_func(std::declval<IData>(), std::declval<T_Value>()));
+        VlQueue<R> out;
+        IData index = 0;
+        for (const auto& i : m_deque) {
+            out.push_back(with_func(index, i));
+            ++index;
+        }
+        return out;
     }
 
     // Reduction operators
@@ -1098,6 +1124,15 @@ public:
             [=](const std::pair<T_Key, T_Value>& i) { return with_func(i.first, i.second); });
         if (it == m_map.rend()) return VlQueue<T_Key>{};
         return VlQueue<T_Key>::consV(it->first);
+    }
+
+    // Map/transform operations
+    template <typename T_Func>
+    auto map(T_Func with_func) const {
+        using R = decltype(with_func(std::declval<T_Key>(), std::declval<T_Value>()));
+        VlQueue<R> out;
+        for (const auto& i : m_map) { out.push_back(with_func(i.first, i.second)); }
+        return out;
     }
 
     // Reduction operators
@@ -1490,6 +1525,19 @@ public:
             if (with_func(i, m_storage[i])) return VlQueue<IData>::consV(i);
         }
         return VlQueue<T_Key>{};
+    }
+
+    // Map/transform operations
+    template <typename T_Func>
+    auto map(T_Func with_func) const {
+        using R = decltype(with_func(std::declval<IData>(), std::declval<T_Value>()));
+        VlQueue<R> out;
+        IData index = 0;
+        for (const auto& i : m_storage) {
+            out.push_back(with_func(index, i));
+            ++index;
+        }
+        return out;
     }
 
     // Reduction operators
@@ -2074,6 +2122,37 @@ public:
             m_queue.erase(m_queue.begin(), it.base());
         }
     }
+};
+
+//======================================================================
+// VlCoverpointRef - Proxy for accessing individual coverpoints in covergroups
+
+template <typename T_Covergroup>
+class VlCoverpointRef final {
+    // MEMBERS
+    T_Covergroup* m_cgp = nullptr;  // Pointer to parent covergroup
+    double (T_Covergroup::*m_getCovp)() = nullptr;  // Per-coverpoint coverage function
+
+public:
+    // CONSTRUCTORS
+    VlCoverpointRef() = default;
+
+    // METHODS
+    // Initialize with parent covergroup and per-coverpoint coverage function
+    void init(T_Covergroup* cgp, double (T_Covergroup::*getCovp)()) {
+        m_cgp = cgp;
+        m_getCovp = getCovp;
+    }
+    // Get instance coverage for this coverpoint (IEEE 1800-2023 19.8.1)
+    double get_inst_coverage() const {
+        return (m_cgp && m_getCovp) ? (m_cgp->*m_getCovp)() : 0.0;
+    }
+    // Get type coverage - same as instance for per_instance=1 (default)
+    double get_coverage() const { return get_inst_coverage(); }
+    // Coverpoint methods that are no-ops (sampling is done at covergroup level)
+    void sample() const {}
+    void start() const {}
+    void stop() const {}
 };
 
 //======================================================================

@@ -9,10 +9,11 @@
 
 import vltest_bootstrap
 
-test.scenarios('vlt')
+test.scenarios('simulator')
 
-test.lint(fails=True,
-          verilator_flags2=['--assert', '--timing'],
-          expect_filename=test.golden_filename)
+# This syntax (##1 not val) is now correctly supported
+test.compile(verilator_flags2=['--assert', '--timing'])
+
+test.execute()
 
 test.passes()

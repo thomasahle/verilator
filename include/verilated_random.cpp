@@ -371,25 +371,85 @@ bool VlRandomizer::next(VlRNG& rngr) {
     std::iostream& os = getSolver();
     if (!os) return false;
 
-    os << "(set-option :produce-models true)\n";
-    os << "(set-logic QF_ABV)\n";
-    os << "(define-fun __Vbv ((b Bool)) (_ BitVec 1) (ite b #b1 #b0))\n";
-    os << "(define-fun __Vbool ((v (_ BitVec 1))) Bool (= #b1 v))\n";
-    for (const auto& var : m_vars) {
-        if (var.second->dimension() > 0) {
-            auto arrVarsp = std::make_shared<const ArrayInfoMap>(m_arr_vars);
-            var.second->setArrayInfo(arrVarsp);
+    // Helper lambda to emit common setup (options, logic, functions, vars)
+    auto emitSetup = [&]() {
+        os << "(set-option :produce-models true)\n";
+        os << "(set-logic QF_ABV)\n";
+        os << "(define-fun __Vbv ((b Bool)) (_ BitVec 1) (ite b #b1 #b0))\n";
+        os << "(define-fun __Vbool ((v (_ BitVec 1))) Bool (= #b1 v))\n";
+        for (const auto& var : m_vars) {
+            if (var.second->dimension() > 0) {
+                auto arrVarsp = std::make_shared<const ArrayInfoMap>(m_arr_vars);
+                var.second->setArrayInfo(arrVarsp);
+            }
+            os << "(declare-fun " << var.first << " () ";
+            var.second->emitType(os);
+            os << ")\n";
         }
-        os << "(declare-fun " << var.first << " () ";
-        var.second->emitType(os);
-        os << ")\n";
+    };
+
+    // Helper lambda to emit hard constraints
+    auto emitHardConstraints = [&]() {
+        for (const std::string& constraint : m_constraints) {
+            os << "(assert (= #b1 " << constraint << "))\n";
+        }
+    };
+
+    // Debug: dump SMT2 to stderr if VERILATOR_SOLVER_DEBUG is set
+    static bool debugSolver = (std::getenv("VERILATOR_SOLVER_DEBUG") != nullptr);
+    std::stringstream debugBuf;
+    std::ostream& dbgOs = debugSolver ? debugBuf : os;
+
+    auto emitSetupToStream = [&](std::ostream& s) {
+        s << "(set-option :produce-models true)\n";
+        s << "(set-logic QF_ABV)\n";
+        s << "(define-fun __Vbv ((b Bool)) (_ BitVec 1) (ite b #b1 #b0))\n";
+        s << "(define-fun __Vbool ((v (_ BitVec 1))) Bool (= #b1 v))\n";
+        for (const auto& var : m_vars) {
+            if (var.second->dimension() > 0) {
+                auto arrVarsp = std::make_shared<const ArrayInfoMap>(m_arr_vars);
+                var.second->setArrayInfo(arrVarsp);
+            }
+            s << "(declare-fun " << var.first << " () ";
+            var.second->emitType(s);
+            s << ")\n";
+        }
+    };
+    auto emitHardConstraintsToStream = [&](std::ostream& s) {
+        for (const std::string& constraint : m_constraints) {
+            s << "(assert (= #b1 " << constraint << "))\n";
+        }
+    };
+
+    if (debugSolver) {
+        emitSetupToStream(debugBuf);
+        emitHardConstraintsToStream(debugBuf);
+        for (const std::string& constraint : m_softConstraints) {
+            debugBuf << "(assert (= #b1 " << constraint << "))\n";
+        }
+        debugBuf << "(check-sat)\n";
+        std::cerr << "=== SMT2 Debug ===\n" << debugBuf.str() << "==================\n";
+        os << debugBuf.str();
+    } else {
+        emitSetup();
+        emitHardConstraints();
+        for (const std::string& constraint : m_softConstraints) {
+            os << "(assert (= #b1 " << constraint << "))\n";
+        }
+        os << "(check-sat)\n";
     }
-    for (const std::string& constraint : m_constraints) {
-        os << "(assert (= #b1 " << constraint << "))\n";
-    }
-    os << "(check-sat)\n";
 
     bool sat = parseSolution(os, true);
+
+    // If unsatisfiable and we have soft constraints, retry with only hard constraints
+    if (!sat && !m_softConstraints.empty()) {
+        os << "(reset)\n";
+        emitSetup();
+        emitHardConstraints();
+        os << "(check-sat)\n";
+        sat = parseSolution(os, true);
+    }
+
     if (!sat) {
         // If unsat, use named assertions to get unsat-core
         os << "(reset)\n";
@@ -567,6 +627,21 @@ bool VlRandomizer::parseSolution(std::iostream& os, bool log) {
                             "indexed_name not found in m_arr_vars");
             }
         }
+        // Skip array variables that have no recorded elements (empty queues/dyn arrays)
+        // We can't properly set array values when the array has no elements recorded
+        // because datap(idx) would fail
+        if (varr.dimension() > 0) {
+            // Check if this array variable has any recorded elements
+            bool hasElements = false;
+            for (const auto& av : m_arr_vars) {
+                if (av.second->m_name.find(name + "[") == 0 ||
+                    av.second->m_name.find(name + "0") == 0) {
+                    hasElements = true;
+                    break;
+                }
+            }
+            if (!hasElements) continue;
+        }
         varr.set(idx, value);
     }
     return true;
@@ -588,14 +663,25 @@ void VlRandomizer::hard(std::string&& constraint, const char* filename, int line
     }
 }
 
+void VlRandomizer::soft(std::string&& constraint, const char* filename, int linenum,
+                        const char* source) {
+    m_softConstraints.emplace_back(std::move(constraint));
+    // Location info currently unused for soft constraints, but available for future diagnostics
+    (void)filename;
+    (void)linenum;
+    (void)source;
+}
+
 void VlRandomizer::clearConstraints() {
     m_constraints.clear();
     m_constraints_line.clear();
+    m_softConstraints.clear();
     // Keep m_vars for class member randomization
 }
 
 void VlRandomizer::clearAll() {
     m_constraints.clear();
+    m_softConstraints.clear();
     m_vars.clear();
 }
 
@@ -604,6 +690,7 @@ void VlRandomizer::dump() const {
     for (const auto& var : m_vars) {
         VL_PRINTF("Variable (%d): %s\n", var.second->width(), var.second->name().c_str());
     }
-    for (const std::string& c : m_constraints) VL_PRINTF("Constraint: %s\n", c.c_str());
+    for (const std::string& c : m_constraints) VL_PRINTF("Hard constraint: %s\n", c.c_str());
+    for (const std::string& c : m_softConstraints) VL_PRINTF("Soft constraint: %s\n", c.c_str());
 }
 #endif

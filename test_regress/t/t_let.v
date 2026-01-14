@@ -17,6 +17,10 @@ module t;
    let D(a, b) = 30 + a + b;
    let E(a=1, b=7) = 30 + a + b;
    let F(untyped a) = 30 + a;
+   let G(int a) = 30 + a;
+   let H(signed a) = 30 + a;
+   let I(logic [7:0] a) = a + 8'h10;
+   let J(real a) = a + 1.5;
 
    initial begin
       if (A != 10) $stop;
@@ -30,6 +34,10 @@ module t;
       if (E(2) != (30 + 2 + 7)) $stop;
       if (E(.b(1)) != (30 + 1 + 1)) $stop;
       if (F(1) != (30 + 1)) $stop;
+      if (G(1) != (30 + 1)) $stop;
+      if (H(1) != (30 + 1)) $stop;
+      if (I(8'h20) != 8'h30) $stop;
+      if (J(1.0) != 2.5) $stop;
       if (Pkg::P != 11) $stop;
       if (Pkg::PP(6) != (30 + 6)) $stop;
       $write("*-* All Finished *-*\n");

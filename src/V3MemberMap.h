@@ -81,9 +81,11 @@ private:
             for (AstNode* itemp = anodep->stmtsp(); itemp; itemp = itemp->nextp()) {
                 if (const AstScope* const scopep = VN_CAST(itemp, Scope)) {
                     for (AstNode* blockp = scopep->blocksp(); blockp; blockp = blockp->nextp()) {
-                        memberInsert(mmapr, blockp);
+                        // Skip procedure blocks (initial, always, etc.) - they're not named members
+                        if (!VN_IS(blockp, NodeProcedure)) memberInsert(mmapr, blockp);
                     }
-                } else if (!VN_IS(itemp, Always)) {
+                } else if (!VN_IS(itemp, NodeProcedure)) {
+                    // Skip all procedure types, not just AstAlways
                     memberInsert(mmapr, itemp);
                 }
             }
@@ -101,8 +103,8 @@ private:
         }
     }
     void memberInsert(MemberMap& mmapr, AstNode* childp, bool warn = true) {
-        // Skip nodes without names (e.g., initial blocks, anonymous statements)
-        // These can't be looked up by name anyway
+        // Skip nodes with empty names - they can't be looked up and would cause
+        // duplicate key errors (e.g., multiple unnamed initial blocks in interfaces)
         if (childp->name().empty()) return;
         const auto mitPair = mmapr.emplace(childp->name(), childp);
         if (VL_UNCOVERABLE(!mitPair.second && warn)) {

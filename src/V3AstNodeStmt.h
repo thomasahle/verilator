@@ -510,8 +510,9 @@ public:
 };
 class AstDelay final : public AstNodeStmt {
     // Delay statement
-    // @astgen op1 := lhsp : AstNodeExpr // Delay value
+    // @astgen op1 := lhsp : AstNodeExpr // Delay value (or min for range delay)
     // @astgen op2 := stmtsp : List[AstNode] // Statements under delay
+    // @astgen op3 := rhsp : Optional[AstNodeExpr] // Max delay value for range (nullptr if not range)
     VTimescale m_timeunit;  // Delay's time unit
     const bool m_isCycle;  // True if it is a cycle delay
 
@@ -521,6 +522,13 @@ public:
         , m_isCycle{isCycle} {
         this->lhsp(lhsp);
     }
+    // Constructor for range delays ##[min:max]
+    AstDelay(FileLine* fl, AstNodeExpr* minp, AstNodeExpr* maxp, bool isCycle)
+        : ASTGEN_SUPER_Delay(fl)
+        , m_isCycle{isCycle} {
+        this->lhsp(minp);
+        this->rhsp(maxp);
+    }
     ASTGEN_MEMBERS_AstDelay;
     void dump(std::ostream& str) const override;
     void dumpJson(std::ostream& str) const override;
@@ -529,6 +537,7 @@ public:
     void timeunit(const VTimescale& flag) { m_timeunit = flag; }
     VTimescale timeunit() const { return m_timeunit; }
     bool isCycleDelay() const { return m_isCycle; }
+    bool isRangeDelay() const { return rhsp() != nullptr; }
 };
 class AstDisable final : public AstNodeStmt {
     // @astgen op1 := targetRefp : Optional[AstNodeExpr]  // Reference to link in V3LinkDot
@@ -1029,6 +1038,26 @@ public:
     ASTGEN_MEMBERS_AstRepeat;
     bool isGateOptimizable() const override { return false; }  // Not relevant - converted to FOR
     int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
+class AstRepeatEventControl final : public AstNodeStmt {
+    // IEEE: repeat (expr) event_control
+    // Wait for the event control to fire 'count' times
+    // @astgen op1 := countp : AstNodeExpr
+    // @astgen op2 := sentreep : AstSenTree
+    // @astgen op3 := stmtsp : List[AstNode]
+public:
+    AstRepeatEventControl(FileLine* fl, AstNodeExpr* countp, AstSenTree* sentreep,
+                          AstNode* stmtsp = nullptr)
+        : ASTGEN_SUPER_RepeatEventControl(fl) {
+        this->countp(countp);
+        this->sentreep(sentreep);
+        addStmtsp(stmtsp);
+    }
+    ASTGEN_MEMBERS_AstRepeatEventControl;
+    string verilogKwd() const override { return "repeat (...) @(...)"; }
+    bool isTimingControl() const override { return true; }
+    int instrCount() const override { return 0; }
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
 };
 class AstReturn final : public AstNodeStmt {

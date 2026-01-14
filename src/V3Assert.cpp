@@ -145,6 +145,7 @@ class AssertVisitor final : public VNVisitor {
     VDouble0 m_statAsImm;  // Statistic tracking
     VDouble0 m_statAsFull;  // Statistic tracking
     VDouble0 m_statPastVars;  // Statistic tracking
+    unsigned m_assertStatsNum = 0;  // Counter for assertion stats IDs
     bool m_inSampled = false;  // True inside a sampled expression
     bool m_inRestrict = false;  // True inside restrict assertion
     AstNode* m_passsp = nullptr;  // Current pass statement
@@ -442,6 +443,38 @@ class AssertVisitor final : public VNVisitor {
             if (!passsp && !failsp)
                 failsp = newFireAssertUnchecked(
                     nodep, VN_IS(nodep, AssertIntrinsic) ? "'$cast' failed." : "'assert' failed.");
+            // Add assertion statistics tracking if enabled
+            if (v3Global.opt.assertStats()) {
+                const unsigned assertId = m_assertStatsNum++;
+                const string idVar = "__VassertStatsId_" + cvtToStr(assertId);
+                // Escape strings for C++
+                string nameEsc = message;
+                string fileEsc = nodep->fileline()->filename();
+                string hierEsc = m_modp ? m_modp->prettyName() : "";
+                // Build registration and tracking C++ code
+                // Use static local to ensure registration happens only once
+                const string regCode = "{ static uint32_t " + idVar
+                                       + " = vlAssertStatsp()->registerAssert(\""
+                                       + nameEsc + "\", \"" + fileEsc + "\", "
+                                       + cvtToStr(nodep->fileline()->lineno()) + ", \""
+                                       + hierEsc + "\"); ";
+                const string passCode = regCode + "vlAssertStatsp()->recordPass(" + idVar + "); }";
+                const string failCode = regCode + "vlAssertStatsp()->recordFail(" + idVar + "); }";
+                // Prepend tracking to pass branch
+                AstCStmt* const passTracking = new AstCStmt{nodep->fileline(), passCode};
+                if (passsp) {
+                    passsp = AstNode::addNext<AstNode, AstNode>(passTracking, passsp);
+                } else {
+                    passsp = passTracking;
+                }
+                // Prepend tracking to fail branch
+                AstCStmt* const failTracking = new AstCStmt{nodep->fileline(), failCode};
+                if (failsp) {
+                    failsp = AstNode::addNext<AstNode, AstNode>(failTracking, failsp);
+                } else {
+                    failsp = failTracking;
+                }
+            }
         } else {
             nodep->v3fatalSrc("Unknown node type");
         }

@@ -946,8 +946,16 @@ class ParamProcessor final {
                 }
                 AstIfaceRefDType* pinIrefp = nullptr;
                 const AstNode* const exprp = pinp->exprp();
-                const AstVar* const varp
-                    = (exprp && VN_IS(exprp, VarRef)) ? VN_AS(exprp, VarRef)->varp() : nullptr;
+                // Handle VarRef, VarXRef (for hierarchical paths like container.inner),
+                // and MemberSel for interface port connections
+                const AstVar* varp = nullptr;
+                if (exprp && VN_IS(exprp, VarRef)) {
+                    varp = VN_AS(exprp, VarRef)->varp();
+                } else if (exprp && VN_IS(exprp, VarXRef)) {
+                    varp = VN_AS(exprp, VarXRef)->varp();
+                } else if (exprp && VN_IS(exprp, MemberSel)) {
+                    varp = VN_AS(exprp, MemberSel)->varp();
+                }
                 if (varp && varp->subDTypep() && VN_IS(varp->subDTypep(), IfaceRefDType)) {
                     pinIrefp = VN_AS(varp->subDTypep(), IfaceRefDType);
                 } else if (varp && varp->subDTypep() && arraySubDTypep(varp->subDTypep())

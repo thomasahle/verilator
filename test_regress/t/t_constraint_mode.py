@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# DESCRIPTION: Verilator: Verilog Test driver/expect definition
+# DESCRIPTION: Verilator: Test constraint_mode functionality
 #
-# Copyright 2024 by Wilson Snyder. This program is free software; you
+# Copyright 2025 by Wilson Snyder. This program is free software; you
 # can redistribute it and/or modify it under the terms of either the GNU
 # Lesser General Public License Version 3 or the Perl Artistic License
 # Version 2.0.
@@ -10,12 +10,11 @@
 import vltest_bootstrap
 
 test.scenarios('simulator')
+test.top_filename = "t/t_constraint_mode.v"
 
-if not test.have_solver:
-    test.skip("No constraint solver installed")
-
-test.compile()
-
-test.execute()
-
-test.passes()
+if test.have_solver:
+    test.compile(verilator_flags2=['--binary -Wno-WIDTHTRUNC'])
+    test.execute()
+    test.passes()
+else:
+    test.skip("No constraint solver available")
