@@ -6784,6 +6784,11 @@ sexpr<nodeExprp>:  // ==IEEE: sequence_expr  (The name sexpr is important as reg
                         { $$ = new AstConsecRep{$2, $1, $3}; }
         |       ~p~sexpr/*sexpression_or_dist*/ yP_BRASTAR constExpr ':' constExpr ']'
                         { $$ = new AstConsecRep{$2, $1, $3, $5}; }
+        //                      // Unbounded consecutive repetition [*] and [+]
+        |       ~p~sexpr/*sexpression_or_dist*/ yP_BRASTAR ']'
+                        { $$ = new AstConsecRep{$2, $1, new AstConst{$2, 0}, nullptr, true, true}; }
+        |       ~p~sexpr/*sexpression_or_dist*/ yP_BRAPLUSKET
+                        { $$ = new AstConsecRep{$2, $1, new AstConst{$2, 1}, nullptr, true, false}; }
         //                      // Other boolean_abbrev operators - still unsupported
         |       ~p~sexpr/*sexpression_or_dist*/ boolean_abbrev
                         { $$ = $1; BBUNSUP($2->fileline(), "Unsupported: boolean abbrev (in sequence expression)"); DEL($2); }
@@ -6873,16 +6878,9 @@ sequence_match_item<nodep>:  // ==IEEE: sequence_match_item
 
 boolean_abbrev<nodeExprp>:  // ==IEEE: boolean_abbrev
         //                      // IEEE: consecutive_repetition
-        //                      // Note: [*n] and [*m:n] are now handled directly in sexpr rules
-        //                      // Only [*] (unbounded) remains here as unsupported
-                yP_BRASTAR ']'
-                        { $$ = new AstConst{$1, AstConst::BitFalse{}};
-                          BBUNSUP($<fl>1, "Unsupported: [*] boolean abbrev expression"); }
-        |       yP_BRAPLUSKET
-                        { $$ = new AstConst{$1, AstConst::BitFalse{}};
-                          BBUNSUP($<fl>1, "Unsupported: [+] boolean abbrev expression"); }
+        //                      // Note: [*n], [*m:n], [*], [+] now handled directly in sexpr rules
         //                      // IEEE: nonconsecutive_repetition/non_consecutive_repetition
-        |       yP_BRAEQ constExpr ']'
+                yP_BRAEQ constExpr ']'
                         { $$ = $2; BBUNSUP($<fl>1, "Unsupported: [= boolean abbrev expression"); }
         |       yP_BRAEQ constExpr ':' constExpr ']'
                         { $$ = $2; BBUNSUP($<fl>1, "Unsupported: [= boolean abbrev expression"); DEL($4); }
