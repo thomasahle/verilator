@@ -5044,9 +5044,11 @@ expr<nodeExprp>:                // IEEE: part of expression/constant_expression/
         |       ~l~expr yINSIDE '{' range_list '}'      { $$ = new AstInside{$2, $1, $4}; }
         //
         //                      // IEEE: tagged_union_expression
-        //UNSUP yTAGGED id/*member*/ %prec prTAGGED             { $$ = $2; BBUNSUP("tagged reference"); }
-        //                      // Spec only allows primary
-        //UNSUP yTAGGED id/*member*/ %prec prTAGGED expr /*primary*/     { $$ = $2; BBUNSUP("tagged reference"); }
+        //                      // NOTE: tagged expressions conflict with tagged patterns in patternNoExpr
+        //                      // When enabling, need to resolve conflict with:
+        //                      //   patternNoExpr: yTAGGED idAny patternNoExpr
+        //UNSUP yTAGGED idAny                           { $$ = new AstTagged{$1, *$2, nullptr}; }
+        //UNSUP yTAGGED idAny '(' expr ')'              { $$ = new AstTagged{$1, *$2, $4}; }
         //
         //======================// IEEE: primary/constant_primary
         //

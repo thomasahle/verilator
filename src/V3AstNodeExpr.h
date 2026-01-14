@@ -2610,6 +2610,27 @@ public:
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
     bool isSystemFunc() const override { return true; }
 };
+class AstTagged final : public AstNodeExpr {
+    // Tagged union expression: "tagged Member" or "tagged Member (expr)"
+    // IEEE 1800-2017 11.9 Tagged union expressions
+    // @astgen op1 := exprp : Optional[AstNodeExpr]  // Expression (null for void members)
+    string m_member;  // Member name to tag with
+public:
+    AstTagged(FileLine* fl, const string& member, AstNodeExpr* exprp)
+        : ASTGEN_SUPER_Tagged(fl)
+        , m_member{member} {
+        this->exprp(exprp);
+    }
+    ASTGEN_MEMBERS_AstTagged;
+    string emitVerilog() override { return "tagged %m"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return widthInstrs(); }
+    bool sameNode(const AstNode* samep) const override {
+        return member() == VN_AS(samep, Tagged)->member();
+    }
+    string member() const { return m_member; }
+};
 class AstTestPlusArgs final : public AstNodeExpr {
     // Search expression. If nullptr then this is a $test$plusargs instead of $value$plusargs.
     // @astgen op1 := searchp : Optional[AstNode]
