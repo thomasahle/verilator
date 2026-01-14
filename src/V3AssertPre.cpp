@@ -649,7 +649,10 @@ private:
 
         // Find Clocking's buried under nodep->exprsp
         iterateChildren(nodep);
-        if (!nodep->immediate()) nodep->sentreep(newSenTree(nodep));
+        // EXPECT without clocking event behaves like immediate assertion (IEEE 1800-2017 16.17)
+        const bool expectNoClk = nodep->type() == VAssertType::EXPECT && !m_senip
+                                 && !m_defaultClockingp && !m_seniAlwaysp;
+        if (!nodep->immediate() && !expectNoClk) nodep->sentreep(newSenTree(nodep));
     }
     void visit(AstFalling* nodep) override {
         if (nodep->user1SetOnce()) return;

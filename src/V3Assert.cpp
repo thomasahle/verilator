@@ -404,7 +404,9 @@ class AssertVisitor final : public VNVisitor {
         if (passsp) passsp->unlinkFrBackWithNext();
         if (failsp) failsp->unlinkFrBackWithNext();
 
-        if (nodep->immediate()) {
+        // EXPECT without clocking event is treated as immediate (IEEE 1800-2017 16.17)
+        const bool expectImmediate = nodep->type() == VAssertType::EXPECT && !sentreep;
+        if (nodep->immediate() || expectImmediate) {
             UASSERT_OBJ(!sentreep, nodep, "Immediate assertions don't have sensitivity");
         } else {
             UASSERT_OBJ(sentreep, nodep, "Concurrent assertions must have sensitivity");

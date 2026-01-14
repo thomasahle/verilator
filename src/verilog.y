@@ -3735,11 +3735,11 @@ statement_item<nodeStmtp>:          // IEEE: statement_item
         //                      // IEEE: expect_property_statement
         //                      // action_block expanded here
         |       yEXPECT '(' property_spec ')' stmt %prec prLOWER_THAN_ELSE
-                        { $$ = nullptr; BBUNSUP($1, "Unsupported: expect"); DEL($3, $5); }
+                        { $$ = new AstAssert{$1, $3, $5, nullptr, VAssertType::EXPECT, VAssertDirectiveType::ASSERT}; }
         |       yEXPECT '(' property_spec ')' stmt yELSE stmt
-                        { $$ = nullptr; BBUNSUP($1, "Unsupported: expect"); DEL($3, $5, $7); }
+                        { $$ = new AstAssert{$1, $3, $5, $7, VAssertType::EXPECT, VAssertDirectiveType::ASSERT}; }
         |       yEXPECT '(' property_spec ')' yELSE stmt
-                        { $$ = nullptr; BBUNSUP($1, "Unsupported: expect"); DEL($3, $6); }
+                        { $$ = new AstAssert{$1, $3, nullptr, $6, VAssertType::EXPECT, VAssertDirectiveType::ASSERT}; }
         ;
 
 statementVerilatorPragmas<pragmap>:
