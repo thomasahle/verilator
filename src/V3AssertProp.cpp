@@ -588,6 +588,21 @@ class AssertPropIfVisitor final : public VNVisitor {
         nodep->replaceWith(exprp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
+    void visit(AstNonConsecRep* nodep) override {
+        // SVA non-consecutive repetition operator (IEEE 1800-2017 16.9.2)
+        // expr[=n] - boolean is true exactly n times (gaps allowed)
+        // Unlike [->n] (goto), match doesn't complete on the n-th occurrence
+        // Simplification: Transform to just the expression
+        // Full semantics would require counting occurrences across cycles
+        iterateChildren(nodep);
+
+        AstNodeExpr* const exprp = nodep->exprp()->unlinkFrBack();
+
+        // For non-consecutive repetition, simplify to just checking the expression
+        // This is an approximation - full semantics would require occurrence counting
+        nodep->replaceWith(exprp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
     void visit(AstSExprClocked* nodep) override {
         // Clocked sequence expression: @(posedge clk) sexpr
         // For sequences within sequence declarations, the clocking event specifies

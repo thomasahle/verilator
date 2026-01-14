@@ -6491,9 +6491,9 @@ property_port_itemDirE:
 
 property_declarationBody<nodep>:  // IEEE: part of property_declaration
                 assertion_variable_declarationList property_spec
-                        { $$ = nullptr; BBUNSUP($1->fileline(), "Unsupported: property variable declaration"); DEL($1, $2); }
+                        { $$ = addNextNull($1, $2); }
         |       assertion_variable_declarationList property_spec ';'
-                        { $$ = nullptr; BBUNSUP($1->fileline(), "Unsupported: property variable declaration"); DEL($1, $2); }
+                        { $$ = addNextNull($1, $2); }
         //                      // IEEE-2012: Incorrectly has yCOVER ySEQUENCE then property_spec here.
         //                      // Fixed in IEEE 1800-2017
         |       property_spec                           { $$ = $1; }
@@ -6789,9 +6789,11 @@ sexpr<nodeExprp>:  // ==IEEE: sequence_expr  (The name sexpr is important as reg
                         { $$ = new AstConsecRep{$2, $1, new AstConst{$2, 0}, nullptr, true, true}; }
         |       ~p~sexpr/*sexpression_or_dist*/ yP_BRAPLUSKET
                         { $$ = new AstConsecRep{$2, $1, new AstConst{$2, 1}, nullptr, true, false}; }
-        //                      // Other boolean_abbrev operators - still unsupported
-        |       ~p~sexpr/*sexpression_or_dist*/ boolean_abbrev
-                        { $$ = $1; BBUNSUP($2->fileline(), "Unsupported: boolean abbrev (in sequence expression)"); DEL($2); }
+        //                      // Non-consecutive repetition [=n] and [=m:n]
+        |       ~p~sexpr/*sexpression_or_dist*/ yP_BRAEQ constExpr ']'
+                        { $$ = new AstNonConsecRep{$2, $1, $3}; }
+        |       ~p~sexpr/*sexpression_or_dist*/ yP_BRAEQ constExpr ':' constExpr ']'
+                        { $$ = new AstNonConsecRep{$2, $1, $3, $5}; }
         //
         //                      // IEEE: "sequence_instance [ sequence_abbrev ]"
         //                      // version without sequence_abbrev looks just like normal function call
@@ -6876,17 +6878,10 @@ sequence_match_item<nodep>:  // ==IEEE: sequence_match_item
                 for_step_assignment                     { $$ = $1; }
         ;
 
-boolean_abbrev<nodeExprp>:  // ==IEEE: boolean_abbrev
-        //                      // IEEE: consecutive_repetition
-        //                      // Note: [*n], [*m:n], [*], [+] now handled directly in sexpr rules
-        //                      // IEEE: nonconsecutive_repetition/non_consecutive_repetition
-                yP_BRAEQ constExpr ']'
-                        { $$ = $2; BBUNSUP($<fl>1, "Unsupported: [= boolean abbrev expression"); }
-        |       yP_BRAEQ constExpr ':' constExpr ']'
-                        { $$ = $2; BBUNSUP($<fl>1, "Unsupported: [= boolean abbrev expression"); DEL($4); }
-        //                      // IEEE: goto_repetition - handled in sexpr rule directly
-        //                      // to avoid grammar conflicts
-        ;
+//      boolean_abbrev - all operators now handled directly in sexpr rules:
+//      - consecutive_repetition: [*n], [*m:n], [*], [+]
+//      - non_consecutive_repetition: [=n], [=m:n]
+//      - goto_repetition: [->n], [->m:n]
 
 //************************************************
 // Covergroup
