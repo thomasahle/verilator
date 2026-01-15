@@ -6858,12 +6858,14 @@ cycle_delay_range<delayp>:  // IEEE: ==cycle_delay_range
                           $$ = new AstDelay{$1, rangep->leftp()->unlinkFrBack(),
                                             rangep->rightp()->unlinkFrBack(), true};
                           VL_DO_DANGLING(rangep->deleteTree(), rangep); }
+        //                      // ##[*] is equivalent to ##[0:$]
         |       yP_POUNDPOUND yP_BRASTAR ']'
-                        { $$ = new AstDelay{$1, new AstConst{$1, AstConst::BitFalse{}}, true};
-                          BBUNSUP($<fl>1, "Unsupported: ## [*] cycle delay range expression"); }
+                        { $$ = new AstDelay{$1, new AstConst{$1, 0},
+                                            new AstUnbounded{$1}, true}; }
+        //                      // ##[+] is equivalent to ##[1:$]
         |       yP_POUNDPOUND yP_BRAPLUSKET
-                        { $$ = new AstDelay{$1, new AstConst{$1, AstConst::BitFalse{}}, true};
-                          BBUNSUP($<fl>1, "Unsupported: ## [+] cycle delay range expression"); }
+                        { $$ = new AstDelay{$1, new AstConst{$1, 1},
+                                            new AstUnbounded{$1}, true}; }
         ;
 
 sequence_match_itemList<nodep>:  // IEEE: [sequence_match_item] part of sequence_expr
