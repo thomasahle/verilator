@@ -6709,8 +6709,10 @@ class WidthVisitor final : public VNVisitor {
     }
     void visit(AstTagged* nodep) override {
         // Tagged union expression: tagged Member(expr) or tagged Member()
-        if (nodep->didWidthAndSet()) return;
-        UINFO(9, "TAGGED " << nodep);
+        // IEEE 1800-2017 11.9 Tagged union expressions
+        assertAtExpr(nodep);
+        UINFO(9, "TAGGED " << nodep << " prelim=" << m_vup->prelim() << " final=" << m_vup->final()
+                           << endl);
         // Get the target dtype from context
         AstNodeDType* dtypep = m_vup ? m_vup->dtypeNullp() : nullptr;
         if (!dtypep) {
@@ -6726,14 +6728,17 @@ class WidthVisitor final : public VNVisitor {
             nodep->dtypep(dtypep);
             return;
         }
-        // Find the member with the specified name
+        // Count members and find the member with the specified name
+        int numMembers = 0;
+        int tagIndex = -1;
         AstMemberDType* foundMemberp = nullptr;
         for (AstNode* itemp = unionp->membersp(); itemp; itemp = itemp->nextp()) {
             if (AstMemberDType* const memberp = VN_CAST(itemp, MemberDType)) {
                 if (memberp->name() == nodep->member()) {
                     foundMemberp = memberp;
-                    break;
+                    tagIndex = numMembers;
                 }
+                ++numMembers;
             }
         }
         if (!foundMemberp) {
@@ -6742,20 +6747,58 @@ class WidthVisitor final : public VNVisitor {
             nodep->dtypep(unionp);
             return;
         }
-        // Type check the expression against the member type
-        if (nodep->exprp()) {
-            userIterateAndNext(nodep->exprp(), WidthVP{foundMemberp->subDTypep(), BOTH}.p());
-            iterateCheck(nodep, "Tagged member value", nodep->exprp(), ASSIGN, FINAL,
-                         foundMemberp->subDTypep(), EXTEND_LHS);
-        } else {
-            // Void member - verify it's actually void
-            if (foundMemberp->subDTypep()->skipRefp()->width() != 0
-                && !VN_IS(foundMemberp->subDTypep()->skipRefp(), VoidDType)) {
-                nodep->v3error("Tagged union member '" << nodep->member()
-                               << "' requires a value (non-void type)");
+        if (m_vup->prelim()) {
+            // PRELIM: Type check the expression against the member type
+            if (nodep->exprp()) {
+                userIterateAndNext(nodep->exprp(), WidthVP{foundMemberp->subDTypep(), PRELIM}.p());
+            } else {
+                // Void member - verify it's actually void
+                if (foundMemberp->subDTypep()->skipRefp()->width() != 0
+                    && !VN_IS(foundMemberp->subDTypep()->skipRefp(), VoidDType)) {
+                    nodep->v3error("Tagged union member '" << nodep->member()
+                                   << "' requires a value (non-void type)");
+                }
             }
+            nodep->dtypep(unionp);
         }
-        nodep->dtypep(unionp);
+        if (m_vup->final()) {
+            // FINAL: Do type coercion and lower to concatenation
+            // Calculate tag width: ceil(log2(numMembers)), minimum 1 bit
+            int tagWidth = 1;
+            while ((1 << tagWidth) < numMembers) ++tagWidth;
+            // Data width is the maximum member width (union width minus tag width)
+            const int dataWidth = unionp->width() - tagWidth;
+            UINFO(9, "  tagWidth=" << tagWidth << " dataWidth=" << dataWidth
+                                   << " tagIndex=" << tagIndex << " numMembers=" << numMembers
+                                   << endl);
+            FileLine* const fl = nodep->fileline();
+            // Create tag constant
+            AstNodeExpr* tagp
+                = new AstConst{fl, AstConst::WidthedValue{}, tagWidth, (uint32_t)tagIndex};
+            // Create value expression (or zero for void members)
+            AstNodeExpr* valuep;
+            if (nodep->exprp()) {
+                // Type coerce the expression to member type
+                iterateCheck(nodep, "Tagged member value", nodep->exprp(), ASSIGN, FINAL,
+                             foundMemberp->subDTypep(), EXTEND_LHS);
+                valuep = nodep->exprp()->unlinkFrBack();
+                // Extend value to dataWidth if needed
+                const int memberWidth = foundMemberp->subDTypep()->skipRefp()->width();
+                if (memberWidth < dataWidth) {
+                    // Zero-extend to dataWidth
+                    valuep = new AstExtend{fl, valuep, dataWidth};
+                }
+            } else {
+                // Void member - use zero
+                valuep = new AstConst{fl, AstConst::WidthedValue{}, dataWidth, 0};
+            }
+            // Lower to: {tag_const, padded_value}
+            // Tag is at MSB, member value (padded to dataWidth) is at LSB
+            AstNodeExpr* newp = new AstConcat{fl, tagp, valuep};
+            newp->dtypep(unionp);
+            nodep->replaceWith(newp);
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+        }
     }
     void visit(AstTestPlusArgs* nodep) override {
         assertAtExpr(nodep);
