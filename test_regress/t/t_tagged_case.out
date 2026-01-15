@@ -3,28 +3,6 @@
       |     ^~~~~~~~~
                     ... For warning description see https://verilator.org/warn/SHORTREAL?v=latest
                     ... Use "/* verilator lint_off SHORTREAL */" and lint_on around source to disable this message.
-%Error-UNSUPPORTED: t/t_tagged_case.v:124:14: Unsupported: matches (for tagged union)
-  124 |     case (v) matches
-      |              ^~~~~~~
-                    ... For error description see https://verilator.org/warn/UNSUPPORTED?v=latest
-%Error-UNSUPPORTED: t/t_tagged_case.v:133:14: Unsupported: matches (for tagged union)
-  133 |     case (v) matches
-      |              ^~~~~~~
-%Error-UNSUPPORTED: t/t_tagged_case.v:142:15: Unsupported: matches (for tagged union)
-  142 |     case (wt) matches
-      |               ^~~~~~~
-%Error-UNSUPPORTED: t/t_tagged_case.v:152:15: Unsupported: matches (for tagged union)
-  152 |     case (wt) matches
-      |               ^~~~~~~
-%Error-UNSUPPORTED: t/t_tagged_case.v:162:15: Unsupported: matches (for tagged union)
-  162 |     case (wt) matches
-      |               ^~~~~~~
-%Error-UNSUPPORTED: t/t_tagged_case.v:171:15: Unsupported: matches (for tagged union)
-  171 |     case (wt) matches
-      |               ^~~~~~~
-%Error-UNSUPPORTED: t/t_tagged_case.v:180:15: Unsupported: matches (for tagged union)
-  180 |     case (at) matches
-      |               ^~~~~~~
 %Error: t/t_tagged_case.v:191:18: syntax error, unexpected .*, expecting ',' or ':' or :-then-begin or :-then-fork
   191 |       tagged Add .* : result = -1;
       |                  ^~
@@ -35,6 +13,7 @@
 %Error-UNSUPPORTED: t/t_tagged_case.v:193:36: Unsupported: '{} tagged patterns
   193 |       tagged Jmp (tagged JmpC '{cc:.c, addr:.a}) : result = a;
       |                                    ^
+                    ... For error description see https://verilator.org/warn/UNSUPPORTED?v=latest
 %Error-UNSUPPORTED: t/t_tagged_case.v:193:35: Unsupported: '{} .* patterns
   193 |       tagged Jmp (tagged JmpC '{cc:.c, addr:.a}) : result = a;
       |                                   ^

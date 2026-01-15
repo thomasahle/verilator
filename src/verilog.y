@@ -3588,8 +3588,14 @@ statement_item<nodeStmtp>:          // IEEE: statement_item
                           if ($1 == uniq_UNIQUE0) $2->unique0Pragma(true);
                           if ($1 == uniq_PRIORITY) $2->priorityPragma(true); }
         // &&& is part of expr so case_patternList aliases to case_itemList
+        //                      // case...matches for tagged union pattern matching (IEEE 1800-2017 12.5.4)
         |       unique_priorityE caseStart caseAttrE yMATCHES case_itemList yENDCASE
-                        { $$ = nullptr; BBUNSUP($4, "Unsupported: matches (for tagged union)"); DEL($2, $5); }
+                        { $$ = $2; if ($5) $2->addItemsp($5);
+                          if (!$2->caseSimple()) $4->v3error("Illegal to have matches on a casex/casez");
+                          $2->caseMatchesSet();
+                          if ($1 == uniq_UNIQUE) $2->uniquePragma(true);
+                          if ($1 == uniq_UNIQUE0) $2->unique0Pragma(true);
+                          if ($1 == uniq_PRIORITY) $2->priorityPragma(true); }
         |       unique_priorityE caseStart caseAttrE yINSIDE case_inside_itemList yENDCASE
                         { $$ = $2; if ($5) $2->addItemsp($5);
                           if (!$2->caseSimple()) $4->v3error("Illegal to have inside on a casex/casez");

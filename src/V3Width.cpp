@@ -5999,6 +5999,85 @@ class WidthVisitor final : public VNVisitor {
         }
     }
 
+    // Lower case...matches to if-else chain with matches conditions
+    // IEEE 1800-2017 12.5.4: Pattern matching case statement
+    void lowerCaseMatches(AstCase* nodep) {
+        UINFO(9, "lowerCaseMatches " << nodep << endl);
+        FileLine* const fl = nodep->fileline();
+
+        // Collect information from case items before modifying the tree
+        struct CaseItemInfo {
+            string member;
+            FileLine* patternFl;
+            AstNode* stmts;
+        };
+        std::vector<CaseItemInfo> items;
+        AstNode* defaultStmts = nullptr;
+
+        for (AstCaseItem* itemp = nodep->itemsp(); itemp;
+             itemp = VN_AS(itemp->nextp(), CaseItem)) {
+            if (itemp->isDefault()) {
+                defaultStmts = itemp->stmtsp() ? itemp->stmtsp()->unlinkFrBackWithNext() : nullptr;
+            } else {
+                // Extract member names from patterns
+                for (AstNode* patp = itemp->condsp(); patp; patp = patp->nextp()) {
+                    AstTagged* const taggedp = VN_CAST(patp, Tagged);
+                    if (!taggedp) {
+                        patp->v3error("Case...matches patterns must be tagged patterns");
+                        continue;
+                    }
+                    CaseItemInfo info;
+                    info.member = taggedp->member();
+                    info.patternFl = taggedp->fileline();
+                    info.stmts = nullptr;  // Will be set below
+                    items.push_back(info);
+                }
+                // Get statements (only once per case item, for all patterns)
+                if (!items.empty() && itemp->stmtsp()) {
+                    items.back().stmts = itemp->stmtsp()->unlinkFrBackWithNext();
+                }
+            }
+        }
+
+        // Get scrutinee expression before modifying tree
+        AstNodeExpr* const exprp = nodep->exprp()->unlinkFrBack();
+
+        // Build the if-else chain from bottom up
+        AstNode* elsep = defaultStmts;
+        for (auto it = items.rbegin(); it != items.rend(); ++it) {
+            const CaseItemInfo& info = *it;
+
+            // Create: exprp matches tagged Member
+            AstNodeExpr* matchCondp = new AstMatches{
+                info.patternFl,
+                exprp->cloneTree(false),  // Clone scrutinee for each condition
+                info.member,
+                nullptr  // No pattern value (variable binding not supported yet)
+            };
+
+            // Build if statement
+            AstIf* ifp = new AstIf{fl, matchCondp, info.stmts, elsep};
+            if (nodep->uniquePragma()) ifp->uniquePragma(true);
+            if (nodep->unique0Pragma()) ifp->unique0Pragma(true);
+            if (nodep->priorityPragma()) ifp->priorityPragma(true);
+
+            elsep = ifp;
+        }
+
+        // Clean up cloned expression
+        VL_DO_DANGLING(exprp->deleteTree(), exprp);
+
+        // Replace case with if-else chain (or just the default if no items)
+        if (elsep) {
+            nodep->replaceWith(elsep);
+            // Let normal width processing handle the new if-else chain
+            userIterateAndNext(elsep, nullptr);
+        } else {
+            nodep->unlinkFrBack();
+        }
+        VL_DO_DANGLING(pushDeletep(nodep), nodep);
+    }
+
     //--------------------
     // Top levels
 
@@ -6105,6 +6184,18 @@ class WidthVisitor final : public VNVisitor {
 
     void visit(AstCase* nodep) override {
         assertAtStatement(nodep);
+        // Handle case...matches specially - don't width-check patterns as expressions
+        if (nodep->caseMatches()) {
+            // Only iterate the scrutinee expression
+            userIterateAndNext(nodep->exprp(), WidthVP{CONTEXT_DET, PRELIM}.p());
+            // Iterate the bodies, but not the patterns (they're tagged patterns, not expressions)
+            for (AstCaseItem* itemp = nodep->itemsp(); itemp;
+                 itemp = VN_AS(itemp->nextp(), CaseItem)) {
+                userIterateAndNext(itemp->stmtsp(), nullptr);
+            }
+            lowerCaseMatches(nodep);
+            return;
+        }
         // Type check expression case item conditions and bodies
         userIterateAndNext(nodep->exprp(), WidthVP{CONTEXT_DET, PRELIM}.p());
         for (AstCaseItem *nextip, *itemp = nodep->itemsp(); itemp; itemp = nextip) {
