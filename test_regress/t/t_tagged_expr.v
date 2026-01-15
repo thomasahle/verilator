@@ -26,10 +26,13 @@ module t;
 
    initial begin
       // Create tagged union values with the 'tagged' expression
-      mi = tagged Invalid();      // Void member
+      // Test both with and without parentheses for void members
+      mi = tagged Invalid;        // Void member - no parens (IEEE syntax)
+      mi = tagged Invalid();      // Void member - with parens (also valid)
       mi = tagged Valid(42);      // Int member
 
-      mv = tagged Nothing();      // Void member
+      mv = tagged Nothing;        // Void member - no parens
+      mv = tagged Nothing();      // Void member - with parens
       mv = tagged JustInt(100);   // Int member
       mv = tagged JustLogic(32'hDEADBEEF);  // Logic member
 

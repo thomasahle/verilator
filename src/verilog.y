@@ -5052,12 +5052,13 @@ expr<nodeExprp>:                // IEEE: part of expression/constant_expression/
         |       ~l~expr yINSIDE '{' range_list '}'      { $$ = new AstInside{$2, $1, $4}; }
         //
         //                      // IEEE: tagged_union_expression
-        //                      // NOTE: tagged expressions conflict with tagged patterns in patternNoExpr
-        //                      // When enabling, need to resolve conflict with:
-        //                      //   patternNoExpr: yTAGGED idAny patternNoExpr
-        //                      // Resolved by using '(' expr ')' form only; void members use tagged Member()
+        //                      // NOTE: tagged expressions could conflict with tagged patterns in patternNoExpr
+        //                      // but patterns only appear after 'matches' keyword or in '{pattern} contexts
+        //                      // where they reduce via patternNoExpr, so the grammar can distinguish them.
+        //                      // We support: tagged Member, tagged Member(), tagged Member(expr)
         |       yTAGGED idAny '(' expr ')'              { $$ = new AstTagged{$1, *$2, $4}; }
         |       yTAGGED idAny '(' ')'                   { $$ = new AstTagged{$1, *$2, nullptr}; }
+        |       yTAGGED idAny %prec prLOWER_THAN_ELSE   { $$ = new AstTagged{$1, *$2, nullptr}; }
         //
         //======================// IEEE: primary/constant_primary
         //
