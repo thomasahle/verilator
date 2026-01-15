@@ -55,6 +55,30 @@ module t;
       // tag=2 (JustLogic), data=DEADBEEF -> 34'h2_DEADBEEF
       if (mv !== 34'h2_DEADBEEF) $stop;
 
+      // Test the 'matches' operator for pattern matching
+      mi = tagged Invalid;
+      if (!(mi matches tagged Invalid)) $stop;
+      if (mi matches tagged Valid) $stop;
+
+      mi = tagged Valid(42);
+      if (!(mi matches tagged Valid)) $stop;
+      if (mi matches tagged Invalid) $stop;
+
+      mv = tagged Nothing;
+      if (!(mv matches tagged Nothing)) $stop;
+      if (mv matches tagged JustInt) $stop;
+      if (mv matches tagged JustLogic) $stop;
+
+      mv = tagged JustInt(100);
+      if (mv matches tagged Nothing) $stop;
+      if (!(mv matches tagged JustInt)) $stop;
+      if (mv matches tagged JustLogic) $stop;
+
+      mv = tagged JustLogic(32'hDEADBEEF);
+      if (mv matches tagged Nothing) $stop;
+      if (mv matches tagged JustInt) $stop;
+      if (!(mv matches tagged JustLogic)) $stop;
+
       $write("*-* All Finished *-*\n");
       $finish;
    end

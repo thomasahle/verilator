@@ -6800,6 +6800,81 @@ class WidthVisitor final : public VNVisitor {
             VL_DO_DANGLING(pushDeletep(nodep), nodep);
         }
     }
+    void visit(AstMatches* nodep) override {
+        // Matches operator for tagged union pattern matching
+        // IEEE 1800-2017 11.9.1: expr matches tagged Member
+        // Lowered to: (expr[MSB:MSB-tagWidth+1] == tagIndex)
+        assertAtExpr(nodep);
+        UINFO(9, "MATCHES " << nodep << " prelim=" << m_vup->prelim() << " final=" << m_vup->final()
+                            << endl);
+        // Visit the expression to determine its type
+        if (m_vup->prelim()) {
+            userIterateAndNext(nodep->exprp(), WidthVP{SELF, PRELIM}.p());
+            // Also visit pattern value if present
+            if (nodep->patternp()) {
+                userIterateAndNext(nodep->patternp(), WidthVP{SELF, PRELIM}.p());
+            }
+        }
+        AstNodeDType* dtypep = nodep->exprp()->dtypep();
+        if (!dtypep) {
+            nodep->v3error("Matches expression has no type");
+            return;
+        }
+        dtypep = dtypep->skipRefp();
+        AstUnionDType* const unionp = VN_CAST(dtypep, UnionDType);
+        if (!unionp || !unionp->isTagged()) {
+            nodep->v3error("Matches operator requires a tagged union type, not "
+                           << dtypep->prettyTypeName());
+            return;
+        }
+        // Count members and find the member with the specified name
+        int numMembers = 0;
+        int tagIndex = -1;
+        AstMemberDType* foundMemberp = nullptr;
+        for (AstNode* itemp = unionp->membersp(); itemp; itemp = itemp->nextp()) {
+            if (AstMemberDType* const memberp = VN_CAST(itemp, MemberDType)) {
+                if (memberp->name() == nodep->member()) {
+                    foundMemberp = memberp;
+                    tagIndex = numMembers;
+                }
+                ++numMembers;
+            }
+        }
+        if (!foundMemberp) {
+            nodep->v3error("Tagged union member '" << nodep->member()
+                           << "' not found in union " << unionp->prettyTypeName());
+            return;
+        }
+        if (m_vup->final()) {
+            // Calculate tag width: ceil(log2(numMembers)), minimum 1 bit
+            int tagWidth = 1;
+            while ((1 << tagWidth) < numMembers) ++tagWidth;
+            const int totalWidth = unionp->width();
+            // Tag is at MSB, so extract bits [totalWidth-1 : totalWidth-tagWidth]
+            const int tagMsb = totalWidth - 1;
+            const int tagLsb = totalWidth - tagWidth;
+            UINFO(9, "  tagWidth=" << tagWidth << " tagMsb=" << tagMsb << " tagLsb=" << tagLsb
+                                   << " tagIndex=" << tagIndex << endl);
+            FileLine* const fl = nodep->fileline();
+            // Extract tag bits from expression
+            AstNodeExpr* exprp = nodep->exprp()->unlinkFrBack();
+            AstNodeExpr* tagExtrp;
+            if (tagWidth == totalWidth) {
+                // Entire value is the tag
+                tagExtrp = exprp;
+            } else {
+                // Extract tag bits: expr[tagMsb:tagLsb]
+                tagExtrp = new AstSel{fl, exprp, tagLsb, tagWidth};
+            }
+            // Compare with expected tag value
+            AstNodeExpr* tagConstp
+                = new AstConst{fl, AstConst::WidthedValue{}, tagWidth, (uint32_t)tagIndex};
+            AstNodeExpr* newp = new AstEq{fl, tagExtrp, tagConstp};
+            newp->dtypeSetBit();
+            nodep->replaceWith(newp);
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+        }
+    }
     void visit(AstTestPlusArgs* nodep) override {
         assertAtExpr(nodep);
         if (m_vup->prelim()) {

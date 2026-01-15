@@ -5175,9 +5175,19 @@ expr<nodeExprp>:                // IEEE: part of expression/constant_expression/
         //                      // "expr yMATCHES pattern"
         //                      // IEEE: pattern - expanded here to avoid conflicts
         |       ~l~expr yMATCHES patternNoExpr          { $$ = new AstConst{$2, AstConst::BitFalse{}};
-                                                          BBUNSUP($<fl>2, "Unsupported: matches operator"); }
-        |       ~l~expr yMATCHES ~r~expr                { $$ = new AstConst{$2, AstConst::BitFalse{}};
-                                                          BBUNSUP($<fl>2, "Unsupported: matches operator"); }
+                                                          BBUNSUP($<fl>2, "Unsupported: matches with binding patterns"); }
+        //                      // matches with tagged pattern - RHS parsed as tagged expression
+        //                      // then converted to AstMatches in V3Width
+        |       ~l~expr yMATCHES ~r~expr
+                        { if (VN_IS($3, Tagged)) {
+                              AstTagged* tagp = VN_AS($3, Tagged);
+                              $$ = new AstMatches{$2, $1, tagp->member(), tagp->exprp() ? tagp->exprp()->unlinkFrBack() : nullptr};
+                              VL_DO_DANGLING(tagp->deleteTree(), tagp);
+                          } else {
+                              $$ = new AstConst{$2, AstConst::BitFalse{}};
+                              BBUNSUP($<fl>2, "Unsupported: matches with non-tagged pattern");
+                          }
+                        }
         //
         //                      // IEEE: expression_or_dist - here to avoid reduce problems
         //                      // "expr yDIST '{' dist_list '}'"

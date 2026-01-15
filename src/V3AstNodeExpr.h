@@ -1882,6 +1882,30 @@ public:
     bool index() const { return m_index; }
     bool isExprCoverageEligible() const override { return false; }
 };
+class AstMatches final : public AstNodeExpr {
+    // Matches operator for tagged union pattern matching
+    // IEEE 1800-2017 11.9.1: expr matches pattern
+    // @astgen op1 := exprp : AstNodeExpr  // Expression to match (must be tagged union)
+    // @astgen op2 := patternp : Optional[AstNodeExpr]  // Pattern value (null for void members)
+    string m_member;  // Member name to match
+public:
+    AstMatches(FileLine* fl, AstNodeExpr* exprp, const string& member, AstNodeExpr* patternp)
+        : ASTGEN_SUPER_Matches(fl)
+        , m_member{member} {
+        this->exprp(exprp);
+        this->patternp(patternp);
+        dtypeSetBit();  // Returns boolean (1 if matches, 0 otherwise)
+    }
+    ASTGEN_MEMBERS_AstMatches;
+    string emitVerilog() override { return "%l matches tagged %m"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }  // Lowered before emitC
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return widthInstrs(); }
+    bool sameNode(const AstNode* samep) const override {
+        return member() == VN_AS(samep, Matches)->member();
+    }
+    string member() const { return m_member; }
+};
 class AstMemberSel final : public AstNodeExpr {
     // @astgen op1 := fromp : AstNodeExpr
     //
