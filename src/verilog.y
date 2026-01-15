@@ -6413,14 +6413,20 @@ concurrent_assertion_statement<nodeStmtp>:  // ==IEEE: concurrent_assertion_stat
         |       yCOVER yPROPERTY '(' property_spec ')' stmt
                         { $$ = new AstCover{$1, $4, $6, VAssertType::CONCURRENT}; }
         //                      // IEEE: cover_sequence_statement
+        //                      // cover sequence ( [clocking_event] [disable iff (expr)] sequence_expr ) stmt
+        //                      // Wrap sequence in property spec for coverage
         |       yCOVER ySEQUENCE '(' sexpr ')' stmt
-                        { $$ = nullptr; BBCOVERIGN($2, "Ignoring unsupported: cover sequence"); DEL($4, $6); }
-        //                      // IEEE: yCOVER ySEQUENCE '(' clocking_event sexpr ')' stmt
-        //                      // sexpr already includes "clocking_event sexpr"
+                        { $$ = new AstCover{$1, new AstPropSpec{$4->fileline(), nullptr, nullptr, $4}, $6,
+                                            VAssertType::CONCURRENT}; }
+        |       yCOVER ySEQUENCE '(' clocking_event sexpr ')' stmt
+                        { $$ = new AstCover{$1, new AstPropSpec{$4->fileline(), $4, nullptr, $5}, $7,
+                                            VAssertType::CONCURRENT}; }
         |       yCOVER ySEQUENCE '(' clocking_event yDISABLE yIFF '(' expr/*expression_or_dist*/ ')' sexpr ')' stmt
-                        { $$ = nullptr; BBCOVERIGN($2, "Ignoring unsupported: cover sequence"); DEL($4, $8, $10, $12);}
+                        { $$ = new AstCover{$1, new AstPropSpec{$4->fileline(), $4, $8, $10}, $12,
+                                            VAssertType::CONCURRENT}; }
         |       yCOVER ySEQUENCE '(' yDISABLE yIFF '(' expr/*expression_or_dist*/ ')' sexpr ')' stmt
-                        { $$ = nullptr; BBCOVERIGN($2, "Ignoring unsupported: cover sequence"); DEL($7, $9, $11); }
+                        { $$ = new AstCover{$1, new AstPropSpec{$7->fileline(), nullptr, $7, $9}, $11,
+                                            VAssertType::CONCURRENT}; }
         //                      // IEEE: restrict_property_statement
         |       yRESTRICT yPROPERTY '(' property_spec ')' ';'
                         { $$ = new AstRestrict{$1, $4}; }
