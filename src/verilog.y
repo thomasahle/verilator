@@ -5055,8 +5055,9 @@ expr<nodeExprp>:                // IEEE: part of expression/constant_expression/
         //                      // NOTE: tagged expressions conflict with tagged patterns in patternNoExpr
         //                      // When enabling, need to resolve conflict with:
         //                      //   patternNoExpr: yTAGGED idAny patternNoExpr
-        //UNSUP yTAGGED idAny                           { $$ = new AstTagged{$1, *$2, nullptr}; }
-        //UNSUP yTAGGED idAny '(' expr ')'              { $$ = new AstTagged{$1, *$2, $4}; }
+        //                      // Resolved by using '(' expr ')' form only; void members use tagged Member()
+        |       yTAGGED idAny '(' expr ')'              { $$ = new AstTagged{$1, *$2, $4}; }
+        |       yTAGGED idAny '(' ')'                   { $$ = new AstTagged{$1, *$2, nullptr}; }
         //
         //======================// IEEE: primary/constant_primary
         //

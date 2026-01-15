@@ -6707,6 +6707,56 @@ class WidthVisitor final : public VNVisitor {
         userIterateAndNext(nodep->lsbp(), WidthVP{SELF, BOTH}.p());
         userIterateAndNext(nodep->msbp(), WidthVP{SELF, BOTH}.p());
     }
+    void visit(AstTagged* nodep) override {
+        // Tagged union expression: tagged Member(expr) or tagged Member()
+        if (nodep->didWidthAndSet()) return;
+        UINFO(9, "TAGGED " << nodep);
+        // Get the target dtype from context
+        AstNodeDType* dtypep = m_vup ? m_vup->dtypeNullp() : nullptr;
+        if (!dtypep) {
+            nodep->v3error("Tagged expression requires assignment to a tagged union type");
+            nodep->dtypeSetBit();
+            return;
+        }
+        dtypep = dtypep->skipRefp();
+        AstUnionDType* const unionp = VN_CAST(dtypep, UnionDType);
+        if (!unionp || !unionp->isTagged()) {
+            nodep->v3error("Tagged expression must be assigned to a tagged union type, not "
+                           << dtypep->prettyTypeName());
+            nodep->dtypep(dtypep);
+            return;
+        }
+        // Find the member with the specified name
+        AstMemberDType* foundMemberp = nullptr;
+        for (AstNode* itemp = unionp->membersp(); itemp; itemp = itemp->nextp()) {
+            if (AstMemberDType* const memberp = VN_CAST(itemp, MemberDType)) {
+                if (memberp->name() == nodep->member()) {
+                    foundMemberp = memberp;
+                    break;
+                }
+            }
+        }
+        if (!foundMemberp) {
+            nodep->v3error("Tagged union member '" << nodep->member()
+                           << "' not found in union " << unionp->prettyTypeName());
+            nodep->dtypep(unionp);
+            return;
+        }
+        // Type check the expression against the member type
+        if (nodep->exprp()) {
+            userIterateAndNext(nodep->exprp(), WidthVP{foundMemberp->subDTypep(), BOTH}.p());
+            iterateCheck(nodep, "Tagged member value", nodep->exprp(), ASSIGN, FINAL,
+                         foundMemberp->subDTypep(), EXTEND_LHS);
+        } else {
+            // Void member - verify it's actually void
+            if (foundMemberp->subDTypep()->skipRefp()->width() != 0
+                && !VN_IS(foundMemberp->subDTypep()->skipRefp(), VoidDType)) {
+                nodep->v3error("Tagged union member '" << nodep->member()
+                               << "' requires a value (non-void type)");
+            }
+        }
+        nodep->dtypep(unionp);
+    }
     void visit(AstTestPlusArgs* nodep) override {
         assertAtExpr(nodep);
         if (m_vup->prelim()) {
