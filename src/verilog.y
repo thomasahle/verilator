@@ -5055,9 +5055,19 @@ expr<nodeExprp>:                // IEEE: part of expression/constant_expression/
         //                      // NOTE: tagged expressions could conflict with tagged patterns in patternNoExpr
         //                      // but patterns only appear after 'matches' keyword or in '{pattern} contexts
         //                      // where they reduce via patternNoExpr, so the grammar can distinguish them.
-        //                      // We support: tagged Member, tagged Member(), tagged Member(expr)
+        //                      // We support: tagged Member, tagged Member(), tagged Member(expr),
+        //                      // and tagged Member '{...} for assignment patterns.
         |       yTAGGED idAny '(' expr ')'              { $$ = new AstTagged{$1, *$2, $4}; }
         |       yTAGGED idAny '(' ')'                   { $$ = new AstTagged{$1, *$2, nullptr}; }
+        |       yTAGGED idAny yP_TICKBRA patternList '}'
+                        { $$ = new AstTagged{$1, *$2, new AstPattern{$3, $4}}; }
+        |       yTAGGED idAny yP_TICKBRA patternMemberList '}'
+                        { $$ = new AstTagged{$1, *$2, new AstPattern{$3, $4}}; }
+        |       yTAGGED idAny yP_TICKBRA '}'
+                        { $$ = new AstTagged{$1, *$2, new AstPattern{$3, nullptr}}; }
+        //                      // Support tagged Member literal (without parentheses for simple cases)
+        |       yTAGGED idAny yaINTNUM                  { $$ = new AstTagged{$1, *$2, new AstConst{$<fl>3, *$3}}; }
+        |       yTAGGED idAny yaFLOATNUM                { $$ = new AstTagged{$1, *$2, new AstConst{$<fl>3, AstConst::RealDouble{}, $3}}; }
         |       yTAGGED idAny %prec prLOWER_THAN_ELSE   { $$ = new AstTagged{$1, *$2, nullptr}; }
         //
         //======================// IEEE: primary/constant_primary

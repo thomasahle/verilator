@@ -1,158 +1,158 @@
-%Error-UNSUPPORTED: t/t_tagged_if.v:24:17: Unsupported: tagged union
-   24 |   typedef union tagged {
-      |                 ^~~~~~
-                    ... For error description see https://verilator.org/warn/UNSUPPORTED?v=latest
-%Error-UNSUPPORTED: t/t_tagged_if.v:25:5: Unsupported: void (for tagged unions)
-   25 |     void Invalid;
-      |     ^~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:30:17: Unsupported: tagged union
-   30 |   typedef union tagged packed {
-      |                 ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:31:5: Unsupported: void (for tagged unions)
-   31 |     void          Invalid;
-      |     ^~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:39:17: Unsupported: tagged union
-   39 |   typedef union tagged {
-      |                 ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:40:5: Unsupported: void (for tagged unions)
-   40 |     void        Invalid;
-      |     ^~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:46:17: Unsupported: tagged union
-   46 |   typedef union tagged {
-      |                 ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:50:11: Unsupported: tagged union
-   50 |     union tagged {
-      |           ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:60:17: Unsupported: tagged union
-   60 |   typedef union tagged {
-      |                 ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:61:5: Unsupported: void (for tagged unions)
-   61 |     void    Invalid;
-      |     ^~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:66:17: Unsupported: tagged union
-   66 |   typedef union tagged {
-      |                 ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:67:5: Unsupported: void (for tagged unions)
-   67 |     void      Invalid;
-      |     ^~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:75:17: Unsupported: tagged union
-   75 |   typedef union tagged {
-      |                 ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:76:5: Unsupported: void (for tagged unions)
-   76 |     void      Invalid;
-      |     ^~~~
 %Warning-SHORTREAL: t/t_tagged_if.v:78:5: Unsupported: shortreal being promoted to real (suggest use real instead)
    78 |     shortreal ShortRealVal;
       |     ^~~~~~~~~
                     ... For warning description see https://verilator.org/warn/SHORTREAL?v=latest
                     ... Use "/* verilator lint_off SHORTREAL */" and lint_on around source to disable this message.
-%Error-UNSUPPORTED: t/t_tagged_if.v:82:17: Unsupported: tagged union
-   82 |   typedef union tagged {
-      |                 ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:83:5: Unsupported: void (for tagged unions)
-   83 |     void   Invalid;
-      |     ^~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:88:17: Unsupported: tagged union
-   88 |   typedef union tagged {
-      |                 ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:89:5: Unsupported: void (for tagged unions)
-   89 |     void  Invalid;
-      |     ^~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:97:17: Unsupported: tagged union
-   97 |   typedef union tagged {
-      |                 ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:98:5: Unsupported: void (for tagged unions)
-   98 |     void  Invalid;
-      |     ^~~~
-%Error: t/t_tagged_if.v:122:9: syntax error, unexpected tagged, expecting IDENTIFIER-for-type
-  122 |     v = tagged Invalid;
-      |         ^~~~~~
-        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
-%Error: t/t_tagged_if.v:124:33: syntax error, unexpected ')', expecting '.' or tagged or .*
+%Error-UNSUPPORTED: t/t_tagged_if.v:124:11: Unsupported: matches operator
   124 |     if (v matches tagged Invalid)
-      |                                 ^
-%Error: t/t_tagged_if.v:131:9: syntax error, unexpected tagged, expecting IDENTIFIER-for-type
-  131 |     v = tagged Valid (42);
-      |         ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:133:32: Unsupported: '{} tagged patterns
-  133 |     if (v matches tagged Valid .n)
-      |                                ^
-%Error-UNSUPPORTED: t/t_tagged_if.v:133:19: Unsupported: '{} tagged patterns
-  133 |     if (v matches tagged Valid .n)
-      |                   ^~~~~~
+      |           ^~~~~~~
+                    ... For error description see https://verilator.org/warn/UNSUPPORTED?v=latest
 %Error-UNSUPPORTED: t/t_tagged_if.v:133:11: Unsupported: matches operator
   133 |     if (v matches tagged Valid .n)
       |           ^~~~~~~
-%Error: t/t_tagged_if.v:140:9: syntax error, unexpected tagged, expecting IDENTIFIER-for-type
-  140 |     v = tagged Valid (100);
-      |         ^~~~~~
-%Error: t/t_tagged_if.v:142:33: syntax error, unexpected ')', expecting '.' or tagged or .*
+%Error-UNSUPPORTED: t/t_tagged_if.v:142:11: Unsupported: matches operator
   142 |     if (v matches tagged Invalid)
-      |                                 ^
-%Error: t/t_tagged_if.v:149:10: syntax error, unexpected tagged, expecting IDENTIFIER-for-type
-  149 |     wt = tagged Wide60 (60'hFEDCBA987654321);
-      |          ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:151:34: Unsupported: '{} tagged patterns
-  151 |     if (wt matches tagged Wide60 .w)
-      |                                  ^
-%Error-UNSUPPORTED: t/t_tagged_if.v:151:20: Unsupported: '{} tagged patterns
-  151 |     if (wt matches tagged Wide60 .w)
-      |                    ^~~~~~
+      |           ^~~~~~~
+%Error-UNSUPPORTED: t/t_tagged_if.v:144:16: Unsupported: matches operator
+  144 |     else if (v matches tagged Valid .n)
+      |                ^~~~~~~
 %Error-UNSUPPORTED: t/t_tagged_if.v:151:12: Unsupported: matches operator
   151 |     if (wt matches tagged Wide60 .w)
       |            ^~~~~~~
-%Error: t/t_tagged_if.v:158:10: syntax error, unexpected tagged, expecting IDENTIFIER-for-type
-  158 |     wt = tagged Wide90 (90'hDE_ADBEEFCA_FEBABE12_3456);
-      |          ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:160:34: Unsupported: '{} tagged patterns
-  160 |     if (wt matches tagged Wide90 .w)
-      |                                  ^
-%Error-UNSUPPORTED: t/t_tagged_if.v:160:20: Unsupported: '{} tagged patterns
-  160 |     if (wt matches tagged Wide90 .w)
-      |                    ^~~~~~
 %Error-UNSUPPORTED: t/t_tagged_if.v:160:12: Unsupported: matches operator
   160 |     if (wt matches tagged Wide90 .w)
       |            ^~~~~~~
-%Error: t/t_tagged_if.v:167:10: syntax error, unexpected tagged, expecting IDENTIFIER-for-type
-  167 |     wt = tagged Byte8NonZeroLSB (8'hA5);
-      |          ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:169:43: Unsupported: '{} tagged patterns
-  169 |     if (wt matches tagged Byte8NonZeroLSB .b)
-      |                                           ^
-%Error-UNSUPPORTED: t/t_tagged_if.v:169:20: Unsupported: '{} tagged patterns
-  169 |     if (wt matches tagged Byte8NonZeroLSB .b)
-      |                    ^~~~~~
 %Error-UNSUPPORTED: t/t_tagged_if.v:169:12: Unsupported: matches operator
   169 |     if (wt matches tagged Byte8NonZeroLSB .b)
       |            ^~~~~~~
-%Error: t/t_tagged_if.v:176:10: syntax error, unexpected tagged, expecting IDENTIFIER-for-type
-  176 |     wt = tagged Word32LittleEndian (32'hDEADBEEF);
-      |          ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:178:46: Unsupported: '{} tagged patterns
-  178 |     if (wt matches tagged Word32LittleEndian .w)
-      |                                              ^
-%Error-UNSUPPORTED: t/t_tagged_if.v:178:20: Unsupported: '{} tagged patterns
-  178 |     if (wt matches tagged Word32LittleEndian .w)
-      |                    ^~~~~~
 %Error-UNSUPPORTED: t/t_tagged_if.v:178:12: Unsupported: matches operator
   178 |     if (wt matches tagged Word32LittleEndian .w)
       |            ^~~~~~~
-%Error: t/t_tagged_if.v:185:10: syntax error, unexpected tagged, expecting IDENTIFIER-for-type
-  185 |     at = tagged Arr '{10, 20, 30, 40};
-      |          ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:187:31: Unsupported: '{} tagged patterns
-  187 |     if (at matches tagged Arr .a)
-      |                               ^
-%Error-UNSUPPORTED: t/t_tagged_if.v:187:20: Unsupported: '{} tagged patterns
-  187 |     if (at matches tagged Arr .a)
-      |                    ^~~~~~
 %Error-UNSUPPORTED: t/t_tagged_if.v:187:12: Unsupported: matches operator
   187 |     if (at matches tagged Arr .a)
       |            ^~~~~~~
-%Error: t/t_tagged_if.v:194:10: syntax error, unexpected tagged, expecting IDENTIFIER-for-type
-  194 |     at = tagged Scalar (999);
-      |          ^~~~~~
-%Error-UNSUPPORTED: t/t_tagged_if.v:196:34: Unsupported: '{} tagged patterns
+%Error-UNSUPPORTED: t/t_tagged_if.v:196:12: Unsupported: matches operator
   196 |     if (at matches tagged Scalar .s)
-      |                                  ^
+      |            ^~~~~~~
+%Error-UNSUPPORTED: t/t_tagged_if.v:205:52: Unsupported: '{} tagged patterns
+  205 |     if (instr matches tagged Jmp (tagged JmpC '{cc:.c, addr:.a}))
+      |                                                    ^
+%Error-UNSUPPORTED: t/t_tagged_if.v:205:51: Unsupported: '{} .* patterns
+  205 |     if (instr matches tagged Jmp (tagged JmpC '{cc:.c, addr:.a}))
+      |                                                   ^
+%Error-UNSUPPORTED: t/t_tagged_if.v:205:61: Unsupported: '{} tagged patterns
+  205 |     if (instr matches tagged Jmp (tagged JmpC '{cc:.c, addr:.a}))
+      |                                                             ^
+%Error-UNSUPPORTED: t/t_tagged_if.v:205:60: Unsupported: '{} .* patterns
+  205 |     if (instr matches tagged Jmp (tagged JmpC '{cc:.c, addr:.a}))
+      |                                                            ^
+%Error-UNSUPPORTED: t/t_tagged_if.v:205:15: Unsupported: matches operator
+  205 |     if (instr matches tagged Jmp (tagged JmpC '{cc:.c, addr:.a}))
+      |               ^~~~~~~
+%Error-UNSUPPORTED: t/t_tagged_if.v:214:15: Unsupported: matches operator
+  214 |     if (instr matches tagged Jmp .j &&&
+      |               ^~~~~~~
+%Error: t/t_tagged_if.v:214:37: syntax error, unexpected &&&
+  214 |     if (instr matches tagged Jmp .j &&&
+      |                                     ^~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Error-UNSUPPORTED: t/t_tagged_if.v:224:11: Unsupported: matches operator
+  224 |     if (v matches tagged Valid .n &&& (n > 50))
+      |           ^~~~~~~
+%Error: t/t_tagged_if.v:224:35: syntax error, unexpected &&&
+  224 |     if (v matches tagged Valid .n &&& (n > 50))
+      |                                   ^~~
+%Error-UNSUPPORTED: t/t_tagged_if.v:233:11: Unsupported: matches operator
+  233 |     if (v matches tagged Valid .n &&& (n > 50))
+      |           ^~~~~~~
+%Error: t/t_tagged_if.v:233:35: syntax error, unexpected &&&
+  233 |     if (v matches tagged Valid .n &&& (n > 50))
+      |                                   ^~~
+%Error-UNSUPPORTED: t/t_tagged_if.v:242:11: Unsupported: matches operator
+  242 |     if (v matches tagged Valid .x) begin
+      |           ^~~~~~~
+%Error-UNSUPPORTED: t/t_tagged_if.v:251:36: Unsupported: '{} tagged patterns
+  251 |     if (instr matches tagged Add '{.r1, .r2, .rd})
+      |                                    ^
+%Error-UNSUPPORTED: t/t_tagged_if.v:251:41: Unsupported: '{} tagged patterns
+  251 |     if (instr matches tagged Add '{.r1, .r2, .rd})
+      |                                         ^
+%Error-UNSUPPORTED: t/t_tagged_if.v:251:46: Unsupported: '{} tagged patterns
+  251 |     if (instr matches tagged Add '{.r1, .r2, .rd})
+      |                                              ^
+%Error-UNSUPPORTED: t/t_tagged_if.v:251:15: Unsupported: matches operator
+  251 |     if (instr matches tagged Add '{.r1, .r2, .rd})
+      |               ^~~~~~~
+%Error-UNSUPPORTED: t/t_tagged_if.v:262:15: Unsupported: matches operator
+  262 |     if (instr matches tagged Jmp .j &&&
+      |               ^~~~~~~
+%Error: t/t_tagged_if.v:262:37: syntax error, unexpected &&&
+  262 |     if (instr matches tagged Jmp .j &&&
+      |                                     ^~~
+%Error: t/t_tagged_if.v:273:11: syntax error, unexpected '=', expecting '('
+  273 |     instr = tagged Jmp (tagged JmpU 10'd512);
+      |           ^
+%Error-UNSUPPORTED: t/t_tagged_if.v:275:15: Unsupported: matches operator
+  275 |     if (instr matches tagged Jmp (tagged JmpU .a))
+      |               ^~~~~~~
+%Error: t/t_tagged_if.v:276:14: syntax error, unexpected '=', expecting '('
+  276 |       result = a;
+      |              ^
+%Error: t/t_tagged_if.v:278:14: syntax error, unexpected '=', expecting '('
+  278 |       result = -1;
+      |              ^
+%Error: t/t_tagged_if.v:282:11: syntax error, unexpected '=', expecting '('
+  282 |     instr = tagged Add '{5'd1, 5'd2, 5'd3};
+      |           ^
+%Error-UNSUPPORTED: t/t_tagged_if.v:284:34: Unsupported: '{} tagged patterns
+  284 |     if (instr matches tagged Add .*)
+      |                                  ^~
+%Error-UNSUPPORTED: t/t_tagged_if.v:284:23: Unsupported: '{} tagged patterns
+  284 |     if (instr matches tagged Add .*)
+      |                       ^~~~~~
+%Error-UNSUPPORTED: t/t_tagged_if.v:284:15: Unsupported: matches operator
+  284 |     if (instr matches tagged Add .*)
+      |               ^~~~~~~
+%Error: t/t_tagged_if.v:285:14: syntax error, unexpected '=', expecting '('
+  285 |       result = 1;
+      |              ^
+%Error-UNSUPPORTED: t/t_tagged_if.v:286:39: Unsupported: '{} tagged patterns
+  286 |     else if (instr matches tagged Jmp .*)
+      |                                       ^~
+%Error-UNSUPPORTED: t/t_tagged_if.v:286:28: Unsupported: '{} tagged patterns
+  286 |     else if (instr matches tagged Jmp .*)
+      |                            ^~~~~~
+%Error-UNSUPPORTED: t/t_tagged_if.v:286:20: Unsupported: matches operator
+  286 |     else if (instr matches tagged Jmp .*)
+      |                    ^~~~~~~
+%Error: t/t_tagged_if.v:287:14: syntax error, unexpected '=', expecting '('
+  287 |       result = 2;
+      |              ^
+%Error: t/t_tagged_if.v:291:9: syntax error, unexpected '=', expecting '('
+  291 |     cht = tagged Invalid;
+      |         ^
+%Error-UNSUPPORTED: t/t_tagged_if.v:293:13: Unsupported: matches operator
+  293 |     if (cht matches tagged Invalid)
+      |             ^~~~~~~
+%Error: t/t_tagged_if.v:294:14: syntax error, unexpected '=', expecting '('
+  294 |       result = 1;
+      |              ^
+%Error: t/t_tagged_if.v:296:14: syntax error, unexpected '=', expecting '('
+  296 |       result = 2;
+      |              ^
+%Error: t/t_tagged_if.v:299:9: syntax error, unexpected '=', expecting '('
+  299 |     cht = tagged Handle (null);
+      |         ^
+%Error-UNSUPPORTED: t/t_tagged_if.v:301:35: Unsupported: '{} tagged patterns
+  301 |     if (cht matches tagged Handle .*)   
+      |                                   ^~
+%Error-UNSUPPORTED: t/t_tagged_if.v:301:21: Unsupported: '{} tagged patterns
+  301 |     if (cht matches tagged Handle .*)   
+      |                     ^~~~~~
+%Error-UNSUPPORTED: t/t_tagged_if.v:301:13: Unsupported: matches operator
+  301 |     if (cht matches tagged Handle .*)   
+      |             ^~~~~~~
+%Error: t/t_tagged_if.v:302:14: syntax error, unexpected '=', expecting '('
+  302 |       result = 1;
+      |              ^
 %Error: Exiting due to
