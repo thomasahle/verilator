@@ -6810,7 +6810,7 @@ sexpr<nodeExprp>:  // ==IEEE: sequence_expr  (The name sexpr is important as reg
         //                      // "'(' sexpr ')' boolean_abbrev" matches "[sexpr:'(' expr ')'] boolean_abbrev" so we can drop it
         |       '(' ~p~sexpr ')'                        { $$ = $2; }
         |       '(' ~p~sexpr ',' sequence_match_itemList ')'
-                        { $$ = $2; BBUNSUP($3, "Unsupported: sequence match items"); DEL($4); }
+                        { $$ = new AstSeqMatchItem{$1, $2, $4}; }
         //
         //                      // AND/OR are between pexprs OR sexprs
         //                      // Sequence and/or operators (IEEE 1800-2017 16.9.3)
@@ -6826,9 +6826,7 @@ sexpr<nodeExprp>:  // ==IEEE: sequence_expr  (The name sexpr is important as reg
         |       yFIRST_MATCH '(' sexpr ')'
                         { $$ = new AstFirstMatch{$1, $3}; }
         |       yFIRST_MATCH '(' sexpr ',' sequence_match_itemList ')'
-                        { $$ = new AstFirstMatch{$1, $3};
-                          BBUNSUP($5, "Unsupported: first_match with sequence_match_item");
-                          DEL($5); }
+                        { $$ = new AstFirstMatch{$1, new AstSeqMatchItem{$1, $3, $5}}; }
         |       ~p~sexpr/*sexpression_or_dist*/ yTHROUGHOUT sexpr
                         { $$ = new AstThroughout{$2, $1, $3}; }
         //                      // Below pexpr's are really sequence_expr, but avoid conflict

@@ -785,6 +785,19 @@ class AssertVisitor final : public VNVisitor {
             VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
         }
     }
+    void visit(AstSeqMatchItem* nodep) override {
+        // IEEE 1800-2017 16.10: Sequence expression with match items
+        // (sexpr, x=a, y=b) - the match items are side effects, not sampled values
+        // Visit sequence expression with current sampled state
+        iterate(nodep->seqp());
+        // Match items are side effects executed when sequence matches
+        // Turn off m_inSampled since these are writes, not sampled reads
+        {
+            VL_RESTORER(m_inSampled);
+            m_inSampled = false;
+            iterateAndNextNull(nodep->matchItemsp());
+        }
+    }
 
     //========== Statements
     void visit(AstDisplay* nodep) override {

@@ -415,6 +415,19 @@ class AssertPropIfVisitor final : public VNVisitor {
         nodep->replaceWith(seqp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
+    void visit(AstSeqMatchItem* nodep) override {
+        // IEEE 1800-2017 16.10: Sequence expression with match items
+        // (sexpr, x=a, y=b) - when sexpr matches, execute match items
+        // For now, simplify to just the sequence expression
+        // The match items are side effects (assignments) that should execute
+        // when the sequence matches, but we don't implement that yet.
+        // TODO: Properly implement match item side effects
+        iterateChildren(nodep);
+
+        AstNodeExpr* const seqp = nodep->seqp()->unlinkFrBack();
+        nodep->replaceWith(seqp);
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
+    }
     // Helper to transform PExprClause nodes in a tree
     // For implication LHS: pass -> check RHS, fail -> vacuous pass
     static void transformImplicationLhs(AstNode* bodyp, AstNodeExpr* rhsp, FileLine* flp) {

@@ -1806,6 +1806,15 @@ class WidthVisitor final : public VNVisitor {
             nodep->dtypeSetBit();
         }
     }
+    void visit(AstSeqMatchItem* nodep) override {
+        // IEEE 1800-2017 16.10: Sequence expression with match items
+        // (sexpr, x=a, y=b) - when sexpr matches, execute match items
+        if (!m_vup || m_vup->prelim()) {
+            userIterateAndNext(nodep->seqp(), WidthVP{SELF, BOTH}.p());
+            userIterateAndNext(nodep->matchItemsp(), WidthVP{SELF, BOTH}.p());
+            nodep->dtypeSetBit();
+        }
+    }
     void visit(AstURandomRange* nodep) override {
         assertAtExpr(nodep);
         if (m_vup->prelim()) {

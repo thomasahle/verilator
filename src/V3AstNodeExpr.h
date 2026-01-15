@@ -2483,6 +2483,25 @@ public:
     bool cleanOut() const override { V3ERROR_NA_RETURN(true); }
     bool hasDType() const override VL_MT_SAFE { return false; }
 };
+class AstSeqMatchItem final : public AstNodeExpr {
+    // IEEE 1800-2017 16.10: Sequence expression with match items
+    // Syntax: (sexpr, match_item, match_item, ...)
+    // When sexpr matches, the match items (assignments) are executed
+    // @astgen op1 := seqp : AstNodeExpr  // Sequence expression
+    // @astgen op2 := matchItemsp : List[AstNode]  // Match items (assignments)
+public:
+    AstSeqMatchItem(FileLine* fl, AstNodeExpr* seqp, AstNode* matchItemsp)
+        : ASTGEN_SUPER_SeqMatchItem(fl) {
+        this->seqp(seqp);
+        this->addMatchItemsp(matchItemsp);
+    }
+    ASTGEN_MEMBERS_AstSeqMatchItem;
+    string emitVerilog() override { return "(%l)"; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { return true; }
+    int instrCount() const override { return INSTR_COUNT_BRANCH; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
 class AstSetAssoc final : public AstNodeExpr {
     // Set an assoc array element and return object, '{}
     // @astgen op1 := lhsp : AstNode
