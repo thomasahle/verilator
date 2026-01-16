@@ -3636,12 +3636,15 @@ class WidthVisitor final : public VNVisitor {
         userIterateChildren(nodep, nullptr);  // First size all members
         nodep->dtypep(nodep);
         nodep->isFourstate(false);
+        const AstUnionDType* const unionp = VN_CAST(nodep, UnionDType);
         // Error checks
         for (AstMemberDType* itemp = nodep->membersp(); itemp;
              itemp = VN_AS(itemp->nextp(), MemberDType)) {
             AstNodeDType* const dtp = itemp->subDTypep()->skipRefp();
             if (nodep->packed()
                 && !dtp->isIntegralOrPacked()
+                // Tagged unions can have unpacked members (IEEE 1800-2017 7.3.2)
+                && !(unionp && unionp->isTagged())
                 // Historically lax:
                 && !v3Global.opt.structsPacked())
                 itemp->v3error("Unpacked data type "
@@ -3657,7 +3660,6 @@ class WidthVisitor final : public VNVisitor {
                 pushDeletep(itemp->valuep()->unlinkFrBack());
             }
         }
-        const AstUnionDType* const unionp = VN_CAST(nodep, UnionDType);
         // Hard packed unions require equal sizes, but tagged and soft unions don't
         const bool isHardPackedUnion = nodep->packed() && unionp && !unionp->isSoft()
                                        && !unionp->isTagged();
