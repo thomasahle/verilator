@@ -1103,6 +1103,17 @@ public:
     int instrCount() const override { return INSTR_COUNT_PLI; }
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
 };
+class AstSeqMatchAction final : public AstNodeStmt {
+    // Sequence match item actions executed when a sequence element matches
+    // @astgen op1 := matchItemsp : List[AstNode]
+public:
+    AstSeqMatchAction(FileLine* fl, AstNode* matchItemsp)
+        : ASTGEN_SUPER_SeqMatchAction(fl) {
+        addMatchItemsp(matchItemsp);
+    }
+    ASTGEN_MEMBERS_AstSeqMatchAction;
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
 class AstSetuphold final : public AstNodeStmt {
     // Verilog $setuphold
     // @astgen op1 := refevp : AstNodeExpr

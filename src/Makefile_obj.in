@@ -233,6 +233,7 @@ RAW_OBJS_PCH_ASTNOMT = \
   V3Assert.o \
   V3AssertPre.o \
   V3AssertProp.o \
+  V3SeqMatch.o \
   V3Begin.o \
   V3Branch.o \
   V3CCtors.o \
@@ -300,6 +301,7 @@ RAW_OBJS_PCH_ASTNOMT = \
   V3LinkParse.o \
   V3LinkResolve.o \
   V3Localize.o \
+  V3Match.o \
   V3MergeCond.o \
   V3Name.o \
   V3Order.o \

@@ -8,10 +8,10 @@ module t;
 
    interconnect a;
 
-   assign a = 1; // Bad IEEE 6.6.8 - shall not be used in continuous assignment
+   assign a = 1'b1; // Bad IEEE 6.6.8 - shall not be used in continuous assignment
 
    initial begin
-      a = 2; // Bad IEEE 6.6.8 - shall not be used in procedural assignment
+      a = 1'b0; // Bad IEEE 6.6.8 - shall not be used in procedural assignment
    end
 
 endmodule

@@ -14,6 +14,9 @@ module t;
    ex_ifc u_ifc();
    ex_mod u_mod();
 
+   task ex_task;
+   endtask
+
    initial begin
       ex_task();
       $write("*-* All Finished *-*\n");

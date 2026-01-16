@@ -44,6 +44,7 @@ set(HEADERS
     V3Assert.h
     V3AssertPre.h
     V3AssertProp.h
+    V3SeqMatch.h
     V3Ast.h
     V3AstAttr.h
     V3AstInlines.h
@@ -132,6 +133,7 @@ set(HEADERS
     V3LinkResolve.h
     V3List.h
     V3Localize.h
+    V3Match.h
     V3MemberMap.h
     V3MergeCond.h
     V3Mutex.h
@@ -212,6 +214,7 @@ set(COMMON_SOURCES
     V3Assert.cpp
     V3AssertPre.cpp
     V3AssertProp.cpp
+    V3SeqMatch.cpp
     V3Ast.cpp
     V3AstNodes.cpp
     V3Begin.cpp
@@ -304,6 +307,7 @@ set(COMMON_SOURCES
     V3LinkParse.cpp
     V3LinkResolve.cpp
     V3Localize.cpp
+    V3Match.cpp
     V3MergeCond.cpp
     V3Name.cpp
     V3Number.cpp

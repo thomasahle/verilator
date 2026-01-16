@@ -154,6 +154,13 @@ class AssertVisitor final : public VNVisitor {
     // Map from (expression, senTree) to AstAlways that computes delayed values of the expression
     std::unordered_map<VNRef<AstNodeExpr>, std::unordered_map<VNRef<AstSenTree>, AstAlways*>>
         m_modExpr2Sen2DelayedAlwaysp;
+    // Map from (expression, senTree, enable) to AstAlways for gated $past
+    std::unordered_map<VNRef<AstNodeExpr>,
+                       std::unordered_map<VNRef<AstSenTree>,
+                                          std::unordered_map<VNRef<AstNodeExpr>, AstAlways*>>>
+        m_modExpr2Sen2Cond2DelayedAlwaysp;
+    // Gating if statement for delayed always blocks
+    std::unordered_map<AstAlways*, AstIf*> m_delayedGatep;
 
     // METHODS
     static AstNodeExpr* assertOnCond(FileLine* fl, VAssertType type,
@@ -298,14 +305,42 @@ class AssertVisitor final : public VNVisitor {
         return ifp;
     }
 
+    static bool pexprNeedsFork(AstNode* bodyp) {
+        class TimingControlVisitor final : public VNVisitorConst {
+            bool m_found = false;
+
+            void visit(AstNodeStmt* nodep) override {
+                if (nodep->isTimingControl()) {
+                    m_found = true;
+                } else {
+                    iterateChildrenConst(nodep);
+                }
+            }
+            void visit(AstNode* nodep) override {
+                if (!m_found) iterateChildrenConst(nodep);
+            }
+
+        public:
+            explicit TimingControlVisitor(AstNode* nodep) { iterateConst(nodep); }
+            bool found() const { return m_found; }
+        };
+
+        return TimingControlVisitor{bodyp}.found();
+    }
+
     AstNode* assertBody(const AstNodeCoverOrAssert* nodep, AstNode* propp, AstNode* passsp,
                         AstNode* failsp) {
         AstNode* bodyp = nullptr;
         if (AstPExpr* const pexprp = VN_CAST(propp, PExpr)) {
-            AstFork* const forkp = new AstFork{nodep->fileline(), VJoinType::JOIN_NONE};
-            forkp->addForksp(pexprp->bodyp()->unlinkFrBack());
+            AstBegin* const beginp = pexprp->bodyp()->unlinkFrBack();
+            if (pexprNeedsFork(beginp)) {
+                AstFork* const forkp = new AstFork{nodep->fileline(), VJoinType::JOIN_NONE};
+                forkp->addForksp(beginp);
+                bodyp = forkp;
+            } else {
+                bodyp = beginp;
+            }
             VL_DO_DANGLING2(pushDeletep(pexprp), pexprp, propp);
-            bodyp = forkp;
         } else {
             bodyp = assertCond(nodep, VN_AS(propp, NodeExpr), passsp, failsp);
         }
@@ -333,7 +368,8 @@ class AssertVisitor final : public VNVisitor {
         return bodysp;
     }
 
-    AstVar* createDelayedVar(const std::string& name, AstAlways* alwaysp, AstNodeExpr* exprp) {
+    AstVar* createDelayedVar(const std::string& name, AstAlways* alwaysp, AstNodeExpr* exprp,
+                             AstIf* gatep = nullptr) {
         FileLine* const flp = exprp->fileline();
         AstVar* const varp = new AstVar{flp, VVarType::MODULETEMP, name, exprp->dtypep()};
         // TODO: this lifetime seems nonsene (can't have NBAs to automatics), but is as before
@@ -343,7 +379,9 @@ class AssertVisitor final : public VNVisitor {
         // Actually set the delayed value
         AstNodeExpr* const lhsp = new AstVarRef{flp, varp, VAccess::WRITE};
         AstAssignDly* const assignp = new AstAssignDly{flp, lhsp, exprp};
-        if (!alwaysp->stmtsp()) {
+        if (gatep) {
+            gatep->addThensp(assignp);
+        } else if (!alwaysp->stmtsp()) {
             alwaysp->addStmtsp(assignp);
         } else {
             alwaysp->stmtsp()->addHereThisAsNext(assignp);
@@ -371,10 +409,69 @@ class AssertVisitor final : public VNVisitor {
         return alwayspr;
     }
 
-    AstNodeExpr* getPastValue(AstNodeExpr* exprp, AstSenTree* senTreep, uint32_t ticks) {
+    AstAlways* getDelayedAlways(AstNodeExpr* exprp, AstSenTree* senTreep, AstNodeExpr* condp) {
+        if (!condp) return getDelayedAlways(exprp, senTreep);
+        AstAlways*& alwayspr = m_modExpr2Sen2Cond2DelayedAlwaysp[*exprp][*senTreep][*condp];
+        if (!alwayspr) {
+            FileLine* const flp = exprp->fileline();
+            // Create the always block that computes the delayed values
+            alwayspr = new AstAlways{flp, VAlwaysKwd::ALWAYS, senTreep, nullptr};
+            m_modp->addStmtsp(alwayspr);
+            // Gate updates on the enable expression
+            AstIf* const gatep = new AstIf{flp, condp, nullptr, nullptr};
+            alwayspr->addStmtsp(gatep);
+            m_delayedGatep.emplace(alwayspr, gatep);
+            // Create the once-delayed variable
+            const std::string name = "_Vpast_" + cvtToStr(m_modPastNum++) + "_1";
+            AstVar* const varp = createDelayedVar(name, alwayspr, exprp, gatep);
+            // Add it to delayed variable vector
+            m_delayed(alwayspr).emplace_back(varp);
+        } else {
+            // Reusing existing, not needed
+            VL_DO_DANGLING(pushDeletep(exprp), exprp);
+            VL_DO_DANGLING(pushDeletep(senTreep), senTreep);
+            VL_DO_DANGLING(pushDeletep(condp), condp);
+        }
+        return alwayspr;
+    }
+
+    AstAlways* getDelayedAlwaysNoReuse(AstNodeExpr* exprp, AstSenTree* senTreep,
+                                       AstNodeExpr* condp) {
+        FileLine* const flp = exprp->fileline();
+        AstAlways* const alwaysp = new AstAlways{flp, VAlwaysKwd::ALWAYS, senTreep, nullptr};
+        m_modp->addStmtsp(alwaysp);
+        AstIf* gatep = nullptr;
+        if (condp) {
+            gatep = new AstIf{flp, condp, nullptr, nullptr};
+            alwaysp->addStmtsp(gatep);
+            m_delayedGatep.emplace(alwaysp, gatep);
+        }
+        const std::string name = "_Vpast_" + cvtToStr(m_modPastNum++) + "_1";
+        AstVar* const varp = createDelayedVar(name, alwaysp, exprp, gatep);
+        m_delayed(alwaysp).emplace_back(varp);
+        return alwaysp;
+    }
+
+    AstNodeExpr* getPastValue(AstNodeExpr* exprp, AstSenTree* senTreep, AstNodeExpr* condp,
+                              uint32_t ticks, AstNodeExpr* matchCondp = nullptr,
+                              AstNode* matchItemsp = nullptr) {
         UASSERT_OBJ(ticks > 0, exprp, "Delay must be > 0");
-        AstAlways* const alwaysp = getDelayedAlways(exprp, senTreep);
+        AstAlways* const alwaysp = matchItemsp
+                                       ? getDelayedAlwaysNoReuse(exprp, senTreep, condp)
+                                       : getDelayedAlways(exprp, senTreep, condp);
         std::vector<AstVar*>& delayedr = m_delayed(alwaysp);
+        AstIf* gatep = nullptr;
+        const auto gateIt = m_delayedGatep.find(alwaysp);
+        if (gateIt != m_delayedGatep.end()) gatep = gateIt->second;
+        if (matchItemsp) {
+            UASSERT_OBJ(matchCondp, exprp, "Missing seq match condition");
+            AstIf* const matchIfp = new AstIf{matchCondp->fileline(), matchCondp, matchItemsp};
+            if (gatep) {
+                gatep->addThensp(matchIfp);
+            } else {
+                alwaysp->addStmtsp(matchIfp);
+            }
+        }
         // Ensure the required delay exists
         while (delayedr.size() < ticks) {
             AstVar* const firstp = delayedr.front();
@@ -384,7 +481,7 @@ class AssertVisitor final : public VNVisitor {
             name.resize(name.size() - 1);
             name += std::to_string(delayedr.size() + 1);
             AstNodeExpr* const prevp = new AstVarRef{flp, delayedr.back(), VAccess::READ};
-            AstVar* const varp = createDelayedVar(name, alwaysp, prevp);
+            AstVar* const varp = createDelayedVar(name, alwaysp, prevp, gatep);
             // Add it to delayed variable vector
             delayedr.emplace_back(varp);
         }
@@ -718,10 +815,33 @@ class AssertVisitor final : public VNVisitor {
             ticks = VN_AS(nodep->ticksp(), Const)->toUInt();
         }
         UASSERT_OBJ(ticks >= 1, nodep, "0 tick should have been checked in V3Width");
-        AstNodeExpr* const exprp = newSampledExpr(nodep->exprp()->unlinkFrBack());
-        AstNodeExpr* inp = getPastValue(exprp, nodep->sentreep()->unlinkFrBack(), ticks);
+        AstNodeExpr* condp = nullptr;
+        if (nodep->condp()) condp = newSampledExpr(nodep->condp()->unlinkFrBack());
+        AstNodeExpr* exprp = nodep->exprp()->unlinkFrBack();
+        AstNode* matchItemsp = nullptr;
+        if (AstSeqMatchItem* const matchp = VN_CAST(exprp, SeqMatchItem)) {
+            exprp = matchp->seqp()->unlinkFrBack();
+            if (matchp->matchItemsp()) {
+                AstNode* const items = matchp->matchItemsp()->unlinkFrBackWithNext();
+                matchItemsp = new AstSeqMatchAction{matchp->fileline(), items};
+            }
+            VL_DO_DANGLING(pushDeletep(matchp), matchp);
+        }
+        AstNodeExpr* const sampledExprp = newSampledExpr(exprp);
+        AstNodeExpr* matchCondp = nullptr;
+        if (matchItemsp) matchCondp = sampledExprp->cloneTreePure(false);
+        AstNodeExpr* inp = getPastValue(sampledExprp, nodep->sentreep()->unlinkFrBack(), condp,
+                                        ticks, matchCondp, matchItemsp);
         nodep->replaceWith(inp);
         VL_DO_DANGLING(pushDeletep(nodep), nodep);
+    }
+    void visit(AstSeqMatchItem* nodep) override {
+        iterate(nodep->seqp());
+        if (nodep->matchItemsp()) {
+            VL_RESTORER(m_inSampled);
+            m_inSampled = false;
+            iterate(nodep->matchItemsp());
+        }
     }
 
     //========== Move $sampled down to read-only variables
@@ -783,19 +903,6 @@ class AssertVisitor final : public VNVisitor {
             iterateChildren(nodep);
         } else if (m_inRestrict) {
             VL_DO_DANGLING(pushDeletep(nodep->unlinkFrBack()), nodep);
-        }
-    }
-    void visit(AstSeqMatchItem* nodep) override {
-        // IEEE 1800-2017 16.10: Sequence expression with match items
-        // (sexpr, x=a, y=b) - the match items are side effects, not sampled values
-        // Visit sequence expression with current sampled state
-        iterate(nodep->seqp());
-        // Match items are side effects executed when sequence matches
-        // Turn off m_inSampled since these are writes, not sampled reads
-        {
-            VL_RESTORER(m_inSampled);
-            m_inSampled = false;
-            iterateAndNextNull(nodep->matchItemsp());
         }
     }
 
@@ -978,10 +1085,14 @@ class AssertVisitor final : public VNVisitor {
         VL_RESTORER(m_modPastNum);
         VL_RESTORER(m_modStrobeNum);
         VL_RESTORER(m_modExpr2Sen2DelayedAlwaysp);
+        VL_RESTORER(m_modExpr2Sen2Cond2DelayedAlwaysp);
+        VL_RESTORER(m_delayedGatep);
         m_modp = nodep;
         m_modPastNum = 0;
         m_modStrobeNum = 0;
         m_modExpr2Sen2DelayedAlwaysp.clear();
+        m_modExpr2Sen2Cond2DelayedAlwaysp.clear();
+        m_delayedGatep.clear();
         iterateChildren(nodep);
     }
     void visit(AstNodeProcedure* nodep) override {

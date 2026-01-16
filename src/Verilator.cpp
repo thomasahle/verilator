@@ -21,6 +21,7 @@
 #include "V3Assert.h"
 #include "V3AssertPre.h"
 #include "V3AssertProp.h"
+#include "V3SeqMatch.h"
 #include "V3Ast.h"
 #include "V3Begin.h"
 #include "V3Branch.h"
@@ -76,6 +77,7 @@
 #include "V3LinkParse.h"
 #include "V3LinkResolve.h"
 #include "V3Localize.h"
+#include "V3Match.h"
 #include "V3MergeCond.h"
 #include "V3Name.h"
 #include "V3Order.h"
@@ -155,6 +157,8 @@ static void process() {
 
         // Convert parseref's to varrefs, and other directly post parsing fixups
         V3LinkParse::linkParse(v3Global.rootp());
+        // Declare match binding vars and rewrite &&& filters before name resolution
+        V3Match::preLink(v3Global.rootp());
         // Cross-link signal names
         // Cross-link dotted hierarchical references
         V3LinkDot::linkDotPrimary(v3Global.rootp());
@@ -163,6 +167,8 @@ static void process() {
         v3Global.opt.checkParameters();
         // Correct state we couldn't know at parse time, repair SEL's
         V3LinkResolve::linkResolve(v3Global.rootp());
+        // Resolve match binding variable types before width analysis
+        V3Match::resolve(v3Global.rootp());
         // Set Lvalue's in variable refs
         V3LinkLValue::linkLValue(v3Global.rootp());
         // Convert return/continue/disable to jumps
@@ -208,6 +214,8 @@ static void process() {
         V3WidthCommit::widthCommit(v3Global.rootp());
         v3Global.assertDTypesResolved(true);
         v3Global.widthMinUsage(VWidthMinUsage::MATCHES_WIDTH);
+        // Lower matches/case...matches now that widths are resolved
+        V3Match::lower(v3Global.rootp());
 
         // End of elaboration
         V3Stats::addStatPerf(V3Stats::STAT_WALLTIME_ELAB, elabWallTime.deltaTime());
@@ -248,6 +256,8 @@ static void process() {
         V3AssertPre::assertPreAll(v3Global.rootp());
         //
         V3Assert::assertAll(v3Global.rootp());
+        //
+        V3SeqMatch::seqMatchAll(v3Global.rootp());
 
         if (!(v3Global.opt.serializeOnly() && !v3Global.opt.flatten())) {
             // Add top level wrapper with instance pointing to old top

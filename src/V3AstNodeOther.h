@@ -1173,7 +1173,7 @@ public:
             } else if (AstCgOptionAssign* const optp = VN_CAST(nodep, CgOptionAssign)) {
                 addOptionsp(optp);
             } else {
-                // Function declarations are already warned about in grammar, just delete
+                // Ignore non-bin items in cross body for now (e.g., function declarations)
                 VL_DO_DANGLING(nodep->deleteTree(), nodep);
             }
         }
@@ -2166,6 +2166,7 @@ class AstVar final : public AstNode {
     bool m_dfgMultidriven : 1;  // Singal is multidriven, used by DFG to avoid repeat processing
     bool m_globalConstrained : 1;  // Global constraint per IEEE 1800-2023 18.5.8
     bool m_isStdRandomizeArg : 1;  // Argument variable created for std::randomize (__Varg*)
+    bool m_isInterconnect : 1;  // Declared with 'interconnect' net type
     void init() {
         m_ansi = false;
         m_declTyped = false;
@@ -2218,6 +2219,7 @@ class AstVar final : public AstNode {
         m_dfgMultidriven = false;
         m_globalConstrained = false;
         m_isStdRandomizeArg = false;
+        m_isInterconnect = false;
     }
 
 public:
@@ -2348,6 +2350,8 @@ public:
     }
     void funcReturn(bool flag) { m_funcReturn = flag; }
     void gotNansiType(bool flag) { m_gotNansiType = flag; }
+    bool isInterconnect() const VL_MT_SAFE { return m_isInterconnect; }
+    void isInterconnect(bool flag) { m_isInterconnect = flag; }
     bool gotNansiType() { return m_gotNansiType; }
     void hasStrengthAssignment(bool flag) { m_hasStrengthAssignment = flag; }
     bool hasStrengthAssignment() { return m_hasStrengthAssignment; }

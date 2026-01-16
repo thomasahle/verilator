@@ -997,6 +997,14 @@ class LinkDotFindVisitor final : public VNVisitor {
             }
         }
     }
+    void moveExternIfaceFuncDecl(AstNodeFTask* nodep, AstIface* ifacep) {
+        // Move an externally defined interface function/task into the interface
+        if (nodep->isExternDef()) return;
+        nodep->unlinkFrBack();
+        ifacep->addStmtsp(nodep);
+        nodep->isExternDef(true);
+        nodep->classOrPackagep()->unlinkFrBack()->deleteTree();
+    }
     void moveExternFuncDeclRefs(AstNode* nodep, AstClass* classp) {
         nodep->foreach([this, classp](AstClassOrPackageRef* refp) {  //
             if (refp->name() == classp->name() && !refp->paramsp()) {
@@ -1431,6 +1439,7 @@ class LinkDotFindVisitor final : public VNVisitor {
             AstDot* const dotp = VN_CAST(nodep->classOrPackagep(), Dot);
             AstClassOrPackageRef* const cpackagerefp
                 = VN_CAST(nodep->classOrPackagep(), ClassOrPackageRef);
+            AstParseRef* const prefp = VN_CAST(nodep->classOrPackagep(), ParseRef);
             if (dotp) {
                 AstClassOrPackageRef* const lhsp = VN_AS(dotp->lhsp(), ClassOrPackageRef);
                 m_statep->resolveClassOrPackage(m_curSymp, lhsp, true, false,
@@ -1465,6 +1474,19 @@ class LinkDotFindVisitor final : public VNVisitor {
                     m_curSymp = m_statep->getNodeSym(classp);
                     upSymp = m_curSymp;
                     moveExternFuncDecl(nodep, classp);
+                }
+            } else if (prefp) {
+                VSymEnt* const symp = m_curSymp->findIdFallback(prefp->name());
+                AstVar* const varp = symp ? VN_CAST(symp->nodep(), Var) : nullptr;
+                AstIfaceRefDType* const ifacerefp
+                    = varp ? LinkDotState::ifaceRefFromArray(varp->subDTypep()) : nullptr;
+                AstIface* const ifacep = ifacerefp ? ifacerefp->ifacep() : nullptr;
+                if (!ifacep) {
+                    nodep->v3error("Extern declaration's scope is not a defined interface");
+                } else {
+                    m_curSymp = m_statep->getNodeSym(ifacep);
+                    upSymp = m_curSymp;
+                    moveExternIfaceFuncDecl(nodep, ifacep);
                 }
             } else {
                 v3fatalSrc("Unhandled extern function definition package");
@@ -2214,6 +2236,19 @@ class LinkDotParamVisitor final : public VNVisitor {
         string paramName = nodep->name();
         string pathStr;
 
+        if (!nodep->hasAstPath() && nodep->path().empty()) {
+            VSymEnt* const foundp = m_statep->getNodeSym(m_modp)->findIdFallback(paramName);
+            AstVar* const varp = foundp ? VN_CAST(foundp->nodep(), Var) : nullptr;
+            if (!varp || !varp->isParam()) {
+                nodep->v3error("In defparam, parameter " << paramName << " never declared");
+            } else {
+                AstNodeExpr* const exprp = nodep->rhsp()->unlinkFrBack();
+                varp->valuep(exprp);
+            }
+            VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+            return;
+        }
+
         if (nodep->hasAstPath()) {
             // Hierarchical defparam: path is an AstDot tree
             // The path tree contains ALL components including the parameter name
@@ -2239,6 +2274,128 @@ class LinkDotParamVisitor final : public VNVisitor {
                 pathComponents.pop_back();  // Remove parameter name from path
             }
 
+            // Hierarchical defparam to a subcell: convert into a parent-cell parameter
+            if (pathComponents.size() >= 2) {
+                const string subcellName = pathComponents.back().first;
+                pathComponents.pop_back();  // Remaining components resolve to parent cell
+
+                VSymEnt* curSymp = m_statep->getNodeSym(nodep);
+                AstCell* parentCellp = nullptr;
+                for (size_t i = 0; i < pathComponents.size(); ++i) {
+                    const string& name = pathComponents[i].first;
+                    if (i > 0) pathStr += ".";
+                    pathStr += name;
+
+                    VSymEnt* const foundp = curSymp->findIdFallback(name);
+                    AstCell* const foundCellp = foundp ? VN_CAST(foundp->nodep(), Cell) : nullptr;
+                    if (!foundCellp) {
+                        nodep->v3error("In defparam, instance '" << name << "' (in path '"
+                                       << pathStr << "') never declared");
+                        VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+                        return;
+                    }
+                    parentCellp = foundCellp;
+                    curSymp = foundp;
+                }
+
+                if (parentCellp) {
+                    if (!pathStr.empty()) pathStr += ".";
+                    pathStr += subcellName;
+                }
+
+                VSymEnt* const subp = curSymp ? curSymp->findIdFallback(subcellName) : nullptr;
+                AstCell* const subCellp = subp ? VN_CAST(subp->nodep(), Cell) : nullptr;
+                if (!subCellp) {
+                    nodep->v3error("In defparam, instance '" << subcellName << "' (in path '"
+                                   << pathStr << "') never declared");
+                    VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+                    return;
+                }
+
+                AstVar* targetVarp = nullptr;
+                if (AstNodeModule* const subModp = subCellp->modp()) {
+                    VSymEnt* const paramEntp
+                        = m_statep->getNodeSym(subModp)->findIdFallback(paramName);
+                    targetVarp = paramEntp ? VN_CAST(paramEntp->nodep(), Var) : nullptr;
+                }
+                if (!targetVarp || !targetVarp->isParam()) {
+                    nodep->v3error("In defparam, parameter " << paramName << " never declared");
+                    VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+                    return;
+                }
+
+                AstNodeModule* const parentModp = parentCellp ? parentCellp->modp() : nullptr;
+                if (!parentModp) {
+                    nodep->v3error("In defparam, instance " << pathStr << " never declared");
+                    VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+                    return;
+                }
+
+                const string hierParamName
+                    = "__Vhparam__" + subcellName + "__" + paramName;
+                AstVar* hierVarp = nullptr;
+                if (VSymEnt* const hierEntp
+                    = m_statep->getNodeSym(parentModp)->findIdFallback(hierParamName)) {
+                    hierVarp = VN_CAST(hierEntp->nodep(), Var);
+                }
+
+                AstPin* existingPinp = nullptr;
+                for (AstPin* pinp = subCellp->paramsp(); pinp;
+                     pinp = VN_AS(pinp->nextp(), Pin)) {
+                    if (pinp->param() && pinp->name() == paramName) {
+                        existingPinp = pinp;
+                        break;
+                    }
+                }
+
+                AstNodeExpr* defaultExprp = nullptr;
+                if (existingPinp && existingPinp->exprp()) {
+                    defaultExprp = VN_AS(existingPinp->exprp()->cloneTree(false), NodeExpr);
+                } else if (targetVarp->valuep()) {
+                    defaultExprp = VN_AS(targetVarp->valuep()->cloneTree(false), NodeExpr);
+                }
+
+                if (!hierVarp) {
+                    AstNodeDType* dtypep
+                        = targetVarp->subDTypep() ? targetVarp->subDTypep()->cloneTree(false)
+                                                  : nullptr;
+                    hierVarp = new AstVar{nodep->fileline(), VVarType::GPARAM, hierParamName,
+                                          VFlagChildDType{}, dtypep};
+                    if (defaultExprp) hierVarp->valuep(defaultExprp);
+                    parentModp->addStmtsp(hierVarp);
+                    m_statep->insertSym(m_statep->getNodeSym(parentModp), hierVarp->name(),
+                                        hierVarp, nullptr /*classOrPackagep*/);
+                } else if (defaultExprp) {
+                    VL_DO_DANGLING(defaultExprp->deleteTree(), defaultExprp);
+                }
+
+                AstVarRef* const hierRefp
+                    = new AstVarRef{nodep->fileline(), hierVarp, VAccess::READ};
+                if (existingPinp) {
+                    if (existingPinp->exprp()) {
+                        AstNode* const oldp = existingPinp->exprp()->unlinkFrBack();
+                        VL_DO_DANGLING(oldp->deleteTree(), oldp);
+                    }
+                    existingPinp->exprp(hierRefp);
+                } else {
+                    AstPin* const subPinp
+                        = new AstPin{nodep->fileline(), -1, paramName, hierRefp};
+                    subPinp->param(true);
+                    subCellp->addParamsp(subPinp);
+                }
+
+                AstNodeExpr* const exprp = nodep->rhsp()->unlinkFrBack();
+                UINFO(9, "Defparam cell " << pathStr << "." << paramName
+                                          << " attach-to " << parentCellp
+                                          << " as " << hierParamName << "  <= " << exprp);
+                AstPin* const pinp
+                    = new AstPin{nodep->fileline(), -1, hierParamName, exprp};
+                pinp->param(true);
+                parentCellp->addParamsp(pinp);
+                VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+                return;
+            }
+
             // Now resolve the path - all remaining components are cells
             VSymEnt* curSymp = m_statep->getNodeSym(nodep);
             for (size_t i = 0; i < pathComponents.size(); ++i) {
@@ -2255,13 +2412,8 @@ class LinkDotParamVisitor final : public VNVisitor {
                     return;
                 }
                 cellp = foundCellp;
-                // Move into the cell's scope for next lookup
-                AstNodeModule* const modp = foundCellp->modp();
-                if (modp) {
-                    curSymp = m_statep->getNodeSym(modp);
-                } else {
-                    curSymp = nullptr;
-                }
+                // Move into the specific cell's scope for next lookup
+                curSymp = foundp;
             }
         } else {
             // Simple defparam: path is a string
@@ -2634,7 +2786,8 @@ class LinkDotIfaceVisitor final : public VNVisitor {
         iterateChildren(nodep);
         // Export modports: the function is declared in interface but implemented in module
         // For now, handle the same as import - link to the interface's extern function declaration
-        VSymEnt* const symp = m_curSymp->findIdFallback(nodep->name());
+        VSymEnt* symp = m_curSymp->findIdFallback(nodep->name());
+        if (!symp) symp = m_curSymp->findIdFallback("extern " + nodep->name());
         if (!symp) {
             nodep->v3error("Modport item not found: " << nodep->prettyNameQ());
         } else if (AstNodeFTask* const ftaskp = VN_CAST(symp->nodep(), NodeFTask)) {
@@ -3307,6 +3460,33 @@ class LinkDotResolveVisitor final : public VNVisitor {
         }
         return nullptr;
     }
+    static AstVar* varFromExpr(AstNode* exprp) {
+        while (const AstNodePreSel* const preSelp = VN_CAST(exprp, NodePreSel)) {
+            exprp = preSelp->fromp();
+        }
+        if (AstVarRef* const varrefp = VN_CAST(exprp, VarRef)) return varrefp->varp();
+        if (AstVarXRef* const xrefp = VN_CAST(exprp, VarXRef)) return xrefp->varp();
+        return nullptr;
+    }
+    void resolveInterconnectPinDType(AstPin* nodep) {
+        if (!nodep || nodep->param() || !nodep->exprp() || !nodep->modVarp()) return;
+        AstVar* const connVarp = varFromExpr(nodep->exprp());
+        if (!connVarp || !connVarp->isInterconnect()) return;
+        AstNodeDType* const connTypep = connVarp->childDTypep();
+        AstBasicDType* const connBasicp = VN_CAST(connTypep, BasicDType);
+        if (!connBasicp || !connBasicp->implicit()) return;
+        AstNodeDType* const modTypep
+            = nodep->modVarp()->childDTypep() ? nodep->modVarp()->childDTypep()
+                                              : nodep->modVarp()->dtypep();
+        if (!modTypep) return;
+        AstNodeDType* const newDtp = modTypep->cloneTree(false);
+        if (AstNodeDType* const oldp = connVarp->childDTypep()) {
+            VL_DO_DANGLING(pushDeletep(oldp->unlinkFrBack()), oldp);
+        }
+        connVarp->childDTypep(newDtp);
+        connVarp->dtypep(nullptr);
+        connVarp->didWidth(false);
+    }
     // Introduce implicit parameters for modules with generic interafeces
     void addImplicitParametersOfGenericIface(AstCell* const nodep, const AstModule* const modp) {
         // Get Param number
@@ -3618,6 +3798,7 @@ class LinkDotResolveVisitor final : public VNVisitor {
             }
             markAndCheckPinDup(nodep, foundp->nodep(), whatp);
         }
+        resolveInterconnectPinDType(nodep);
         // Early return() above when deleted
     }
     void visit(AstDot* nodep) override {

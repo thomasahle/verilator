@@ -412,7 +412,8 @@ class UndrivenVisitor final : public VNVisitorConst {
             && !VN_IS(nodep, VarXRef)) {  // Ignore interface variables and similar ugly items
             if (m_inProcAssign && !nodep->varp()->varType().isProcAssignable()
                 && !nodep->varp()->isDeclTyped()  //
-                && !nodep->varp()->isClassMember() && !nodep->varp()->isFuncLocal()) {
+                && !nodep->varp()->isClassMember() && !nodep->varp()->isFuncLocal()
+                && !nodep->varp()->isInterconnect()) {
                 nodep->v3warn(PROCASSWIRE, "Procedural assignment to wire, perhaps intended var"
                                                << " (IEEE 1800-2023 6.5): "
                                                << nodep->prettyNameQ());
@@ -423,7 +424,8 @@ class UndrivenVisitor final : public VNVisitorConst {
                                   << " (IEEE 1364-2005 6.1; Verilog only, legal in SV): "
                                   << nodep->prettyNameQ());
             }
-            if (m_inFTaskRef && nodep->varp()->varType().isNet()) {
+            if (m_inFTaskRef && nodep->varp()->varType().isNet()
+                && !nodep->varp()->isInterconnect()) {
                 nodep->v3warn(
                     PROCASSWIRE,
                     "Passed wire on output or inout subroutine argument, expected expression that "

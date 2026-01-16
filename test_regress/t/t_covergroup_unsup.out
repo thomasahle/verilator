@@ -3,9 +3,6 @@
       |                         ^~
                    ... For warning description see https://verilator.org/warn/COVERIGN?v=latest
                    ... Use "/* verilator lint_off COVERIGN */" and lint_on around source to disable this message.
-%Warning-COVERIGN: t/t_covergroup_unsup.v:110:24: Ignoring unsupported: coverage cross 'function' declaration
-  110 |          function void crossfunc; endfunction
-      |                        ^~~~~~~~~
 %Warning-COVERIGN: t/t_covergroup_unsup.v:111:21: Ignoring unsupported: coverage select function call
   111 |          bins one = crossfunc();
       |                     ^~~~~~~~~

@@ -1,8 +1,23 @@
-%Error-UNSUPPORTED: t/t_tagged.v:34:13: Unsupported: matches with non-tagged pattern
+%Error: t/t_tagged.v:34:21: Syntax error: Not expecting TAGGED under a DOT in dotted expression
    34 |       if (u matches tagged m_int .n) $stop;
-      |             ^~~~~~~
-                    ... For error description see https://verilator.org/warn/UNSUPPORTED?v=latest
-%Error-UNSUPPORTED: t/t_tagged.v:45:13: Unsupported: matches with non-tagged pattern
+      |                     ^~~~~~
+        t/t_tagged.v:34:34: ... Resolving this reference
+   34 |       if (u matches tagged m_int .n) $stop;
+      |                                  ^
+        ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
+%Error: t/t_tagged.v:41:9: Syntax error: Not expecting TAGGED under a DOT in dotted expression
+   41 |         tagged m_int .n: if (n !== 123) $stop;
+      |         ^~~~~~
+        t/t_tagged.v:41:22: ... Resolving this reference
+   41 |         tagged m_int .n: if (n !== 123) $stop;
+      |                      ^
+%Error: t/t_tagged.v:41:30: Can't find definition of variable: 'n'
+   41 |         tagged m_int .n: if (n !== 123) $stop;
+      |                              ^
+%Error: t/t_tagged.v:45:21: Syntax error: Not expecting TAGGED under a DOT in dotted expression
    45 |       if (u matches tagged m_int .n) if (n != 123) $stop;
-      |             ^~~~~~~
+      |                     ^~~~~~
+        t/t_tagged.v:45:34: ... Resolving this reference
+   45 |       if (u matches tagged m_int .n) if (n != 123) $stop;
+      |                                  ^
 %Error: Exiting due to

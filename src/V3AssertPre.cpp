@@ -56,6 +56,7 @@ private:
     AstNodeExpr* m_disablep = nullptr;  // Last disable
     // Other:
     V3UniqueNames m_cycleDlyNames{"__VcycleDly"};  // Cycle delay counter name generator
+    V3UniqueNames m_propVarNames{"__Vprop"};  // Property local variable name generator
     bool m_inAssign = false;  // True if in an AssignNode
     bool m_inAssignDlyLhs = false;  // True if in AssignDly's LHS
     bool m_inSynchDrive = false;  // True if in synchronous drive
@@ -94,6 +95,19 @@ private:
                 // Substitute inner property call before copying in order to not doing the same for
                 // each call of outer property call.
                 propExprp = substitutePropertyCall(propExprp);
+                // Clone property local variables (non-IO vars) into module scope
+                std::unordered_map<const AstVar*, AstVar*> localVarMap;
+                for (AstNode* stmtp = propp->stmtsp(); stmtp; stmtp = stmtp->nextp()) {
+                    if (VN_IS(stmtp, PropSpec)) break;
+                    AstVar* const varp = VN_CAST(stmtp, Var);
+                    if (!varp || varp->isIO()) continue;
+                    UASSERT_OBJ(m_modp, varp, "Property local var outside module");
+                    AstVar* const newvarp = varp->cloneTree(false);
+                    newvarp->funcLocal(false);
+                    newvarp->name(m_propVarNames.get(varp->name()));
+                    m_modp->addStmtsp(newvarp);
+                    localVarMap.emplace(varp, newvarp);
+                }
                 // Clone subtree after substitution. It is needed, because property might be called
                 // multiple times with different arguments.
                 propExprp = propExprp->cloneTree(false);
@@ -110,6 +124,12 @@ private:
                         }
                     });
                     pushDeletep(argp->exprp()->unlinkFrBack());
+                }
+                if (!localVarMap.empty()) {
+                    propExprp->foreach([&](AstVarRef* refp) {
+                        const auto it = localVarMap.find(refp->varp());
+                        if (it != localVarMap.end()) refp->varp(it->second);
+                    });
                 }
                 // Handle case with 2 disable iff statement (IEEE 1800-2023 16.12.1)
                 if (nodep->disablep() && propExprp->disablep()) {
@@ -135,7 +155,14 @@ private:
                     propExprp->sensesp(sensesp);
                 }
 
+                // Substitute any property calls introduced by argument replacement
+                propExprp = substitutePropertyCall(propExprp);
+
                 // Now substitute property reference with property body
+                if (!nodep->backp()) {
+                    VL_DO_DANGLING(pushDeletep(nodep), nodep);
+                    return propExprp;
+                }
                 nodep->replaceWith(propExprp);
                 VL_DO_DANGLING(pushDeletep(nodep), nodep);
                 return propExprp;

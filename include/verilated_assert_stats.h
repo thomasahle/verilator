@@ -140,6 +140,7 @@ public:
 
         uint64_t totalPass = 0, totalFail = 0, totalEval = 0;
         size_t exercised = 0;
+        size_t failed = 0;
 
         for (const auto& pair : m_asserts) {
             const AssertInfo& info = pair.second;
@@ -151,6 +152,7 @@ public:
             totalFail += fail;
             totalEval += eval;
             if (eval > 0) ++exercised;
+            if (fail > 0) ++failed;
 
             // Format: name: STATUS (pass: N, fail: N)
             os << "  " << (info.name.empty() ? "(unnamed)" : info.name) << ": ";
@@ -169,7 +171,7 @@ public:
         os << "-------------------------\n";
         os << "Total: " << m_asserts.size() << " assertions, "
            << exercised << " exercised, "
-           << numFailed() << " failed\n";
+           << failed << " failed\n";
         os << "Coverage: " << exercised << "/" << m_asserts.size()
            << " (" << (m_asserts.empty() ? 100 : (exercised * 100 / m_asserts.size())) << "%)\n";
         os << "=========================\n";

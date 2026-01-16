@@ -26,7 +26,7 @@ module t(/*AUTOARG*/
       end
    end
 
-   Chk check(clk, cyc);
+   Chk check(.clk(clk), .in(cyc), .defaulted(1'b0));
 
    checker checker_in_module;
    endchecker
@@ -38,10 +38,7 @@ package Pkg;
    endchecker
 endpackage
 
-checker Chk(input defaulted = 1'b0);
-   bit clk;
-   bit in;
-   bit rst;
+checker Chk(input bit clk, input int in, input bit defaulted = 1'b0);
    rand bit randed;  // TODO test this
 
    int counter = 0;
@@ -65,12 +62,14 @@ checker Chk(input defaulted = 1'b0);
 
 
    default clocking clk;  // TODO test this
-   default disable iff rst;  // TODO test this
+   default disable iff defaulted;  // TODO test this
 
+   /* verilator lint_off CHECKERIGN */
    checker ChkChk;  // TODO flag unsupported
    endchecker
 
    function automatic int f;  // TODO test this
+      return 0;
    endfunction
 
 
@@ -78,6 +77,7 @@ checker Chk(input defaulted = 1'b0);
        input in;
        output out;
    endclocking
+   /* verilator lint_on CHECKERIGN */
 
    always_ff @(posedge clk)
       counter <= counter + 1'b1;

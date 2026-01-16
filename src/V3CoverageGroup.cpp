@@ -138,9 +138,13 @@ class CoverageGroupVisitor final : public VNVisitor {
     string makeVarName(const string& prefix, const string& cpName, const string& binName) {
         string name = prefix + cpName;
         if (!binName.empty()) name += "_" + binName;
-        // Sanitize: replace [] with _ for C++ identifier compatibility
+        // Sanitize for C++ identifiers (replace non-alnum/underscore with '_')
         for (size_t i = 0; i < name.size(); ++i) {
-            if (name[i] == '[' || name[i] == ']') name[i] = '_';
+            const char ch = name[i];
+            const bool ok
+                = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
+                  || (ch >= '0' && ch <= '9') || ch == '_';
+            if (!ok) name[i] = '_';
         }
         return name;
     }
@@ -2526,13 +2530,9 @@ class CoverageGroupVisitor final : public VNVisitor {
 
         FileLine* const fl = covergroupp->fileline();
 
-        // Create: this.g1 = new();
-        // LHS: this.g1
-        AstClassRefDType* const thisTypep
-            = new AstClassRefDType{fl, m_enclosingClassp, nullptr};
-        v3Global.rootp()->typeTablep()->addTypesp(thisTypep);
-        AstThisRef* const thisp = new AstThisRef{fl, thisTypep};
-        AstMemberSel* const lhsp = new AstMemberSel{fl, thisp, cgMemberVarp};
+        // Create: g1 = new();
+        // LHS: g1 (class member)
+        AstVarRef* const lhsp = new AstVarRef{fl, cgMemberVarp, VAccess::WRITE};
 
         // RHS: new()
         AstClassRefDType* const cgTypep = new AstClassRefDType{fl, covergroupp, nullptr};
@@ -2577,20 +2577,19 @@ class CoverageGroupVisitor final : public VNVisitor {
 
         // Now add __Vparentp initialization
         if (m_parentPtrVarp) {
-            // Create: this.g1.__Vparentp
-            AstClassRefDType* const thisTypep2 = thisTypep->cloneTree(false);
-            v3Global.rootp()->typeTablep()->addTypesp(thisTypep2);
-            AstThisRef* const thisp2 = new AstThisRef{fl, thisTypep2};
-            AstMemberSel* const cgRefp = new AstMemberSel{fl, thisp2, cgMemberVarp};
+            // Create: g1.__Vparentp
+            AstVarRef* const cgRefp
+                = new AstVarRef{fl, cgMemberVarp, VAccess::READWRITE};
             AstMemberSel* const parentPtrp = new AstMemberSel{fl, cgRefp, m_parentPtrVarp};
 
             // Create: this
-            AstClassRefDType* const thisTypep3 = thisTypep->cloneTree(false);
-            v3Global.rootp()->typeTablep()->addTypesp(thisTypep3);
-            AstThisRef* const thisp3 = new AstThisRef{fl, thisTypep3};
+            AstClassRefDType* const thisTypep
+                = new AstClassRefDType{fl, m_enclosingClassp, nullptr};
+            v3Global.rootp()->typeTablep()->addTypesp(thisTypep);
+            AstThisRef* const thisp = new AstThisRef{fl, thisTypep};
 
-            // Create assignment: this.g1.__Vparentp = this;
-            AstAssign* const initp = new AstAssign{fl, parentPtrp, thisp3};
+            // Create assignment: g1.__Vparentp = this;
+            AstAssign* const initp = new AstAssign{fl, parentPtrp, thisp};
 
             // Add after the new() assignment
             assignp->addNextHere(initp);

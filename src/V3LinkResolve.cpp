@@ -211,7 +211,7 @@ class LinkResolveVisitor final : public VNVisitor {
             // UINFOTREE(1, nodep, "", "let-ref");
             // cppcheck-suppress constVariablePointer
             AstStmtExpr* const letStmtp = VN_AS(letp->stmtsp(), StmtExpr);
-            AstNodeExpr* const newp = letStmtp->exprp()->cloneTree(false);
+            AstNodeExpr* newp = letStmtp->exprp()->cloneTree(false);
             const V3TaskConnects tconnects = V3Task::taskConnects(nodep, letp->stmtsp());
             std::map<const AstVar*, AstNodeExpr*> portToExprs;
             for (const auto& tconnect : tconnects) {
@@ -228,8 +228,14 @@ class LinkResolveVisitor final : public VNVisitor {
                     AstNodeExpr* const pinp = it->second;
                     UINFO(9, "let pin subst " << refp << " <- " << pinp);
                     // Side effects are copied into pins, to match other simulators
-                    refp->replaceWith(pinp->cloneTree(false));
-                    VL_DO_DANGLING(pushDeletep(refp), refp);
+                    AstNodeExpr* const replp = pinp->cloneTree(false);
+                    if (!refp->backp()) {
+                        newp = replp;
+                        VL_DO_DANGLING(pushDeletep(refp), refp);
+                    } else {
+                        refp->replaceWith(replp);
+                        VL_DO_DANGLING(pushDeletep(refp), refp);
+                    }
                 }
             });
             // UINFOTREE(1, newp, "", "let-new");
@@ -293,8 +299,14 @@ class LinkResolveVisitor final : public VNVisitor {
                 if (it != portToExprs.end()) {
                     AstNodeExpr* const pinp = it->second;
                     UINFO(9, "seq pin subst " << refp << " <- " << pinp);
-                    refp->replaceWith(pinp->cloneTree(false));
-                    VL_DO_DANGLING(pushDeletep(refp), refp);
+                    AstNodeExpr* const replp = pinp->cloneTree(false);
+                    if (!refp->backp()) {
+                        newp = replp;
+                        VL_DO_DANGLING(pushDeletep(refp), refp);
+                    } else {
+                        refp->replaceWith(replp);
+                        VL_DO_DANGLING(pushDeletep(refp), refp);
+                    }
                 }
             });
             nodep->replaceWith(newp);

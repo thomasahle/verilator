@@ -24,7 +24,9 @@ module t (
 
   generate
     for (genvar i = 0; i < 8; i = i + 1) begin : blk
+      /* verilator lint_off PINMISSING */
       m3 u_m3 ();
+      /* verilator lint_on PINMISSING */
       defparam blk[i].u_m3.PAR3 = i;
     end
   endgenerate

@@ -47,6 +47,8 @@ module t(/*AUTOARG*/
       if ($countbits(4'b1xx0, 'x, '0) != 3) $stop;
       if ($countbits(4'b1xx0, 'x, '0, '1) != 4) $stop;
       if ($countbits(4'bzzx0, 'x, 'z) != 3) $stop;
+      if ($countbits(4'b1x0z, '0, '1, 'x, 'z) != 4) $stop;
+      if ($countbits(4'b1x0z, '0, '1, 'x, 'z, '1) != 4) $stop;
    end
 
    always @* begin

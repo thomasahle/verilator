@@ -690,6 +690,13 @@ class LinkParseVisitor final : public VNVisitor {
         }
     }
     void visit(AstNodeModule* nodep) override {
+        const AstModule* const modp = VN_CAST(nodep, Module);
+        const AstModule* const parentModp = VN_CAST(m_modp, Module);
+        if (parentModp && parentModp->isChecker() && modp && modp->isChecker()) {
+            nodep->v3warn(CHECKERIGN, "Unsupported: Checker declaration inside a checker");
+            VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+            return;
+        }
         V3Control::applyModule(nodep);
         ++m_statModules;
         if (VN_IS(nodep, Class) && VN_CAST(nodep, Class)->isInterfaceClass()
@@ -958,6 +965,12 @@ class LinkParseVisitor final : public VNVisitor {
     }
     void visit(AstClocking* nodep) override {
         cleanFileline(nodep);
+        const AstModule* const modp = VN_CAST(m_modp, Module);
+        if (modp && modp->isChecker()) {
+            nodep->v3warn(CHECKERIGN, "Unsupported: Clocking declaration inside a checker");
+            VL_DO_DANGLING(nodep->unlinkFrBack()->deleteTree(), nodep);
+            return;
+        }
         VL_RESTORER(m_defaultInSkewp);
         VL_RESTORER(m_defaultOutSkewp);
         // Find default input and output skews

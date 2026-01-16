@@ -208,22 +208,34 @@ class AssertPropTransformer final {
     }
     V3GraphVertex* processVtx(DfaExprVertex* vtxp) {
         AstNode* const nodep = vtxp->nodep();
+        FileLine* const flp = nodep->fileline();
         if (vtxp->isStart()) {
-            AstBegin* const bodyp = new AstBegin{nodep->fileline(), "", nullptr, true};
-            m_pexprp = new AstPExpr{nodep->fileline(), bodyp, nodep->dtypep()};
+            AstBegin* const bodyp = new AstBegin{flp, "", nullptr, true};
+            m_pexprp = new AstPExpr{flp, bodyp, nodep->dtypep()};
             UASSERT_OBJ(vtxp->outSize1(), nodep, "Starting node must have one out edge");
             m_current = m_pexprp->bodyp();
             return processEdge(vtxp->outEdges().frontp());
         }
         UASSERT_OBJ(vtxp->outEdges().size() == 2, nodep, "Each expression must have two branches");
-        AstBegin* const passsp = new AstBegin{nodep->fileline(), "", nullptr, true};
+        AstBegin* const passsp = new AstBegin{flp, "", nullptr, true};
         AstNode* const failsp = vtxp->outEdges().backp()->top()->as<DfaStmtVertex>()->nodep();
 
-        AstSampled* const sampledp
-            = new AstSampled{nodep->fileline(), VN_AS(vtxp->nodep(), NodeExpr)};
-        sampledp->dtypeFrom(vtxp->nodep());
-        AstIf* const ifp = new AstIf{nodep->fileline(), sampledp, passsp, failsp};
+        AstNodeExpr* exprp = VN_AS(nodep, NodeExpr);
+        AstSeqMatchAction* actionp = nullptr;
+        if (AstSeqMatchItem* const matchp = VN_CAST(nodep, SeqMatchItem)) {
+            exprp = matchp->seqp()->unlinkFrBack();
+            if (matchp->matchItemsp()) {
+                AstNode* const matchItemsp = matchp->matchItemsp()->unlinkFrBackWithNext();
+                actionp = new AstSeqMatchAction{flp, matchItemsp};
+            }
+            VL_DO_DANGLING(matchp->deleteTree(), matchp);
+        }
+
+        AstSampled* const sampledp = new AstSampled{flp, exprp};
+        sampledp->dtypeFrom(exprp);
+        AstIf* const ifp = new AstIf{flp, sampledp, passsp, failsp};
         m_current->addStmtsp(ifp);
+        if (actionp) passsp->addStmtsp(actionp);
         m_current = passsp;
         return processEdge(vtxp->outEdges().frontp());
     }
@@ -418,19 +430,18 @@ class AssertPropIfVisitor final : public VNVisitor {
     void visit(AstSeqMatchItem* nodep) override {
         // IEEE 1800-2017 16.10: Sequence expression with match items
         // (sexpr, x=a, y=b) - when sexpr matches, execute match items
-        // For now, simplify to just the sequence expression
-        // The match items are side effects (assignments) that should execute
-        // when the sequence matches, but we don't implement that yet.
-        // TODO: Properly implement match item side effects
         iterateChildren(nodep);
-
-        AstNodeExpr* const seqp = nodep->seqp()->unlinkFrBack();
-        nodep->replaceWith(seqp);
-        VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
     // Helper to transform PExprClause nodes in a tree
     // For implication LHS: pass -> check RHS, fail -> vacuous pass
-    static void transformImplicationLhs(AstNode* bodyp, AstNodeExpr* rhsp, FileLine* flp) {
+    static AstNode* addNonOverlappedDelay(FileLine* flp, AstNode* stmtsp) {
+        AstDelay* const delayp = new AstDelay{flp, new AstConst{flp, 1}, true};
+        if (stmtsp) delayp->addNextHere(stmtsp);
+        return delayp;
+    }
+
+    static void transformImplicationLhs(AstNode* bodyp, AstNodeExpr* rhsp, FileLine* flp,
+                                        bool overlapped) {
         // Collect all PExprClause nodes first to avoid modifying while iterating
         std::vector<AstPExprClause*> clauses;
         bodyp->foreach([&clauses](AstPExprClause* clausep) { clauses.push_back(clausep); });
@@ -444,7 +455,9 @@ class AssertPropIfVisitor final : public VNVisitor {
                 AstPExprClause* const passClause = new AstPExprClause{flp, true};
                 AstPExprClause* const failClause = new AstPExprClause{flp, false};
                 AstIf* const checkIf = new AstIf{flp, sampledRhsp, passClause, failClause};
-                nodep->replaceWith(checkIf);
+                AstNode* replp = checkIf;
+                if (!overlapped) replp = addNonOverlappedDelay(flp, replp);
+                nodep->replaceWith(replp);
                 VL_DO_DANGLING(nodep->deleteTree(), nodep);
             } else {
                 // LHS sequence failed -> vacuous pass (implication passes)
@@ -460,6 +473,7 @@ class AssertPropIfVisitor final : public VNVisitor {
         iterateChildren(nodep);
 
         FileLine* const flp = nodep->fileline();
+        const bool overlapped = nodep->isOverlapped();
         AstPExpr* const lhsPExpr = VN_CAST(nodep->lhsp(), PExpr);
         AstPExpr* const rhsPExpr = VN_CAST(nodep->rhsp(), PExpr);
 
@@ -485,6 +499,7 @@ class AssertPropIfVisitor final : public VNVisitor {
                     AstNode* rhsStmts = rhsBodyp->stmtsp();
                     if (rhsStmts) {
                         rhsStmts = rhsStmts->cloneTree(false);
+                        if (!overlapped) rhsStmts = addNonOverlappedDelay(flp, rhsStmts);
                         clausep->replaceWith(rhsStmts);
                         VL_DO_DANGLING(clausep->deleteTree(), clausep);
                     }
@@ -509,7 +524,7 @@ class AssertPropIfVisitor final : public VNVisitor {
             AstBegin* const bodyp = lhsPExpr->bodyp();
 
             // Transform pass/fail clauses in the sequence body
-            transformImplicationLhs(bodyp, rhsp, flp);
+            transformImplicationLhs(bodyp, rhsp, flp, overlapped);
 
             // Delete the original RHS after cloning
             VL_DO_DANGLING(rhsp->deleteTree(), rhsp);
@@ -530,6 +545,7 @@ class AssertPropIfVisitor final : public VNVisitor {
             AstBegin* const bodyp = rhsPExpr->bodyp();
             AstNode* origStmts = bodyp->stmtsp();
             if (origStmts) origStmts = origStmts->unlinkFrBackWithNext();
+            if (!overlapped && origStmts) origStmts = addNonOverlappedDelay(flp, origStmts);
 
             // Create vacuous pass clause for when LHS is false (implication passes)
             AstPExprClause* const vacuousPass = new AstPExprClause{flp, true};

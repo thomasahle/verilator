@@ -1316,6 +1316,7 @@ class AstDistItem final : public AstNodeExpr {
     // @astgen op1 := rangep : AstNodeExpr
     // @astgen op2 := weightp : AstNodeExpr
     bool m_isWhole = false;  // True for weight ':/', false for ':='
+    bool m_isDefault = false;  // True for 'default' item
 public:
     AstDistItem(FileLine* fl, AstNodeExpr* rangep, AstNodeExpr* weightp)
         : ASTGEN_SUPER_DistItem(fl) {
@@ -1328,6 +1329,8 @@ public:
     bool cleanOut() const override { return false; }  // NA
     void isWhole(bool flag) { m_isWhole = flag; }
     bool isWhole() const { return m_isWhole; }
+    void isDefault(bool flag) { m_isDefault = flag; }
+    bool isDefault() const { return m_isDefault; }
 };
 class AstDot final : public AstNodeExpr {
     // A dot separating paths in an AstVarXRef, AstFuncRef or AstTaskRef
@@ -2079,13 +2082,15 @@ class AstPast final : public AstNodeExpr {
     // @astgen op1 := exprp : AstNodeExpr
     // @astgen op2 := ticksp : Optional[AstNode]
     // @astgen op3 := sentreep : Optional[AstSenTree]
+    // @astgen op4 := condp : Optional[AstNodeExpr]  // Gating expression (expr2)
 public:
     AstPast(FileLine* fl, AstNodeExpr* exprp, AstNode* ticksp = nullptr,
-            AstSenTree* sentreep = nullptr)
+            AstSenTree* sentreep = nullptr, AstNodeExpr* condp = nullptr)
         : ASTGEN_SUPER_Past(fl) {
         this->exprp(exprp);
         this->ticksp(ticksp);
         this->sentreep(sentreep);
+        this->condp(condp);
     }
     ASTGEN_MEMBERS_AstPast;
     string emitVerilog() override { V3ERROR_NA_RETURN(""); }
@@ -2095,6 +2100,33 @@ public:
     int instrCount() const override { return widthInstrs(); }
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
     bool isSystemFunc() const override { return true; }
+};
+class AstPatBind final : public AstNodeExpr {
+    // Pattern binding variable (e.g. .v or .*)
+    string m_name;  // Binding name (or "*" for wildcard)
+    bool m_isWildcard = false;
+    AstVar* m_varp = nullptr;  // Set during match bind lowering
+
+public:
+    AstPatBind(FileLine* fl, const string& name, bool isWildcard = false)
+        : ASTGEN_SUPER_PatBind(fl)
+        , m_name{name}
+        , m_isWildcard{isWildcard} {}
+    ASTGEN_MEMBERS_AstPatBind;
+    string name() const override VL_MT_STABLE { return m_name; }
+    void name(const string& name) override { m_name = name; }
+    bool isWildcard() const { return m_isWildcard; }
+    void isWildcard(bool flag) { m_isWildcard = flag; }
+    AstVar* varp() const VL_MT_STABLE { return m_varp; }
+    void varp(AstVar* varp) { m_varp = varp; }
+    string emitVerilog() override { return m_isWildcard ? ".*" : "." + m_name; }
+    string emitC() override { V3ERROR_NA_RETURN(""); }
+    string emitSimpleOperator() override { V3ERROR_NA_RETURN(""); }
+    bool cleanOut() const override { V3ERROR_NA_RETURN(""); }
+    bool sameNode(const AstNode* samep) const override {
+        const AstPatBind* const asamep = VN_DBG_AS(samep, PatBind);
+        return m_name == asamep->m_name && m_isWildcard == asamep->m_isWildcard;
+    }
 };
 class AstPatMember final : public AstNodeExpr {
     // Verilog '{a} or '{a{b}}
@@ -3452,19 +3484,25 @@ public:
     bool signedFlavor() const override { return true; }
 };
 class AstLogAnd final : public AstNodeBiop {
+    bool m_isCondAnd = false;  // From &&& (match filter), not normal &&
 public:
     AstLogAnd(FileLine* fl, AstNodeExpr* lhsp, AstNodeExpr* rhsp)
         : ASTGEN_SUPER_LogAnd(fl, lhsp, rhsp) {
         dtypeSetBit();
     }
     ASTGEN_MEMBERS_AstLogAnd;
+    bool sameNode(const AstNode* samep) const override {
+        return m_isCondAnd == VN_AS(samep, LogAnd)->m_isCondAnd;
+    }
+    bool isCondAnd() const { return m_isCondAnd; }
+    void isCondAnd(bool flag) { m_isCondAnd = flag; }
     void numberOperate(V3Number& out, const V3Number& lhs, const V3Number& rhs) override {
         out.opLogAnd(lhs, rhs);
     }
-    string emitVerilog() override { return "%k(%l %f&& %r)"; }
+    string emitVerilog() override { return m_isCondAnd ? "%k(%l %f&&& %r)" : "%k(%l %f&& %r)"; }
     string emitC() override { return "VL_LOGAND_%nq%lq%rq(%nw,%lw,%rw, %P, %li, %ri)"; }
     string emitSMT() const override { return "(bvand %l %r)"; }
-    string emitSimpleOperator() override { return "&&"; }
+    string emitSimpleOperator() override { return m_isCondAnd ? "&&&" : "&&"; }
     bool cleanOut() const override { return true; }
     bool cleanLhs() const override { return true; }
     bool cleanRhs() const override { return true; }

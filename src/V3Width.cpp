@@ -1460,6 +1460,7 @@ class WidthVisitor final : public VNVisitor {
         if (m_vup->prelim()) {
             iterateCheckSizedSelf(nodep, "LHS", nodep->exprp(), SELF, BOTH);
             nodep->dtypeFrom(nodep->exprp());
+            if (nodep->condp()) iterateCheckBool(nodep, "Enable", nodep->condp(), BOTH);
             if (nodep->ticksp()) {
                 iterateCheckSizedSelf(nodep, "Ticks", nodep->ticksp(), SELF, BOTH);
                 V3Const::constifyParamsEdit(nodep->ticksp());  // ticksp may change
@@ -2959,7 +2960,7 @@ class WidthVisitor final : public VNVisitor {
             nodep->dtypeSetLogicSized(1, bdtypep->numeric());
             VL_DANGLING(bdtypep);
         }
-        if (nodep->isNet()) {
+        if (nodep->isNet() && !nodep->isInterconnect()) {
             AstNodeDType* const badDtp = dtypeNot4StateIntegralRecurse(nodep->dtypep());
             if (badDtp)
                 nodep->v3error(
@@ -3348,7 +3349,9 @@ class WidthVisitor final : public VNVisitor {
                      EXTEND_EXP);
         for (AstNode *nextip, *itemp = nodep->itemsp(); itemp; itemp = nextip) {
             nextip = itemp->nextp();
-            itemp = VN_AS(itemp, DistItem)->rangep();
+            AstDistItem* const distp = VN_AS(itemp, DistItem);
+            if (distp->isDefault()) continue;
+            itemp = distp->rangep();
             // InsideRange will get replaced with Lte&Gte and finalized later
             if (!VN_IS(itemp, InsideRange))
                 iterateCheck(nodep, "Dist Item", itemp, CONTEXT_DET, FINAL, subDTypep, EXTEND_EXP);
@@ -3365,8 +3368,12 @@ class WidthVisitor final : public VNVisitor {
         AstNodeExpr* newp = nullptr;
         for (AstDistItem* itemp = nodep->itemsp(); itemp;
              itemp = VN_AS(itemp->nextp(), DistItem)) {
-            AstNodeExpr* inewp
-                = insideItem(nodep, nodep->exprp()->cloneTreePure(false), itemp->rangep());
+            AstNodeExpr* inewp = nullptr;
+            if (itemp->isDefault()) {
+                inewp = new AstConst{itemp->fileline(), AstConst::BitTrue{}};
+            } else {
+                inewp = insideItem(nodep, nodep->exprp()->cloneTreePure(false), itemp->rangep());
+            }
             if (!inewp) continue;
             AstNodeExpr* const cmpp
                 = new AstGt{itemp->fileline(), itemp->weightp()->unlinkFrBack(),
@@ -6193,7 +6200,6 @@ class WidthVisitor final : public VNVisitor {
                  itemp = VN_AS(itemp->nextp(), CaseItem)) {
                 userIterateAndNext(itemp->stmtsp(), nullptr);
             }
-            lowerCaseMatches(nodep);
             return;
         }
         // Type check expression case item conditions and bodies
@@ -6894,17 +6900,12 @@ class WidthVisitor final : public VNVisitor {
     void visit(AstMatches* nodep) override {
         // Matches operator for tagged union pattern matching
         // IEEE 1800-2017 11.9.1: expr matches tagged Member
-        // Lowered to: (expr[MSB:MSB-tagWidth+1] == tagIndex)
         assertAtExpr(nodep);
         UINFO(9, "MATCHES " << nodep << " prelim=" << m_vup->prelim() << " final=" << m_vup->final()
                             << endl);
         // Visit the expression to determine its type
         if (m_vup->prelim()) {
             userIterateAndNext(nodep->exprp(), WidthVP{SELF, PRELIM}.p());
-            // Also visit pattern value if present
-            if (nodep->patternp()) {
-                userIterateAndNext(nodep->patternp(), WidthVP{SELF, PRELIM}.p());
-            }
         }
         AstNodeDType* dtypep = nodep->exprp()->dtypep();
         if (!dtypep) {
@@ -6936,35 +6937,7 @@ class WidthVisitor final : public VNVisitor {
                            << "' not found in union " << unionp->prettyTypeName());
             return;
         }
-        if (m_vup->final()) {
-            // Calculate tag width: ceil(log2(numMembers)), minimum 1 bit
-            int tagWidth = 1;
-            while ((1 << tagWidth) < numMembers) ++tagWidth;
-            const int totalWidth = unionp->width();
-            // Tag is at MSB, so extract bits [totalWidth-1 : totalWidth-tagWidth]
-            const int tagMsb = totalWidth - 1;
-            const int tagLsb = totalWidth - tagWidth;
-            UINFO(9, "  tagWidth=" << tagWidth << " tagMsb=" << tagMsb << " tagLsb=" << tagLsb
-                                   << " tagIndex=" << tagIndex << endl);
-            FileLine* const fl = nodep->fileline();
-            // Extract tag bits from expression
-            AstNodeExpr* exprp = nodep->exprp()->unlinkFrBack();
-            AstNodeExpr* tagExtrp;
-            if (tagWidth == totalWidth) {
-                // Entire value is the tag
-                tagExtrp = exprp;
-            } else {
-                // Extract tag bits: expr[tagMsb:tagLsb]
-                tagExtrp = new AstSel{fl, exprp, tagLsb, tagWidth};
-            }
-            // Compare with expected tag value
-            AstNodeExpr* tagConstp
-                = new AstConst{fl, AstConst::WidthedValue{}, tagWidth, (uint32_t)tagIndex};
-            AstNodeExpr* newp = new AstEq{fl, tagExtrp, tagConstp};
-            newp->dtypeSetBit();
-            nodep->replaceWith(newp);
-            VL_DO_DANGLING(pushDeletep(nodep), nodep);
-        }
+        (void)tagIndex;
     }
     void visit(AstTestPlusArgs* nodep) override {
         assertAtExpr(nodep);

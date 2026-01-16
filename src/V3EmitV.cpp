@@ -496,12 +496,16 @@ class EmitVBaseVisitorConst VL_NOT_FINAL : public VNVisitorConst {
     void visit(AstPast* nodep) override {
         putfs(nodep, "$past(");
         iterateAndNextConstNull(nodep->exprp());
-        if (nodep->ticksp() || nodep->sentreep()) {
+        if (nodep->ticksp() || nodep->condp() || nodep->sentreep()) {
             puts(", ");
             iterateAndNextConstNull(nodep->ticksp());
-            if (nodep->sentreep()) {
+            if (nodep->condp() || nodep->sentreep()) {
                 puts(", ");
-                iterateAndNextConstNull(nodep->sentreep());
+                iterateAndNextConstNull(nodep->condp());
+                if (nodep->sentreep()) {
+                    puts(", ");
+                    iterateAndNextConstNull(nodep->sentreep());
+                }
             }
         }
         puts(")");

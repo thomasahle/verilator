@@ -108,20 +108,23 @@ void LinkCellsGraph::loopsMessageCb(V3GraphVertex* vertexp, V3EdgeFuncP edgeFunc
 
 // State to pass between config parsing and cell linking visitors.
 struct LinkCellsState final {
+    struct UseConfig final {
+        std::string m_libname;
+        std::string m_cellname;
+        AstPin* m_paramsp = nullptr;
+    };
     // Set of possible top module names from command line and configs
     std::vector<std::pair<std::string, std::string>> m_designs;
     // Default library lists to search
     std::vector<std::string> m_liblistDefault;
     // Library lists for specific cells
     std::unordered_map<std::string, std::vector<std::string>> m_liblistCell;
-    // Use list for specific cells (libname, cellname)
-    std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>>
-        m_uselistCell;
+    // Use list for specific cells (libname, cellname, paramsp)
+    std::unordered_map<std::string, std::vector<UseConfig>> m_uselistCell;
     // Library lists for specific insts
     std::unordered_map<std::string, std::vector<std::string>> m_liblistInst;
-    // Use list for specific insts (libname, cellname)
-    std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>>
-        m_uselistInst;
+    // Use list for specific insts (libname, cellname, paramsp)
+    std::unordered_map<std::string, std::vector<UseConfig>> m_uselistInst;
 };
 
 class LinkConfigsVisitor final : public VNVisitor {
@@ -134,6 +137,10 @@ class LinkConfigsVisitor final : public VNVisitor {
     AstDot* m_dotp = nullptr;  // Current dot being processed
 
     // VISITORS
+    static AstPin* cloneParamsp(AstConfigUse* nodep) {
+        if (!nodep->paramsp()) return nullptr;
+        return nodep->paramsp()->cloneTree(true);
+    }
     void visit(AstConfig* nodep) override {
         VL_RESTORER(m_isTop);
         const auto& fullName
@@ -189,11 +196,13 @@ class LinkConfigsVisitor final : public VNVisitor {
         if (nodep->isConfig()) {
             nodep->v3warn(E_UNSUPPORTED, "Unsupported: hierarchical config rule");
         } else if (!m_cell.empty()) {
-            m_state.m_uselistCell[m_cell].emplace_back(nodep->libname(), nodep->cellname());
+            m_state.m_uselistCell[m_cell].emplace_back(LinkCellsState::UseConfig{
+                nodep->libname(), nodep->cellname(), cloneParamsp(nodep)});
         } else if (m_dotp) {
             m_hierInst += m_hierInst.empty() ? nodep->name() : '.' + nodep->name();
         } else if (!m_hierInst.empty()) {
-            m_state.m_uselistInst[m_hierInst].emplace_back(nodep->libname(), nodep->cellname());
+            m_state.m_uselistInst[m_hierInst].emplace_back(LinkCellsState::UseConfig{
+                nodep->libname(), nodep->cellname(), cloneParamsp(nodep)});
         }
     }
 
@@ -253,6 +262,24 @@ class LinkCellsVisitor final : public VNVisitor {
             = new CellEdge{&m_graph, fromp, top, weight, cuttable, cellp};
         UINFO(9, "    cellEdge " << edgep << " " << fromp->name() << " -> " << top->name());
     }
+    void applyConfigParams(AstCell* cellp, AstPin* paramsp) {
+        if (!paramsp) return;
+        std::unordered_set<string> existing;
+        for (AstPin* pinp = cellp->paramsp(); pinp; pinp = VN_AS(pinp->nextp(), Pin)) {
+            if (!pinp->name().empty()) existing.insert(pinp->name());
+        }
+        AstPin* const clonedp = paramsp->cloneTree(true);
+        for (AstNode* nodep : AstNode::breakSiblingList(clonedp)) {
+            AstPin* const pinp = VN_AS(nodep, Pin);
+            if (!pinp->name().empty() && existing.count(pinp->name())) {
+                VL_DO_DANGLING(pinp->deleteTree(), pinp);
+                continue;
+            }
+            cellp->addParamsp(pinp);
+            pinp->param(true);
+            if (!pinp->name().empty()) existing.insert(pinp->name());
+        }
+    }
     void insertModInLib(const string& name, const string& libname, AstNodeModule* nodep) {
         // Be able to find the module under it's library using the name it was given
         VSymEnt* libSymp = m_mods.rootp()->findIdFlat(libname);
@@ -268,7 +295,8 @@ class LinkCellsVisitor final : public VNVisitor {
         const VSymEnt* const foundp = libSymp->findIdFallback(modName);
         return foundp ? VN_AS(foundp->nodep(), NodeModule) : nullptr;
     }
-    AstNodeModule* findModuleSym(const string& modName, const string& libname) {
+    AstNodeModule* findModuleSym(const string& modName, const string& libname,
+                                 const LinkCellsState::UseConfig** usepp = nullptr) {
         // Given module and library to start search in, resolve using config library choices
         AstNodeModule* foundp;
         string fullName = libname + "." + modName;
@@ -276,8 +304,11 @@ class LinkCellsVisitor final : public VNVisitor {
         const auto itCellUseList = m_state.m_uselistCell.find(fullName);
         if (itCellUseList != m_state.m_uselistCell.end()) {
             for (auto const& u : itCellUseList->second) {
-                foundp = findModuleLibSym(u.second, u.first);
-                if (foundp) return foundp;
+                foundp = findModuleLibSym(u.m_cellname, u.m_libname);
+                if (foundp) {
+                    if (usepp) *usepp = &u;
+                    return foundp;
+                }
             }
         }
         // Then search cell-specific library list
@@ -302,7 +333,8 @@ class LinkCellsVisitor final : public VNVisitor {
     }
 
     AstNodeModule* resolveModule(AstNode* nodep, const string& modName, const string& libname) {
-        AstNodeModule* modp = findModuleSym(modName, libname);
+        const LinkCellsState::UseConfig* usep = nullptr;
+        AstNodeModule* modp = findModuleSym(modName, libname, &usep);
         if (!modp) {
             // Read-subfile
             // If file not found, make AstNotFoundModule, rather than error out.
@@ -315,11 +347,17 @@ class LinkCellsVisitor final : public VNVisitor {
             // We've read new modules, grab new pointers to their names
             readModNames();
             // Check again
-            modp = findModuleSym(modName, libname);
+            usep = nullptr;
+            modp = findModuleSym(modName, libname, &usep);
             if (!modp) {
                 // This shouldn't throw a message as parseFile will create
                 // a AstNotFoundModule for us
                 nodep->v3error("Can't resolve module reference: '" << prettyName << "'");
+            }
+        }
+        if (usep) {
+            if (AstCell* const cellp = VN_CAST(nodep, Cell)) {
+                applyConfigParams(cellp, usep->m_paramsp);
             }
         }
         return modp;
@@ -402,9 +440,10 @@ class LinkCellsVisitor final : public VNVisitor {
         for (auto const& pair : m_state.m_uselistInst) {
             cellp = findCellByHier(nodep, pair.first);
             for (auto const& u : pair.second) {
-                modp = findModuleLibSym(u.second, u.first);
+                modp = findModuleLibSym(u.m_cellname, u.m_libname);
                 if (modp) {
                     cellp->modp(modp);
+                    applyConfigParams(cellp, u.m_paramsp);
                     break;
                 }
             }
@@ -431,6 +470,16 @@ class LinkCellsVisitor final : public VNVisitor {
         if (v3Global.opt.topModule() != "" && !m_topVertexp) {
             v3error("Specified --top-module '" << v3Global.opt.topModule()
                                                << "' was not found in design.");
+        }
+        for (auto& pair : m_state.m_uselistCell) {
+            for (auto& u : pair.second) {
+                if (u.m_paramsp) VL_DO_DANGLING(u.m_paramsp->deleteTree(), u.m_paramsp);
+            }
+        }
+        for (auto& pair : m_state.m_uselistInst) {
+            for (auto& u : pair.second) {
+                if (u.m_paramsp) VL_DO_DANGLING(u.m_paramsp->deleteTree(), u.m_paramsp);
+            }
         }
     }
     void visit(AstConstPool* nodep) override {}

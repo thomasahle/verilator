@@ -46,6 +46,7 @@ public:
     bool m_insideProperty = false;  // Is inside property declaration
     bool m_specifyignWarned = false;  // Issued a SPECIFYIGN warning
     bool m_typedPropertyPort = false;  // Typed property port occurred on port lists
+    bool m_varInterconnect = false;  // Next signal declaration is interconnect
     bool m_modportImpExpActive
         = false;  // Standalone ID is a tf_identifier instead of port_identifier
     bool m_modportImpExpLastIsExport

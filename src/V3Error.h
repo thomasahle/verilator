@@ -97,6 +97,7 @@ public:
         CONSTRAINTIGN,  // Constraint ignored
         CONTASSREG,     // Continuous assignment on reg
         COVERIGN,       // Coverage ignored
+        CHECKERIGN,     // Checker feature ignored
         DECLFILENAME,   // Declaration doesn't match filename
         DEFOVERRIDE,    // Overriding existing define macro through command line
         DEFPARAM,       // Style: Defparam
@@ -221,7 +222,8 @@ public:
             "ASSIGNIN", "BADSTDPRAGMA", "BADVLTPRAGMA", "BLKANDNBLK", "BLKLOOPINIT", "BLKSEQ",
             "BSSPACE", "CASEINCOMPLETE", "CASEOVERLAP", "CASEWITHX", "CASEX", "CASTCONST",
             "CDCRSTLOGIC", "CLKDATA", "CMPCONST", "COLONPLUS", "COMBDLY", "CONSTRAINTIGN",
-            "CONTASSREG", "COVERIGN", "DECLFILENAME", "DEFOVERRIDE", "DEFPARAM", "DEPRECATED",
+            "CONTASSREG", "COVERIGN", "CHECKERIGN", "DECLFILENAME", "DEFOVERRIDE", "DEFPARAM",
+            "DEPRECATED",
             "ENCAPSULATED", "ENDLABEL", "ENUMITEMWIDTH", "ENUMVALUE", "EOFNEWLINE", "FUNCTIMECTL",
             "GENCLK", "GENUNNAMED", "HIERBLOCK", "HIERPARAM", "IFDEPTH", "IGNOREDRETURN",
             "IMPERFECTSCH", "IMPLICIT", "IMPLICITSTATIC", "IMPORTSTAR", "IMPURE", "INCABSPATH",
@@ -313,6 +315,7 @@ public:
         case V3ErrorCode::E_UNSUPPORTED:
             action(V3ErrorCode{E_UNSUPPORTED});
             action(V3ErrorCode{COVERIGN});
+            action(V3ErrorCode{CHECKERIGN});
             action(V3ErrorCode{SPECIFYIGN});
             return;
         case V3ErrorCode::I_LINT:
@@ -346,7 +349,8 @@ public:
         if (VL_LIKELY(other == m_e)) return true;
         switch (other) {
         case V3ErrorCode::E_UNSUPPORTED:
-            return m_e == E_UNSUPPORTED || m_e == COVERIGN || m_e == SPECIFYIGN;
+            return m_e == E_UNSUPPORTED || m_e == COVERIGN || m_e == CHECKERIGN
+                   || m_e == SPECIFYIGN;
         case V3ErrorCode::I_LINT: return lintError();
         case V3ErrorCode::I_STYLE: return styleError();
         case V3ErrorCode::UNUSED:

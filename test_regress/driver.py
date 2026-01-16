@@ -351,7 +351,7 @@ class Forker:
         # print("-Forker: [" + process.name + "] run_pre_start")
         process.run_pre_start(process)
 
-        ctx = multiprocessing.get_context('forkserver')
+        ctx = multiprocessing.get_context(os.environ.get('VLT_MP_CONTEXT', 'forkserver'))
         process.mprocess = ctx.Process(  #
             target=forker.child_start,  # pylint: disable=used-before-assignment
             args=(process, ))
@@ -1194,6 +1194,18 @@ class VlTest:
         }
         param.update(vars(self))
         param.update(kwargs)
+
+        if param['expect_filename'] and param['vlt']:
+            # Ensure expected compile output is emitted even with existing obj dir.
+            all_flags = [
+                *param.get('verilator_flags', []),
+                *param.get('verilator_flags2', []),
+                *param.get('verilator_flags3', []),
+                *self.driver_verilator_flags,
+            ]
+            if "--no-skip-identical" not in all_flags:
+                param['verilator_flags'] = [*param.get('verilator_flags', []),
+                                            "--no-skip-identical"]
 
         if self.verbose:
             self.oprint("Compile")

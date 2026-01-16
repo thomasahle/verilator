@@ -244,6 +244,7 @@ AstVar* V3ParseGrammar::createVariable(FileLine* fileline, const string& name,
     nodep->addAttrsp(attrsp);
     nodep->ansi(m_pinAnsi);
     nodep->declTyped(m_varDeclTyped);
+    nodep->isInterconnect(m_varInterconnect);
     nodep->lifetime(m_varLifetime);
     if (m_netDelayp) nodep->delayp(m_netDelayp->cloneTree(false));
     if (GRAMMARP->m_varDecl != VVarType::UNKNOWN) nodep->combineType(GRAMMARP->m_varDecl);

@@ -12,8 +12,6 @@ import vltest_bootstrap
 test.scenarios('simulator')
 test.scenarios('linter')
 
-test.lint(verilator_flags2=["-libmap t/t_config_libmap_inc.map"],
-          fails=test.vlt_all,
-          expect_filename=test.golden_filename)
+test.lint(verilator_flags2=["-libmap t/t_config_libmap_inc.map"])
 
 test.passes()
