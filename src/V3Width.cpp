@@ -2007,6 +2007,27 @@ class WidthVisitor final : public VNVisitor {
             nodep->dtypeSetLogicUnsized(32, widthMin, VSigning::SIGNED);
         }
     }
+    // Coverage functions - stub implementations, return type set in constructor
+    void visit(AstCoverageControl* nodep) override {
+        if (nodep->didWidthAndSet()) return;
+        userIterateAndNext(nodep->argsp(), WidthVP{SELF, BOTH}.p());
+    }
+    void visit(AstCoverageGet* nodep) override {
+        if (nodep->didWidthAndSet()) return;
+        userIterateAndNext(nodep->argsp(), WidthVP{SELF, BOTH}.p());
+    }
+    void visit(AstCoverageGetMax* nodep) override {
+        if (nodep->didWidthAndSet()) return;
+        userIterateAndNext(nodep->argsp(), WidthVP{SELF, BOTH}.p());
+    }
+    void visit(AstCoverageMerge* nodep) override {
+        if (nodep->didWidthAndSet()) return;
+        userIterateAndNext(nodep->argsp(), WidthVP{SELF, BOTH}.p());
+    }
+    void visit(AstCoverageSave* nodep) override {
+        if (nodep->didWidthAndSet()) return;
+        userIterateAndNext(nodep->argsp(), WidthVP{SELF, BOTH}.p());
+    }
     void visit(AstCvtPackString* nodep) override {
         if (nodep->didWidthAndSet()) return;
         // Opaque returns, so arbitrary

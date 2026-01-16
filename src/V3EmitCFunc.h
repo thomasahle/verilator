@@ -973,6 +973,27 @@ public:
         iterateConst(nodep->searchp());
         puts(")");
     }
+    // Coverage functions - stub implementations that return 0
+    void visit(AstCoverageControl* nodep) override {
+        // Stub: return 0 (success)
+        putns(nodep, "0");
+    }
+    void visit(AstCoverageGet* nodep) override {
+        // Stub: return 0 (no coverage)
+        putns(nodep, "0");
+    }
+    void visit(AstCoverageGetMax* nodep) override {
+        // Stub: return 0 (no coverage)
+        putns(nodep, "0");
+    }
+    void visit(AstCoverageMerge* nodep) override {
+        // Stub: return 0 (success)
+        putns(nodep, "0");
+    }
+    void visit(AstCoverageSave* nodep) override {
+        // Stub: return 0 (success)
+        putns(nodep, "0");
+    }
     void visit(AstFError* nodep) override {
         putns(nodep, "VL_FERROR_I");
         puts(nodep->strp()->isString() ? "N(" : "W(");

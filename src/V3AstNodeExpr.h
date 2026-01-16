@@ -1215,6 +1215,101 @@ public:
     bool cleanOut() const override { return false; }
     bool hasDType() const override { return true; }  // Has dtype for inside operator support
 };
+class AstCoverageControl final : public AstNodeExpr {
+    // IEEE: $coverage_control(control_constant, coverage_type, scope_def, modules_or_instance)
+    // Stub implementation that returns 0
+    // @astgen op1 := argsp : List[AstNodeExpr]
+public:
+    AstCoverageControl(FileLine* fl, AstNode* argsp)
+        : ASTGEN_SUPER_CoverageControl(fl) {
+        dtypeSetSigned32();
+        addArgsp(VN_AS(argsp, NodeExpr));
+    }
+    ASTGEN_MEMBERS_AstCoverageControl;
+    string emitVerilog() override { return "$coverage_control"; }
+    string emitC() override { return "0"; }
+    bool cleanOut() const override { return true; }
+    bool isGateOptimizable() const override { return false; }
+    bool isPredictOptimizable() const override { return false; }
+    int instrCount() const override { return widthInstrs(); }
+    bool isSystemFunc() const override { return true; }
+};
+class AstCoverageGet final : public AstNodeExpr {
+    // IEEE: $coverage_get(coverage_type, scope_def, modules_or_instance)
+    // Stub implementation that returns 0
+    // @astgen op1 := argsp : List[AstNodeExpr]
+public:
+    AstCoverageGet(FileLine* fl, AstNode* argsp)
+        : ASTGEN_SUPER_CoverageGet(fl) {
+        dtypeSetSigned32();
+        addArgsp(VN_AS(argsp, NodeExpr));
+    }
+    ASTGEN_MEMBERS_AstCoverageGet;
+    string emitVerilog() override { return "$coverage_get"; }
+    string emitC() override { return "0"; }
+    bool cleanOut() const override { return true; }
+    bool isGateOptimizable() const override { return false; }
+    bool isPredictOptimizable() const override { return false; }
+    int instrCount() const override { return widthInstrs(); }
+    bool isSystemFunc() const override { return true; }
+};
+class AstCoverageGetMax final : public AstNodeExpr {
+    // IEEE: $coverage_get_max(coverage_type, scope_def, modules_or_instance)
+    // Stub implementation that returns 0
+    // @astgen op1 := argsp : List[AstNodeExpr]
+public:
+    AstCoverageGetMax(FileLine* fl, AstNode* argsp)
+        : ASTGEN_SUPER_CoverageGetMax(fl) {
+        dtypeSetSigned32();
+        addArgsp(VN_AS(argsp, NodeExpr));
+    }
+    ASTGEN_MEMBERS_AstCoverageGetMax;
+    string emitVerilog() override { return "$coverage_get_max"; }
+    string emitC() override { return "0"; }
+    bool cleanOut() const override { return true; }
+    bool isGateOptimizable() const override { return false; }
+    bool isPredictOptimizable() const override { return false; }
+    int instrCount() const override { return widthInstrs(); }
+    bool isSystemFunc() const override { return true; }
+};
+class AstCoverageMerge final : public AstNodeExpr {
+    // IEEE: $coverage_merge(scope_def, modules_or_instance)
+    // Stub implementation that returns 0
+    // @astgen op1 := argsp : List[AstNodeExpr]
+public:
+    AstCoverageMerge(FileLine* fl, AstNode* argsp)
+        : ASTGEN_SUPER_CoverageMerge(fl) {
+        dtypeSetSigned32();
+        addArgsp(VN_AS(argsp, NodeExpr));
+    }
+    ASTGEN_MEMBERS_AstCoverageMerge;
+    string emitVerilog() override { return "$coverage_merge"; }
+    string emitC() override { return "0"; }
+    bool cleanOut() const override { return true; }
+    bool isGateOptimizable() const override { return false; }
+    bool isPredictOptimizable() const override { return false; }
+    int instrCount() const override { return widthInstrs(); }
+    bool isSystemFunc() const override { return true; }
+};
+class AstCoverageSave final : public AstNodeExpr {
+    // IEEE: $coverage_save(scope_def, modules_or_instance)
+    // Stub implementation that returns 0
+    // @astgen op1 := argsp : List[AstNodeExpr]
+public:
+    AstCoverageSave(FileLine* fl, AstNode* argsp)
+        : ASTGEN_SUPER_CoverageSave(fl) {
+        dtypeSetSigned32();
+        addArgsp(VN_AS(argsp, NodeExpr));
+    }
+    ASTGEN_MEMBERS_AstCoverageSave;
+    string emitVerilog() override { return "$coverage_save"; }
+    string emitC() override { return "0"; }
+    bool cleanOut() const override { return true; }
+    bool isGateOptimizable() const override { return false; }
+    bool isPredictOptimizable() const override { return false; }
+    int instrCount() const override { return widthInstrs(); }
+    bool isSystemFunc() const override { return true; }
+};
 class AstCvtArrayToArray final : public AstNodeExpr {
     // Copy/Cast from dynamic/unpacked types to dynamic/unpacked types
     // @astgen op1 := fromp : AstNodeExpr

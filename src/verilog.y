@@ -772,6 +772,11 @@ BISONPRE_VERSION(3.7,%define api.header.include {"V3ParseBison.h"})
 %token<fl>              yD_COSH         "$cosh"
 %token<fl>              yD_COUNTBITS    "$countbits"
 %token<fl>              yD_COUNTONES    "$countones"
+%token<fl>              yD_COVERAGE_CONTROL "$coverage_control"
+%token<fl>              yD_COVERAGE_GET "$coverage_get"
+%token<fl>              yD_COVERAGE_GET_MAX "$coverage_get_max"
+%token<fl>              yD_COVERAGE_MERGE "$coverage_merge"
+%token<fl>              yD_COVERAGE_SAVE "$coverage_save"
 %token<fl>              yD_DIMENSIONS   "$dimensions"
 %token<fl>              yD_DISPLAY      "$display"
 %token<fl>              yD_DISPLAYB     "$displayb"
@@ -4577,6 +4582,14 @@ system_f_or_t_expr_call<nodeExprp>:  // IEEE: part of system_tf_call (can be tas
         |       yD_COUNTBITS '(' expr ',' expr ',' expr ',' expr ',' exprList ')'
                         { $$ = COUNTBITS_LIST($1, $3, $5, $7, $9, $11); }
         |       yD_COUNTONES '(' expr ')'               { $$ = new AstCountOnes{$1, $3}; }
+        //
+        // IEEE: Coverage functions - stub implementations returning 0
+        |       yD_COVERAGE_CONTROL '(' exprList ')'    { $$ = new AstCoverageControl{$1, $3}; }
+        |       yD_COVERAGE_GET '(' exprList ')'        { $$ = new AstCoverageGet{$1, $3}; }
+        |       yD_COVERAGE_GET_MAX '(' exprList ')'    { $$ = new AstCoverageGetMax{$1, $3}; }
+        |       yD_COVERAGE_MERGE '(' exprList ')'      { $$ = new AstCoverageMerge{$1, $3}; }
+        |       yD_COVERAGE_SAVE '(' exprList ')'       { $$ = new AstCoverageSave{$1, $3}; }
+        //
         |       yD_DIMENSIONS '(' exprOrDataType ')'    { $$ = new AstAttrOf{$1, VAttrType::DIM_DIMENSIONS, $3}; }
         |       yD_DIST_CHI_SQUARE '(' expr ',' expr ')'        { $$ = new AstDistChiSquare{$1, $3, $5}; }
         |       yD_DIST_ERLANG '(' expr ',' expr ',' expr ')'   { $$ = new AstDistErlang{$1, $3, $5, $7}; }
