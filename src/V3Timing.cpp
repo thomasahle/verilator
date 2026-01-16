@@ -1069,19 +1069,34 @@ class TimingControlVisitor final : public VNVisitor {
             controlp = forkp;
         } else if (controlp) {
             // Blocking assignment with intra-assignment timing control
-            // Wrap in fork..join so timing is properly scheduled (blocks until timing completes)
-            AstFork* forkp = new AstFork{flp, VJoinType::JOIN};
-            controlp->replaceWith(forkp);
-            AstBegin* beginp = VN_CAST(controlp, Begin);
-            if (!beginp) {
-                beginp = new AstBegin{nodep->fileline(), "", controlp, false};
+            // Check if we're already inside a fork (e.g., from visit(AstAssignW))
+            // by looking for a Fork ancestor. If so, skip adding another wrapper.
+            bool alreadyInFork = false;
+            for (AstNode* parentp = controlp->backp(); parentp; parentp = parentp->backp()) {
+                if (VN_IS(parentp, Fork)) {
+                    alreadyInFork = true;
+                    break;
+                }
+                if (VN_IS(parentp, Always) || VN_IS(parentp, Initial)
+                    || VN_IS(parentp, NodeModule)) {
+                    break;  // Stop at process/module boundary
+                }
             }
-            // Give the begin a name (required by V3SchedTiming)
-            if (beginp->name().empty()) {
-                beginp->name(m_blkforkNames.get(nodep));
+            if (!alreadyInFork) {
+                // Wrap in fork..join so timing is properly scheduled (blocks until timing completes)
+                AstFork* forkp = new AstFork{flp, VJoinType::JOIN};
+                controlp->replaceWith(forkp);
+                AstBegin* beginp = VN_CAST(controlp, Begin);
+                if (!beginp) {
+                    beginp = new AstBegin{nodep->fileline(), "", controlp, false};
+                }
+                // Give the begin a name (required by V3SchedTiming)
+                if (beginp->name().empty()) {
+                    beginp->name(m_blkforkNames.get(nodep));
+                }
+                forkp->addForksp(beginp);
+                controlp = forkp;
             }
-            forkp->addForksp(beginp);
-            controlp = forkp;
         }
         UASSERT_OBJ(nodep, controlp, "Assignment should have timing control");
         addCLocalScope(flp, insertBeforep);
