@@ -703,16 +703,8 @@ class AssertPropIfVisitor final : public VNVisitor {
     }
     void visit(AstSExprClocked* nodep) override {
         // Clocked sequence expression: @(posedge clk) sexpr
-        // For sequences within sequence declarations, the clocking event specifies
-        // when the sequence body should be evaluated.
-        // For now, we simplify by just using the inner expression.
-        // The clocking event is already captured by the containing property's clock.
+        // Keep the clocking event until V3AssertPre processes cycle delays.
         iterateChildren(nodep);
-
-        // Replace with the inner expression
-        AstNodeExpr* const exprp = nodep->exprp()->unlinkFrBack();
-        nodep->replaceWith(exprp);
-        VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
     void visit(AstWithin* nodep) override {
         // SVA within operator (IEEE 1800-2017 16.9.7)

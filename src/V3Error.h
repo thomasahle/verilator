@@ -131,6 +131,8 @@ public:
         MODMISSING,     // Error: missing module
         MULTIDRIVEN,    // Driven from multiple blocks
         MULTITOP,       // Multiple top level modules
+        NBEVENT,        // Non-blocking event trigger treated as blocking
+        SEQEVENT,       // Sequence used in event control treated as clock only
         NEWERSTD,       // Newer language standard required
         NOEFFECT,       // Statement has no effect
         NOLATCH,        // No latch detected in always_latch block
@@ -228,11 +230,12 @@ public:
             "GENCLK", "GENUNNAMED", "HIERBLOCK", "HIERPARAM", "IFDEPTH", "IGNOREDRETURN",
             "IMPERFECTSCH", "IMPLICIT", "IMPLICITSTATIC", "IMPORTSTAR", "IMPURE", "INCABSPATH",
             "INFINITELOOP", "INITIALDLY", "INSECURE", "LATCH", "LITENDIAN", "MINTYPMAXDLY",
-            "MISINDENT", "MODDUP", "MODMISSING", "MULTIDRIVEN", "MULTITOP", "NEWERSTD", "NOEFFECT",
-            "NOLATCH", "NONSTD", "NORETURN", "NULLPORT", "PARAMNODEFAULT", "PINCONNECTEMPTY",
-            "PINDUP", "PINMISSING", "PINNOCONNECT", "PINNOTFOUND", "PKGNODECL", "PREPROCZERO", "PROCASSINIT",
-            "PROCASSWIRE", "PROFOUTOFDATE", "PROTECTED", "PROTOTYPEMIS", "RANDC", "REALCVT",
-            "REDEFMACRO", "RISEFALLDLY", "SELRANGE", "SHORTREAL", "SIDEEFFECT", "SPECIFYIGN",
+            "MISINDENT", "MODDUP", "MODMISSING", "MULTIDRIVEN", "MULTITOP", "NBEVENT", "SEQEVENT",
+            "NEWERSTD", "NOEFFECT", "NOLATCH", "NONSTD", "NORETURN", "NULLPORT", "PARAMNODEFAULT",
+            "PINCONNECTEMPTY", "PINDUP", "PINMISSING", "PINNOCONNECT", "PINNOTFOUND", "PKGNODECL",
+            "PREPROCZERO", "PROCASSINIT", "PROCASSWIRE", "PROFOUTOFDATE", "PROTECTED",
+            "PROTOTYPEMIS", "RANDC", "REALCVT", "REDEFMACRO", "RISEFALLDLY", "SELRANGE",
+            "SHORTREAL", "SIDEEFFECT", "SPECIFYIGN",
             "SPLITVAR", "STATICVAR", "STMTDLY", "SUPERNFIRST", "SYMRSVDWORD", "SYNCASYNCNET",
             "TICKCOUNT", "TIMESCALEMOD", "UNDRIVEN", "UNOPT", "UNOPTFLAT", "UNOPTTHREADS",
             "UNPACKED", "UNSATCONSTR", "UNSIGNED", "UNUSED", "UNUSEDGENVAR", "UNUSEDLOOP",
@@ -316,6 +319,8 @@ public:
             action(V3ErrorCode{E_UNSUPPORTED});
             action(V3ErrorCode{COVERIGN});
             action(V3ErrorCode{CHECKERIGN});
+            action(V3ErrorCode{NBEVENT});
+            action(V3ErrorCode{SEQEVENT});
             action(V3ErrorCode{SPECIFYIGN});
             return;
         case V3ErrorCode::I_LINT:
@@ -350,7 +355,7 @@ public:
         switch (other) {
         case V3ErrorCode::E_UNSUPPORTED:
             return m_e == E_UNSUPPORTED || m_e == COVERIGN || m_e == CHECKERIGN
-                   || m_e == SPECIFYIGN;
+                   || m_e == NBEVENT || m_e == SEQEVENT || m_e == SPECIFYIGN;
         case V3ErrorCode::I_LINT: return lintError();
         case V3ErrorCode::I_STYLE: return styleError();
         case V3ErrorCode::UNUSED:

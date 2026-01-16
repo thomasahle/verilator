@@ -191,7 +191,8 @@ class PremitVisitor final : public VNVisitor {
             if (VN_IS(rhsp, VarRef) && !AstVar::scVarRecurse(rhsp)) return;
             if (!VN_IS(rhsp, Const)) {
                 // Don't replace the rhs, it's already a simple assignment
-                rhsp->user1(true);
+                // But wide operations still need temps created for their subexpressions
+                if (!rhsp->isWide()) rhsp->user1(true);
             } else if (rhsp->width() < STATIC_CONST_MIN_WIDTH) {
                 // It's a small constant, so nothing to do, otherwise will be put to const pool
                 return;

@@ -508,7 +508,7 @@ class AssertVisitor final : public VNVisitor {
         } else {
             UASSERT_OBJ(sentreep, nodep, "Concurrent assertions must have sensitivity");
             sentreep->unlinkFrBack();
-            if (m_procedurep) {
+            if (m_procedurep && nodep->type() != VAssertType::EXPECT) {
                 // To support this need queue of asserts to activate
                 nodep->v3warn(E_UNSUPPORTED,
                               "Unsupported: Procedural concurrent assertion with"
@@ -600,7 +600,11 @@ class AssertVisitor final : public VNVisitor {
                 = new AstIf{nodep->fileline(), new AstLogNot{nodep->fileline(), disablep}, bodysp};
         }
         if (sentreep) {
-            bodysp = new AstAlways{nodep->fileline(), VAlwaysKwd::ALWAYS, sentreep, bodysp};
+            if (m_procedurep && nodep->type() == VAssertType::EXPECT) {
+                bodysp = new AstEventControl{nodep->fileline(), sentreep, bodysp};
+            } else {
+                bodysp = new AstAlways{nodep->fileline(), VAlwaysKwd::ALWAYS, sentreep, bodysp};
+            }
         }
 
         if (passsp && !passsp->backp()) VL_DO_DANGLING(pushDeletep(passsp), passsp);

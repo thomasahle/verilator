@@ -50,6 +50,7 @@ private:
     AstDefaultDisable* m_defaultDisablep = nullptr;  // Default disable for current module
     // Reset each assertion:
     AstSenItem* m_senip = nullptr;  // Last sensitivity
+    AstSenItem* m_seqSenip = nullptr;  // Clocking event from clocked sequence in assertion
     // Reset each always:
     AstSenItem* m_seniAlwaysp = nullptr;  // Last sensitivity in always
     // Reset each assertion:
@@ -62,6 +63,7 @@ private:
     bool m_inSynchDrive = false;  // True if in synchronous drive
     std::vector<AstVarXRef*> m_xrefsp;  // list of xrefs that need name fixup
     bool m_inPExpr = false;  // True if in AstPExpr
+    bool m_inAssert = false;  // True if in AstNodeCoverOrAssert traversal
 
     // METHODS
 
@@ -671,15 +673,28 @@ private:
 
         VL_RESTORER(m_senip);
         VL_RESTORER(m_disablep);
+        VL_RESTORER(m_inAssert);
         m_senip = nullptr;
         m_disablep = nullptr;
+        m_inAssert = true;
+        if (m_seqSenip) {
+            VL_DO_DANGLING(pushDeletep(m_seqSenip), m_seqSenip);
+            m_seqSenip = nullptr;
+        }
 
         // Find Clocking's buried under nodep->exprsp
         iterateChildren(nodep);
         // EXPECT without clocking event behaves like immediate assertion (IEEE 1800-2017 16.17)
         const bool expectNoClk = nodep->type() == VAssertType::EXPECT && !m_senip
                                  && !m_defaultClockingp && !m_seniAlwaysp;
-        if (!nodep->immediate() && !expectNoClk) nodep->sentreep(newSenTree(nodep));
+        if (!nodep->immediate() && !expectNoClk) {
+            if (!m_senip && m_seqSenip) m_senip = m_seqSenip;
+            nodep->sentreep(newSenTree(nodep));
+        }
+        if (m_seqSenip) {
+            VL_DO_DANGLING(pushDeletep(m_seqSenip), m_seqSenip);
+            m_seqSenip = nullptr;
+        }
     }
     void visit(AstFalling* nodep) override {
         if (nodep->user1SetOnce()) return;
@@ -857,9 +872,13 @@ private:
         // Also set m_inPExpr so cycle delay handler knows we're in a valid context
         VL_RESTORER(m_senip);
         VL_RESTORER(m_inPExpr);
+        if (m_inAssert && !m_seqSenip) m_seqSenip = nodep->sensesp()->cloneTree(true);
         m_senip = nodep->sensesp();
         m_inPExpr = true;  // Clocked sequence acts like a property expression for delays
         iterateChildren(nodep);
+        AstNodeExpr* const exprp = nodep->exprp()->unlinkFrBack();
+        nodep->replaceWith(exprp);
+        VL_DO_DANGLING(pushDeletep(nodep), nodep);
     }
     void visit(AstNodeModule* nodep) override {
         VL_RESTORER(m_defaultClockingp);

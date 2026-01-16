@@ -30,6 +30,9 @@
 
 #include "V3String.h"
 #include "V3Task.h"
+#include "V3UniqueNames.h"
+
+#include <unordered_map>
 
 VL_DEFINE_DEBUG_FUNCTIONS;
 
@@ -55,6 +58,7 @@ class LinkResolveVisitor final : public VNVisitor {
     bool m_underGenerate = false;  // Under GenFor/GenIf
     AstNodeExpr* m_currentRandomizeSelectp = nullptr;  // fromp() of current `randomize()` call
     bool m_inRandomizeWith = false;  // If in randomize() with (and no other with afterwards)
+    V3UniqueNames m_seqVarNames{"__Vseq"};  // Sequence local variable name generator
 
     // VISITORS
     // TODO: Most of these visitors are here for historical reasons.
@@ -107,6 +111,16 @@ class LinkResolveVisitor final : public VNVisitor {
             m_randcIllegalp = nodep;
         }
         iterateChildrenConst(nodep);
+    }
+    void visit(AstSenItem* nodep) override {
+        iterateChildren(nodep);
+        if (AstSExprClocked* const sexprp = VN_CAST(nodep->sensp(), SExprClocked)) {
+            nodep->v3warn(SEQEVENT, "Sequence in event control treated as clock only");
+            AstSenItem* const clockp = sexprp->sensesp()->cloneTree(true);
+            nodep->replaceWith(clockp);
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+            iterateChildren(clockp);
+        }
     }
 
     void visit(AstInitialAutomatic* nodep) override {
@@ -272,6 +286,23 @@ class LinkResolveVisitor final : public VNVisitor {
                 seqp->user2(false);
                 return;
             }
+            // Clone sequence local variables (non-IO vars) into module scope
+            std::unordered_map<const AstVar*, AstVar*> localVarMap;
+            for (AstNode* stmtp = seqp->stmtsp(); stmtp; stmtp = stmtp->nextp()) {
+                if (VN_IS(stmtp, Var)) {
+                    AstVar* const varp = VN_CAST(stmtp, Var);
+                    if (!varp || varp->isIO()) continue;
+                    UASSERT_OBJ(m_modp, varp, "Sequence local var outside module");
+                    AstVar* const newvarp = varp->cloneTree(false);
+                    newvarp->funcLocal(false);
+                    newvarp->name(m_seqVarNames.get(varp->name()));
+                    m_modp->addStmtsp(newvarp);
+                    localVarMap.emplace(varp, newvarp);
+                    continue;
+                }
+                break;  // Stop once we reach the body
+            }
+
             // Clone the sequence body
             AstNodeExpr* newp = nullptr;
             if (AstNodeExpr* const exprp = VN_CAST(bodyp, NodeExpr)) {
@@ -309,6 +340,12 @@ class LinkResolveVisitor final : public VNVisitor {
                     }
                 }
             });
+            if (!localVarMap.empty()) {
+                newp->foreach([&](AstVarRef* refp) {
+                    const auto it = localVarMap.find(refp->varp());
+                    if (it != localVarMap.end()) refp->varp(it->second);
+                });
+            }
             nodep->replaceWith(newp);
             VL_DO_DANGLING(pushDeletep(nodep), nodep);
             // Iterate to expand further now, so we can look for recursions
