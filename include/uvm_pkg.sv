@@ -4873,6 +4873,9 @@ package uvm_pkg;
     static function uvm_root get();
       if (m_inst == null) begin
         m_inst = new("__top__");
+        // Initialize global phase objects early so wait_for_state() works
+        // from initial blocks before run_test() is called
+        __init_global_phases();
       end
       return m_inst;
     endfunction
@@ -4915,6 +4918,8 @@ package uvm_pkg;
     if (uvm_test_done == null) begin
       uvm_test_done = uvm_test_done_objection::get();
     end
+    // Initialize global phase objects early so wait_for_state() works
+    __init_global_phases();
   endfunction
 
   // Run test function - creates test from factory and runs UVM phases
@@ -5216,3 +5221,13 @@ package uvm_pkg;
   endfunction
 
 endpackage : uvm_pkg
+
+// Helper module to initialize UVM globals early
+// Instantiate this in your testbench top to ensure phases are ready
+// before any initial blocks try to access them
+module uvm_pkg_init;
+  initial begin
+    // Initialize global phases at time 0
+    uvm_pkg::__init_global_phases();
+  end
+endmodule
