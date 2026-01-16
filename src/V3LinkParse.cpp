@@ -252,9 +252,12 @@ class LinkParseVisitor final : public VNVisitor {
             if (nodep->classMethod()) {
                 // Class methods are automatic by default
                 m_lifetime = VLifetime::AUTOMATIC_IMPLICIT;
-            } else if (nodep->dpiImport() || VN_IS(nodep, Property)) {
-                // DPI-imported functions and properties don't have lifetime specifiers
+            } else if (nodep->dpiImport()) {
+                // DPI-imported functions don't have lifetime specifiers
                 m_lifetime = VLifetime::NONE;
+            } else if (VN_IS(nodep, Property)) {
+                // Properties don't have lifetime specifiers; locals default static
+                m_lifetime = VLifetime::STATIC_IMPLICIT;
             }
             nodep->lifetime(m_lifetime);
         }

@@ -6797,6 +6797,10 @@ sequence_declarationBody<nodep>:  // IEEE: part of sequence_declaration
         //                      // 1800-2012 makes ';' optional
                 assertion_variable_declarationList sexpr        { $$ = addNextNull($1, $2); }
         |       assertion_variable_declarationList sexpr ';'    { $$ = addNextNull($1, $2); }
+        |       assertion_variable_declarationList '@' '(' event_expression ')' sexpr
+                        { $$ = addNextNull($1, new AstSExprClocked{$2, $4, $6}); }
+        |       assertion_variable_declarationList '@' '(' event_expression ')' sexpr ';'
+                        { $$ = addNextNull($1, new AstSExprClocked{$2, $4, $6}); }
         |       sexpr                                   { $$ = $1; }
         |       sexpr ';'                               { $$ = $1; }
         //                      // IEEE: clocking_event sequence_expr within sequence body

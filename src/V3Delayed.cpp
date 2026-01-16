@@ -1166,33 +1166,43 @@ class DelayedVisitor final : public VNVisitor {
 
         AstNode* newp = cstmtp;
         if (nodep->isDelayed()) {
-            const AstVarRef* const vrefp = VN_AS(eventp, VarRef);
-            const std::string newvarname = "__Vdly__" + vrefp->varp()->shortName();
-            AstVarScope* const dlyvscp
-                = createTemp(flp, vrefp->varScopep()->scopep(), newvarname, 1);
+            // Non-blocking event trigger (->> event)
+            // Inside a task/function (no active context), treat as blocking trigger
+            // with a warning. The NBA semantics can't be properly implemented
+            // without an active block to add pre/post handlers.
+            if (!m_activep) {
+                nodep->v3warn(NBEVENT,
+                              "Non-blocking event trigger (->>) in task/function"
+                              " treated as blocking (->) (IEEE 1800-2023 15.5.2)");
+                // Fall through to use the blocking trigger (cstmtp)
+            } else {
+                const AstVarRef* const vrefp = VN_AS(eventp, VarRef);
+                const std::string newvarname = "__Vdly__" + vrefp->varp()->shortName();
+                AstVarScope* const dlyvscp
+                    = createTemp(flp, vrefp->varScopep()->scopep(), newvarname, 1);
 
-            const auto dlyRef = [=](VAccess access) {  //
-                return new AstVarRef{flp, dlyvscp, access};
-            };
+                const auto dlyRef = [=](VAccess access) {  //
+                    return new AstVarRef{flp, dlyvscp, access};
+                };
 
-            AstAlwaysPre* const prep = new AstAlwaysPre{flp};
-            prep->addStmtsp(new AstAssign{flp, dlyRef(VAccess::WRITE),
-                                          new AstConst{flp, AstConst::BitFalse{}}});
-            AstAlwaysPost* const postp = new AstAlwaysPost{flp};
-            {
-                AstIf* const ifp = new AstIf{flp, dlyRef(VAccess::READ)};
-                postp->addStmtsp(ifp);
-                ifp->addThensp(newp);
+                AstAlwaysPre* const prep = new AstAlwaysPre{flp};
+                prep->addStmtsp(new AstAssign{flp, dlyRef(VAccess::WRITE),
+                                              new AstConst{flp, AstConst::BitFalse{}}});
+                AstAlwaysPost* const postp = new AstAlwaysPost{flp};
+                {
+                    AstIf* const ifp = new AstIf{flp, dlyRef(VAccess::READ)};
+                    postp->addStmtsp(ifp);
+                    ifp->addThensp(newp);
+                }
+
+                AstActive* const activep = new AstActive{flp, "nba-event", m_activep->sentreep()};
+                m_activep->addNextHere(activep);
+                activep->addStmtsp(prep);
+                activep->addStmtsp(postp);
+
+                newp = new AstAssign{flp, dlyRef(VAccess::WRITE),
+                                     new AstConst{flp, AstConst::BitTrue{}}};
             }
-
-            UASSERT_OBJ(m_activep, nodep, "No active to handle FireEvent");
-            AstActive* const activep = new AstActive{flp, "nba-event", m_activep->sentreep()};
-            m_activep->addNextHere(activep);
-            activep->addStmtsp(prep);
-            activep->addStmtsp(postp);
-
-            newp = new AstAssign{flp, dlyRef(VAccess::WRITE),
-                                 new AstConst{flp, AstConst::BitTrue{}}};
         }
         nodep->replaceWith(newp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
