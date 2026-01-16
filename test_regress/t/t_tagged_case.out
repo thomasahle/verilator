@@ -70,12 +70,6 @@
                                 : ... Suggested alternative: 'at'
   183 |       tagged Arr .a : result = a[0] + a[1] + a[2] + a[3];
       |                                ^
-%Error: t/t_tagged_case.v:192:19: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  192 |       tagged Jmp (tagged JmpU .a) : result = a;
-      |                   ^~~~~~
-        t/t_tagged_case.v:192:31: ... Resolving this reference
-  192 |       tagged Jmp (tagged JmpU .a) : result = a;
-      |                               ^
 %Error: t/t_tagged_case.v:212:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
   212 |       tagged Obj .o : result = o.value;
       |       ^~~~~~

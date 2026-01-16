@@ -4122,7 +4122,9 @@ patternOne<nodep>:              // IEEE: part of pattern
                 expr
                         { if ($1) $$ = new AstPatMember{$1->fileline(), $1, nullptr, nullptr}; else $$ = nullptr; }
         |       expr '{' argsExprList '}'               { $$ = new AstPatMember{$2, $3, nullptr, $1}; }
-        |       patternNoExpr                           { $$ = $1; }
+        //                      // Wrap patternNoExpr (PatBind, Tagged) in PatMember so
+        //                      // all pattern children are consistently PatMember
+        |       patternNoExpr                           { $$ = new AstPatMember{$1->fileline(), VN_AS($1, NodeExpr), nullptr, nullptr}; }
         ;
 
 patternMemberList<nodep>:       // IEEE: part of pattern and assignment_pattern
@@ -5357,11 +5359,27 @@ expr<nodeExprp>:                // IEEE: part of expression/constant_expression/
                         }
         //                      // matches with tagged pattern - RHS parsed as tagged expression
         //                      // then converted to AstMatches in V3Width
+        //                      // NOTE: "tagged Member .v" may parse as DOT(TAGGED Member, PARSEREF v)
+        //                      // so we detect and convert that case to a proper pattern binding
         |       ~l~expr yMATCHES ~r~expr
                         { if (VN_IS($3, Tagged)) {
                               AstTagged* tagp = VN_AS($3, Tagged);
                               $$ = new AstMatches{$2, $1, tagp->member(), tagp->exprp() ? tagp->exprp()->unlinkFrBack() : nullptr};
                               VL_DO_DANGLING(tagp->deleteTree(), tagp);
+                          } else if (AstDot* const dotp = VN_CAST($3, Dot)) {
+                              // Handle "tagged Member .v" parsed as DOT(TAGGED, PARSEREF)
+                              if (AstTagged* const tagp = VN_CAST(dotp->lhsp(), Tagged)) {
+                                  if (AstParseRef* const refp = VN_CAST(dotp->rhsp(), ParseRef)) {
+                                      // Create pattern binding for .varname
+                                      AstPatBind* const bindp = new AstPatBind{refp->fileline(), refp->name(), false};
+                                      $$ = new AstMatches{$2, $1, tagp->member(), bindp};
+                                      VL_DO_DANGLING(dotp->deleteTree(), dotp);
+                                  } else {
+                                      $$ = AstEqWild::newTyped($2, $1, $3);
+                                  }
+                              } else {
+                                  $$ = AstEqWild::newTyped($2, $1, $3);
+                              }
                           } else {
                               $$ = AstEqWild::newTyped($2, $1, $3);
                           }

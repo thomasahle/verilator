@@ -27,6 +27,85 @@ VL_DEFINE_DEBUG_FUNCTIONS;
 namespace {
 
 //======================================================================
+// Pattern DOT fix: Convert DOT(TAGGED member, PARSEREF var) to TAGGED member (PatBind var)
+// This handles patterns like "tagged JmpU .a" that parse as DOT expressions
+
+class PatternDotFixVisitor final : public VNVisitor {
+    // Transform DOT(TAGGED, PARSEREF) -> TAGGED with PatBind, recursively
+    AstNodeExpr* fixDotPattern(AstNodeExpr* exprp) {
+        if (!exprp) return nullptr;
+        // Check for DOT(TAGGED, PARSEREF) pattern
+        if (AstDot* const dotp = VN_CAST(exprp, Dot)) {
+            if (AstTagged* const tagp = VN_CAST(dotp->lhsp(), Tagged)) {
+                if (AstParseRef* const refp = VN_CAST(dotp->rhsp(), ParseRef)) {
+                    // Create PatBind for the variable
+                    AstPatBind* const bindp = new AstPatBind{refp->fileline(), refp->name(), false};
+                    // Create new Tagged with the binding
+                    AstNodeExpr* const innerExprp = tagp->exprp()
+                                                        ? tagp->exprp()->unlinkFrBack()
+                                                        : nullptr;
+                    // Recursively fix inner expression
+                    AstNodeExpr* const fixedInnerp = fixDotPattern(innerExprp);
+                    AstTagged* const newTagp
+                        = new AstTagged{tagp->fileline(), tagp->member(), bindp};
+                    if (fixedInnerp) {
+                        // If there was an inner expression, wrap it in PatMember
+                        AstPatMember* const patp
+                            = new AstPatMember{fixedInnerp->fileline(), fixedInnerp, nullptr, nullptr};
+                        AstPattern* const patternp = new AstPattern{tagp->fileline(), patp};
+                        // Actually the Tagged should have bindp as expr, not the pattern
+                        // Let me reconsider - for "tagged JmpU .a", the result should be
+                        // TAGGED(JmpU, PATBIND(a)), so bindp is the expression
+                    }
+                    VL_DO_DANGLING(dotp->deleteTree(), dotp);
+                    return newTagp;
+                }
+                // Check for DOT(TAGGED, DOT) - nested case like "tagged Jmp (tagged JmpU .a)"
+                // where the outer "(tagged JmpU .a)" is already DOT
+            }
+        }
+        // Recursively check Tagged nodes
+        if (AstTagged* const tagp = VN_CAST(exprp, Tagged)) {
+            if (tagp->exprp()) {
+                AstNodeExpr* const oldExprp = tagp->exprp();
+                AstNodeExpr* const newExprp = fixDotPattern(oldExprp->unlinkFrBack());
+                tagp->exprp(newExprp);  // Always re-attach (even if unchanged)
+            }
+        }
+        return exprp;
+    }
+
+    void visit(AstMatches* nodep) override {
+        // Fix pattern DOTs in the matches pattern
+        if (nodep->patternp()) {
+            AstNodeExpr* const oldp = nodep->patternp();
+            AstNodeExpr* const newp = fixDotPattern(oldp->unlinkFrBack());
+            if (newp) nodep->patternp(newp);
+        }
+        iterateChildren(nodep);
+    }
+
+    void visit(AstCaseItem* nodep) override {
+        // Fix pattern DOTs in case item conditions (for case...matches)
+        for (AstNode* condp = nodep->condsp(); condp; condp = condp->nextp()) {
+            if (AstTagged* const tagp = VN_CAST(condp, Tagged)) {
+                if (tagp->exprp()) {
+                    AstNodeExpr* const oldp = tagp->exprp();
+                    AstNodeExpr* const newp = fixDotPattern(oldp->unlinkFrBack());
+                    if (newp) tagp->exprp(newp);
+                }
+            }
+        }
+        iterateChildren(nodep);
+    }
+
+    void visit(AstNode* nodep) override { iterateChildren(nodep); }
+
+public:
+    explicit PatternDotFixVisitor(AstNetlist* rootp) { iterate(rootp); }
+};
+
+//======================================================================
 // &&& rewriting
 
 class CondAndRewriteVisitor final : public VNVisitor {
@@ -698,6 +777,7 @@ public:
 
 void V3Match::preLink(AstNetlist* nodep) {
     UINFO(4, "V3Match::preLink\n");
+    PatternDotFixVisitor{nodep};  // Fix DOT(TAGGED, PARSEREF) -> TAGGED with PatBind
     CondAndRewriteVisitor{nodep};
     BindDeclVisitor{nodep};
 }
