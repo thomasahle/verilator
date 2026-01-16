@@ -2103,9 +2103,9 @@ public:
 };
 class AstPatBind final : public AstNodeExpr {
     // Pattern binding variable (e.g. .v or .*)
+    // @astgen ptr := m_varp : Optional[AstVar]  // Bound variable, set in V3Match
     string m_name;  // Binding name (or "*" for wildcard)
     bool m_isWildcard = false;
-    AstVar* m_varp = nullptr;  // Set during match bind lowering
 
 public:
     AstPatBind(FileLine* fl, const string& name, bool isWildcard = false)

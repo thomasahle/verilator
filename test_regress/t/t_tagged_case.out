@@ -3,147 +3,65 @@
       |     ^~~~~~~~~
                     ... For warning description see https://verilator.org/warn/SHORTREAL?v=latest
                     ... Use "/* verilator lint_off SHORTREAL */" and lint_on around source to disable this message.
-%Error: t/t_tagged_case.v:126:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  126 |       tagged Valid .n : result = n;
-      |       ^~~~~~
-        t/t_tagged_case.v:126:20: ... Resolving this reference
-  126 |       tagged Valid .n : result = n;
-      |                    ^
+%Warning-ASCRANGE: t/t_tagged_case.v:33:9: Ascending bit range vector: left < right of bit range: [0:31]
+                                         : ... note: In instance 't'
+   33 |     bit [0:31]    Word32LittleEndian;    
+      |         ^
+                   ... For warning description see https://verilator.org/warn/ASCRANGE?v=latest
+                   ... Use "/* verilator lint_off ASCRANGE */" and lint_on around source to disable this message.
+%Error: t/t_tagged_case.v:42:17: Unpacked data type 'int$[0:3]' in packed struct/union (IEEE 1800-2023 7.2.1)
+                               : ... note: In instance 't'
+   42 |     int         Arr[4];                  
+      |                 ^~~
         ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
-%Error: t/t_tagged_case.v:126:34: Can't find definition of variable: 'n'
-  126 |       tagged Valid .n : result = n;
-      |                                  ^
-%Error: t/t_tagged_case.v:135:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  135 |       tagged Valid .n : result = n;
-      |       ^~~~~~
-        t/t_tagged_case.v:135:20: ... Resolving this reference
-  135 |       tagged Valid .n : result = n;
-      |                    ^
-%Error: t/t_tagged_case.v:144:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  144 |       tagged Wide60 .w : wide60_result = w;
-      |       ^~~~~~
-        t/t_tagged_case.v:144:21: ... Resolving this reference
-  144 |       tagged Wide60 .w : wide60_result = w;
-      |                     ^
-%Error: t/t_tagged_case.v:144:42: Can't find definition of variable: 'w'
-                                : ... Suggested alternative: 'wt'
-  144 |       tagged Wide60 .w : wide60_result = w;
+%Error: t/t_tagged_case.v:55:9: Unpacked data type 'struct{}' in packed struct/union (IEEE 1800-2023 7.2.1)
+                              : ... note: In instance 't'
+   55 |       } JmpC;
+      |         ^~~~
+%Error: t/t_tagged_case.v:49:7: Unpacked data type 'struct{}' in packed struct/union (IEEE 1800-2023 7.2.1)
+                              : ... note: In instance 't'
+   49 |     } Add;
+      |       ^~~
+%Error: t/t_tagged_case.v:62:13: Unpacked data type 'chandle' in packed struct/union (IEEE 1800-2023 7.2.1)
+                               : ... note: In instance 't'
+   62 |     chandle Handle;
+      |             ^~~~~~
+%Error: t/t_tagged_case.v:68:15: Unpacked data type 'class{}TestClass' in packed struct/union (IEEE 1800-2023 7.2.1)
+                               : ... note: In instance 't'
+   68 |     TestClass Obj;
+      |               ^~~
+%Error: t/t_tagged_case.v:77:15: Unpacked data type 'real' in packed struct/union (IEEE 1800-2023 7.2.1)
+                               : ... note: In instance 't'
+   77 |     real      RealVal;
+      |               ^~~~~~~
+%Error: t/t_tagged_case.v:78:15: Unpacked data type 'real' in packed struct/union (IEEE 1800-2023 7.2.1)
+                               : ... note: In instance 't'
+   78 |     shortreal ShortRealVal;
+      |               ^~~~~~~~~~~~
+%Error: t/t_tagged_case.v:84:12: Unpacked data type 'string' in packed struct/union (IEEE 1800-2023 7.2.1)
+                               : ... note: In instance 't'
+   84 |     string StrVal;
+      |            ^~~~~~
+%Error: t/t_tagged_case.v:99:11: Unpacked data type 'event' in packed struct/union (IEEE 1800-2023 7.2.1)
+                               : ... note: In instance 't'
+   99 |     event EvtVal;
+      |           ^~~~~~
+%Warning-WIDTHEXPAND: t/t_tagged_case.v:163:42: Operator ASSIGN expects 32 bits on the Assign RHS, but Assign RHS's VARREF 'b' generates 8 bits.
+                                              : ... note: In instance 't'
+  163 |       tagged Byte8NonZeroLSB .b : result = b;
       |                                          ^
-%Error: t/t_tagged_case.v:154:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  154 |       tagged Wide90 .w : wide90_result = w;
-      |       ^~~~~~
-        t/t_tagged_case.v:154:21: ... Resolving this reference
-  154 |       tagged Wide90 .w : wide90_result = w;
-      |                     ^
-%Error: t/t_tagged_case.v:163:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  163 |       tagged Byte8NonZeroLSB .b : result = b;
-      |       ^~~~~~
-        t/t_tagged_case.v:163:30: ... Resolving this reference
-  163 |       tagged Byte8NonZeroLSB .b : result = b;
-      |                              ^
-%Error: t/t_tagged_case.v:163:44: Can't find definition of variable: 'b'
-  163 |       tagged Byte8NonZeroLSB .b : result = b;
+                      ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=latest
+                      ... Use "/* verilator lint_off WIDTHEXPAND */" and lint_on around source to disable this message.
+%Warning-WIDTHEXPAND: t/t_tagged_case.v:166:21: Operator NEQCASE expects 32 bits on the RHS, but RHS's CONST '8'ha5' generates 8 bits.
+                                              : ... note: In instance 't'
+  166 |     do if ((result) !== (8'hA5)) begin $write("%%Error: %s:%0d:  got=%0x exp=%0x (%s !== %s)\n", "t/t_tagged_case.v",166, (result), (8'hA5), "result", "8'hA5"); $stop; end while(0);;
+      |                     ^~~
+%Warning-WIDTHEXPAND: t/t_tagged_case.v:192:44: Operator ASSIGN expects 32 bits on the Assign RHS, but Assign RHS's VARREF 'a' generates 10 bits.
+                                              : ... note: In instance 't'
+  192 |       tagged Jmp (tagged JmpU .a) : result = a;
       |                                            ^
-%Error: t/t_tagged_case.v:172:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  172 |       tagged Word32LittleEndian .w : result = w;
-      |       ^~~~~~
-        t/t_tagged_case.v:172:33: ... Resolving this reference
-  172 |       tagged Word32LittleEndian .w : result = w;
-      |                                 ^
-%Error: t/t_tagged_case.v:182:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  182 |       tagged Scalar .s : result = s;
-      |       ^~~~~~
-        t/t_tagged_case.v:182:21: ... Resolving this reference
-  182 |       tagged Scalar .s : result = s;
-      |                     ^
-%Error: t/t_tagged_case.v:182:35: Can't find definition of variable: 's'
-                                : ... Suggested alternative: 'st'
-  182 |       tagged Scalar .s : result = s;
-      |                                   ^
-%Error: t/t_tagged_case.v:183:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  183 |       tagged Arr .a : result = a[0] + a[1] + a[2] + a[3];
-      |       ^~~~~~
-        t/t_tagged_case.v:183:18: ... Resolving this reference
-  183 |       tagged Arr .a : result = a[0] + a[1] + a[2] + a[3];
-      |                  ^
-%Error: t/t_tagged_case.v:183:32: Can't find definition of variable: 'a'
-                                : ... Suggested alternative: 'at'
-  183 |       tagged Arr .a : result = a[0] + a[1] + a[2] + a[3];
-      |                                ^
-%Error: t/t_tagged_case.v:212:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  212 |       tagged Obj .o : result = o.value;
-      |       ^~~~~~
-        t/t_tagged_case.v:212:18: ... Resolving this reference
-  212 |       tagged Obj .o : result = o.value;
-      |                  ^
-%Error: t/t_tagged_case.v:212:32: Can't find definition of scope/variable: 'o'
-  212 |       tagged Obj .o : result = o.value;
-      |                                ^
-%Error: t/t_tagged_case.v:221:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  221 |       tagged RealVal .r : result = 2;
-      |       ^~~~~~
-        t/t_tagged_case.v:221:22: ... Resolving this reference
-  221 |       tagged RealVal .r : result = 2;
-      |                      ^
-%Error: t/t_tagged_case.v:222:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  222 |       tagged ShortRealVal .r : result = 3;
-      |       ^~~~~~
-        t/t_tagged_case.v:222:27: ... Resolving this reference
-  222 |       tagged ShortRealVal .r : result = 3;
-      |                           ^
-%Error: t/t_tagged_case.v:230:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  230 |       tagged RealVal .r : begin
-      |       ^~~~~~
-        t/t_tagged_case.v:230:22: ... Resolving this reference
-  230 |       tagged RealVal .r : begin
-      |                      ^
-%Error: t/t_tagged_case.v:231:13: Can't find definition of variable: 'r'
-                                : ... Suggested alternative: 'rt'
-  231 |         if (r == 3.14159) result = 1;
-      |             ^
-%Error: t/t_tagged_case.v:234:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  234 |       tagged ShortRealVal .r : result = 3;
-      |       ^~~~~~
-        t/t_tagged_case.v:234:27: ... Resolving this reference
-  234 |       tagged ShortRealVal .r : result = 3;
-      |                           ^
-%Error: t/t_tagged_case.v:243:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  243 |       tagged RealVal .r : result = 2;
-      |       ^~~~~~
-        t/t_tagged_case.v:243:22: ... Resolving this reference
-  243 |       tagged RealVal .r : result = 2;
-      |                      ^
-%Error: t/t_tagged_case.v:244:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  244 |       tagged ShortRealVal .r : begin
-      |       ^~~~~~
-        t/t_tagged_case.v:244:27: ... Resolving this reference
-  244 |       tagged ShortRealVal .r : begin
-      |                           ^
-%Error: t/t_tagged_case.v:256:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  256 |       tagged StrVal .s : result = 2;
-      |       ^~~~~~
-        t/t_tagged_case.v:256:21: ... Resolving this reference
-  256 |       tagged StrVal .s : result = 2;
-      |                     ^
-%Error: t/t_tagged_case.v:264:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  264 |       tagged StrVal .s : begin
-      |       ^~~~~~
-        t/t_tagged_case.v:264:21: ... Resolving this reference
-  264 |       tagged StrVal .s : begin
-      |                     ^
-%Error: t/t_tagged_case.v:276:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  276 |       tagged ColorVal .c : result = 2;
-      |       ^~~~~~
-        t/t_tagged_case.v:276:23: ... Resolving this reference
-  276 |       tagged ColorVal .c : result = 2;
-      |                       ^
-%Error: t/t_tagged_case.v:284:7: Syntax error: Not expecting TAGGED under a DOT in dotted expression
-  284 |       tagged ColorVal .c : begin
-      |       ^~~~~~
-        t/t_tagged_case.v:284:23: ... Resolving this reference
-  284 |       tagged ColorVal .c : begin
-      |                       ^
-%Error: t/t_tagged_case.v:285:13: Can't find definition of variable: 'c'
-  285 |         if (c == GREEN) result = 1;
-      |             ^
+%Warning-WIDTHEXPAND: t/t_tagged_case.v:193:59: Operator ASSIGN expects 32 bits on the Assign RHS, but Assign RHS's VARREF 'a' generates 10 bits.
+                                              : ... note: In instance 't'
+  193 |       tagged Jmp (tagged JmpC '{cc:.c, addr:.a}) : result = a;
+      |                                                           ^
 %Error: Exiting due to
