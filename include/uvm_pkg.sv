@@ -4922,6 +4922,10 @@ package uvm_pkg;
     uvm_component test_inst;
     string cmdline_test;
 
+    // Allow all time-0 initial blocks to complete before starting UVM phases
+    // This ensures config_db entries are set before build_phase tries to get them
+    #0;
+
     // Ensure globals are initialized
     __uvm_pkg_init();
     __init_global_phases();
