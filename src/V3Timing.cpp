@@ -1268,16 +1268,169 @@ class TimingControlVisitor final : public VNVisitor {
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
     void visit(AstWaitOrder* nodep) override {
-        // wait_order statement is not yet fully supported
-        // For now, issue unsupported warning
-        nodep->v3warn(E_UNSUPPORTED, "Unsupported: wait_order statement");
-        // Replace with fail action if present, else just remove
-        if (AstNode* const failsp = nodep->failsp()) {
-            failsp->unlinkFrBackWithNext();
-            nodep->replaceWith(failsp);
-        } else {
-            nodep->unlinkFrBack();
+        // IEEE 1800-2017 15.4: wait_order statement
+        // Transforms: wait_order(e1, e2, e3) pass_stmt else fail_stmt;
+        // Into a state machine that waits for events in order
+        //
+        // Algorithm:
+        // 1. Create state variable tracking expected event index
+        // 2. Create fail flag
+        // 3. Loop: wait for any event, check which triggered
+        //    - If event index == expected: advance state
+        //    - If event index > expected: out of order, set fail
+        //    - If event index < expected: already seen, ignore
+        // 4. Execute pass_stmt or fail_stmt based on result
+
+        FileLine* const flp = nodep->fileline();
+        v3Global.setUsesTiming();
+        v3Global.setHasEvents();
+
+        // Count events and collect them
+        std::vector<AstNodeExpr*> eventExprs;
+        for (AstNode* eventp = nodep->eventsp(); eventp; eventp = eventp->nextp()) {
+            eventExprs.push_back(VN_AS(eventp, NodeExpr));
         }
+
+        if (eventExprs.empty()) {
+            nodep->v3warn(E_UNSUPPORTED, "wait_order requires at least one event");
+            nodep->unlinkFrBack();
+            VL_DO_DANGLING(nodep->deleteTree(), nodep);
+            return;
+        }
+
+        const size_t numEvents = eventExprs.size();
+
+        // Helper to create 64-bit unsigned constant
+        const auto makeUInt64 = [flp](uint64_t val) {
+            AstConst* const constp = new AstConst{flp, AstConst::Unsized64{}, val};
+            constp->dtypeSetUInt64();
+            return constp;
+        };
+
+        // Create state variables (will be added to module temps)
+        // __Vwait_order_expected: index of next expected event (0 to N-1)
+        // Use UInt64 dtype to avoid width issues - overkill but safe
+        AstVarScope* const expectedVscp
+            = createTemp(flp, "__Vwait_order_expected", nodep->findUInt64DType(), nullptr);
+
+        // __Vwait_order_failed: true if out-of-order detected
+        AstVarScope* const failedVscp
+            = createTemp(flp, "__Vwait_order_failed", nodep->findBitDType(), nullptr);
+
+        // Build the statement sequence (not yet linked to tree)
+
+        // Initialize expected to 0
+        AstAssign* const initExpectedp
+            = new AstAssign{flp, new AstVarRef{flp, expectedVscp, VAccess::WRITE}, makeUInt64(0)};
+
+        // Initialize failed to false
+        AstAssign* const initFailedp
+            = new AstAssign{flp, new AstVarRef{flp, failedVscp, VAccess::WRITE},
+                            new AstConst{flp, AstConst::BitFalse{}}};
+
+        // Build the event sensitivity list: @(e1 or e2 or e3)
+        AstSenItem* senItemsp = nullptr;
+        for (AstNodeExpr* eventp : eventExprs) {
+            AstSenItem* const newItemp
+                = new AstSenItem{flp, VEdgeType::ET_EVENT, eventp->cloneTree(false)};
+            if (senItemsp) {
+                senItemsp->addNext(newItemp);
+            } else {
+                senItemsp = newItemp;
+            }
+        }
+        AstSenTree* const sentreep = new AstSenTree{flp, senItemsp};
+
+        // Build the body of the loop: check each event's .triggered property
+        AstNode* checkStmtsp = nullptr;
+        for (size_t i = 0; i < numEvents; ++i) {
+            AstNodeExpr* const eventRefp = eventExprs[i]->cloneTree(false);
+
+            // e.triggered
+            AstCMethodHard* const triggeredp
+                = new AstCMethodHard{flp, eventRefp, VCMethod::EVENT_IS_TRIGGERED};
+            triggeredp->dtypeSetBit();
+
+            // Build the condition checks:
+            // if (e.triggered) {
+            //     if (expected == i) expected = i+1;  // Got expected event
+            //     else if (expected < i) failed = true;  // Out of order
+            //     // else expected > i: already seen, ignore
+            // }
+
+            AstNodeExpr* const expectedRefp
+                = new AstVarRef{flp, expectedVscp, VAccess::READ};
+
+            // expected == i
+            AstNodeExpr* const eqCondp
+                = new AstEq{flp, expectedRefp, makeUInt64(static_cast<uint64_t>(i))};
+
+            // expected = i + 1 (or numEvents if this is the last)
+            AstAssign* const advancep
+                = new AstAssign{flp, new AstVarRef{flp, expectedVscp, VAccess::WRITE},
+                                makeUInt64(static_cast<uint64_t>(i + 1))};
+
+            AstIf* innerIfp;
+            if (i == 0) {
+                // For first event, no need to check for out-of-order (nothing expected before it)
+                innerIfp = new AstIf{flp, eqCondp, advancep, nullptr};
+            } else {
+                // expected < i means we're still waiting for an earlier event
+                AstNodeExpr* const ltCondp
+                    = new AstLt{flp, new AstVarRef{flp, expectedVscp, VAccess::READ},
+                                makeUInt64(static_cast<uint64_t>(i))};
+                // failed = true
+                AstAssign* const setFailedp
+                    = new AstAssign{flp, new AstVarRef{flp, failedVscp, VAccess::WRITE},
+                                    new AstConst{flp, AstConst::BitTrue{}}};
+
+                // if (expected == i) advance; else if (expected < i) fail;
+                AstIf* const elseIfp = new AstIf{flp, ltCondp, setFailedp, nullptr};
+                innerIfp = new AstIf{flp, eqCondp, advancep, elseIfp};
+            }
+
+            // if (e.triggered) { inner checks }
+            AstIf* const outerIfp = new AstIf{flp, triggeredp, innerIfp, nullptr};
+
+            if (checkStmtsp) {
+                checkStmtsp->addNext(outerIfp);
+            } else {
+                checkStmtsp = outerIfp;
+            }
+        }
+
+        // Create event control with the checks: @(events) { checks }
+        AstEventControl* const eventCtrlp = new AstEventControl{flp, sentreep, checkStmtsp};
+
+        // Loop condition: expected < numEvents && !failed
+        AstNodeExpr* const notDoneCondp
+            = new AstLt{flp, new AstVarRef{flp, expectedVscp, VAccess::READ},
+                        makeUInt64(static_cast<uint64_t>(numEvents))};
+        AstNodeExpr* const notFailedCondp
+            = new AstLogNot{flp, new AstVarRef{flp, failedVscp, VAccess::READ}};
+        AstNodeExpr* const loopCondp = new AstLogAnd{flp, notDoneCondp, notFailedCondp};
+
+        // Create the loop: while (expected < N && !failed) @(events) { checks }
+        // AstLoopTest breaks when condition is FALSE, so we pass the loop condition directly
+        AstLoop* const loopp = new AstLoop{flp, eventCtrlp};
+        loopp->addStmtsp(new AstLoopTest{flp, loopp, loopCondp});
+
+        // After the loop: if (failed) fail_stmt else pass_stmt
+        AstNode* passsp = nodep->passsp();
+        AstNode* failsp = nodep->failsp();
+        if (passsp) passsp = passsp->unlinkFrBackWithNext();
+        if (failsp) failsp = failsp->unlinkFrBackWithNext();
+
+        AstIf* const resultIfp
+            = new AstIf{flp, new AstVarRef{flp, failedVscp, VAccess::READ}, failsp, passsp};
+
+        // Chain the statements together: initExpected -> initFailed -> loop -> resultIf
+        AstNode::addNext<AstNode, AstNode>(initExpectedp, initFailedp);
+        AstNode::addNext<AstNode, AstNode>(initFailedp, loopp);
+        AstNode::addNext<AstNode, AstNode>(loopp, resultIfp);
+
+        // Replace wait_order with the generated code
+        nodep->replaceWith(initExpectedp);
         VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
     void visit(AstBegin* nodep) override {
