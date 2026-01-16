@@ -52,3 +52,11 @@ xrun.history
 
 # Normal CMake build directory
 /build
+
+# Generated AST/DFG headers (from astgen)
+/V3Ast__gen_*.h
+/V3Dfg__gen_*.h
+/src/V3Dfg__gen_*.h
+
+# Debug build directories
+/obj_dbg*/
