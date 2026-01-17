@@ -51,7 +51,7 @@
 - **UVM MULTITOP fix** - Removed uvm_pkg_init module from uvm_pkg.sv; all 70 UVM tests now pass
 
 ### Known Issues (Needs Investigation)
-- **Covergroup internal fault** - Parsing works but compilation crashes; needs debugging
+- **Covergroup clocking event in classes** - `covergroup cov @member; ... endgroup` inside a class generates invalid C++ code (accesses instance member as static). Basic covergroups without clocking work fine.
 - **Virtual interface output args** - Runtime null pointer when vif members used as function outputs
 
 ### Verified Working This Session
@@ -59,6 +59,7 @@
 - sv-tests chapter-18 non-UVM tests pass (randsequence, randcase, urandom, etc.)
 - Checker constructs compile and simulate
 - randsequence in modules, functions, and tasks
+- Basic covergroups in modules and classes (without clocking events)
 
 ## Remaining UVM/Constraint Features (Prioritized)
 
