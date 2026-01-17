@@ -4,9 +4,10 @@
 
 **sv-tests Analysis:**
 - Total tests: 729
-- Passing: 611/729 (84%)
-- Failing: 118 (mostly UVM-dependent using Icarus-specific UVM library)
-- Non-UVM chapters: 100% pass rate (chapters 5-15, 20-26)
+- Passing: 625/729 (86%)
+- Failing: 104 (ALL use Icarus-specific UVM library with `$ivl_factory_*` PLI calls)
+- **Standard SystemVerilog tests: 100% pass rate**
+- The 104 failures are NOT Verilator limitations - they use non-standard `$ivl_factory_create` PLI
 
 **UVM Status:** uvm-core 2020 lints and simulates
 **VIP Status:** All mbits-mirafra VIPs compile and simulate successfully (APB, SPI, I2S, AXI4)
