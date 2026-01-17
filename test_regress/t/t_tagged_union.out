@@ -30,14 +30,6 @@
                                 : ... note: In instance 't'
    56 |     bit [31:0]     UnpackedArr2D[2][3];  
       |                    ^~~~~~~~~~~~~
-%Error: t/t_tagged_union.v:69:9: Unpacked data type 'struct{}' in packed struct/union (IEEE 1800-2023 7.2.1)
-                               : ... note: In instance 't'
-   69 |       } JmpC;
-      |         ^~~~
-%Error: t/t_tagged_union.v:63:7: Unpacked data type 'struct{}' in packed struct/union (IEEE 1800-2023 7.2.1)
-                               : ... note: In instance 't'
-   63 |     } Add;
-      |       ^~~
 %Error: t/t_tagged_union.v:76:13: Unpacked data type 'chandle' in packed struct/union (IEEE 1800-2023 7.2.1)
                                 : ... note: In instance 't'
    76 |     chandle Handle;

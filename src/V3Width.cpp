@@ -3653,10 +3653,14 @@ class WidthVisitor final : public VNVisitor {
         for (AstMemberDType* itemp = nodep->membersp(); itemp;
              itemp = VN_AS(itemp->nextp(), MemberDType)) {
             AstNodeDType* const dtp = itemp->subDTypep()->skipRefp();
+            // Tagged unions can have unpacked struct/union members (IEEE 1800-2017 7.3.2)
+            // but not other unpacked types like real, string, chandle, event, class
+            const bool isUnpackedStructOrUnion
+                = (VN_IS(dtp, StructDType) || VN_IS(dtp, UnionDType))
+                  && !dtp->isIntegralOrPacked();
             if (nodep->packed()
                 && !dtp->isIntegralOrPacked()
-                // Tagged unions can have unpacked members (IEEE 1800-2017 7.3.2)
-                && !(unionp && unionp->isTagged())
+                && !(unionp && unionp->isTagged() && isUnpackedStructOrUnion)
                 // Historically lax:
                 && !v3Global.opt.structsPacked())
                 itemp->v3error("Unpacked data type "
