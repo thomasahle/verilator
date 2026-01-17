@@ -2,17 +2,22 @@
 
 ## Current Status (Updated 2026-01-17)
 
-**sv-tests Analysis:**
+**sv-tests Analysis (Verilator 5.045):**
 - Total tests: 1028
-- Passing: 877/1028 (85%)
-- Failing: 151 (ALL use Icarus-specific UVM library with `$ivl_factory_*` PLI calls)
-- **Standard SystemVerilog tests: 100% pass rate**
-- The 151 failures are NOT Verilator limitations - they use non-standard `$ivl_factory_create` PLI
-- Tests verified: Chapter 5-26 coverage including types, operators, control flow, tasks/functions, assertions, randomization, and preprocessor
+- UVM tests (Icarus-specific): 107 - use `$ivl_factory_*` PLI calls, N/A for Verilator
+- Non-UVM tests: ~920
+- **Verified passing with v5.045:** Tagged unions, randsequence, nettype/interconnect (lint), randcase
+- **Remaining ~40 non-UVM failures:**
+  - Dynamic arrays in streaming (3 tests) - E_UNSUPPORTED (complex feature)
+  - casex/casez with matches (5 tests) - "Illegal to have matches on casex/casez"
+  - Event timing edge cases (5 tests) - repeat event control variations
+  - Class inheritance (3 tests) - diamond relationship, name conflicts
+  - Pattern matching in if/case (5 tests) - complex wildcard patterns
+  - Other edge cases (~20 tests)
 
-**UVM Status:** uvm-core 2020 lints and simulates; all 70 UVM tests pass
+**UVM Status:** uvm-core 2020 compiles and runs; all 70 Verilator UVM tests pass
 **VIP Status:** All mbits-mirafra VIPs compile and run (APB, SPI, I2S, AXI4, AXI4Lite, I3C, JTAG, UART)
-**randsequence Status:** Fully working (tested in modules and functions)
+**randsequence Status:** Fully working (tested in modules, functions, and tasks)
 
 **Verilator Test Suite Status:**
 - Class tests: 366+ pass
@@ -55,6 +60,100 @@
 
 ### Known Issues (Needs Investigation)
 - None currently - all tested scenarios work
+
+---
+
+## Complex Features Roadmap
+
+### TIER 1: High-Impact SV Features (Should Implement)
+
+#### 1. casex/casez with matches (IEEE 1800-2017 12.6)
+**Current:** Error "Illegal to have matches on a casex/casez"
+**Impact:** 5+ sv-tests failures
+**Complexity:** MEDIUM - requires parser and elaboration changes
+```systemverilog
+casex (val) matches
+  tagged Valid .v: $display("valid: %d", v);
+  default: $display("invalid");
+endcase
+```
+**Files:** `src/verilog.y`, `src/V3Match.cpp`, `src/V3Width.cpp`
+
+#### 2. Dynamic Arrays in Streaming Concatenation (IEEE 1800-2017 11.4.14)
+**Current:** E_UNSUPPORTED
+**Impact:** 3+ sv-tests failures, common in protocol BFMs
+**Complexity:** HIGH - requires runtime size handling
+```systemverilog
+int data[];
+{<<8{header, len, data}} = packet;  // Unpack
+packet = {<<8{header, len, data}};  // Pack
+```
+**Files:** `src/V3Width.cpp`, `src/V3Premit.cpp`, `src/V3EmitCFunc.cpp`
+
+#### 3. Event repeat control edge cases (IEEE 1800-2017 9.4.5)
+**Current:** Some edge cases fail
+**Impact:** 5+ sv-tests failures
+**Complexity:** MEDIUM
+```systemverilog
+repeat (n) @(posedge clk);  // Basic works
+a <= repeat(n) @(posedge clk) b;  // Non-blocking with repeat
+```
+**Files:** `src/V3Timing.cpp`, `src/V3EmitCFunc.cpp`
+
+#### 4. Class Multiple Inheritance Diamond Resolution (IEEE 1800-2017 8.26.6)
+**Current:** Some edge cases unresolved
+**Impact:** 3+ sv-tests failures
+**Complexity:** MEDIUM - mostly elaboration
+```systemverilog
+class A; int x; endclass
+class B extends A; endclass
+class C extends A; endclass
+class D extends B, C;  // Diamond - which x?
+```
+**Files:** `src/V3Width.cpp`, `src/V3LinkDot.cpp`
+
+### TIER 2: Nice-to-Have Features
+
+#### 5. assign/deassign Procedural Continuous Assignment (IEEE 1800-2017 10.6.1)
+**Current:** BBUNSUP
+**Impact:** 1 sv-test failure, rarely used in RTL
+**Complexity:** HIGH - fundamental simulator change
+```systemverilog
+assign out = val;  // Continuous assignment from procedural
+deassign out;      // Remove procedural continuous assignment
+```
+
+#### 6. Tagged Union %p Structured Output
+**Current:** Outputs raw hex like `'h12a` instead of `'{Valid:42}`
+**Impact:** Cosmetic, tests pass but output differs
+**Complexity:** MEDIUM - need to preserve dtype through V3Dead
+**Files:** `src/V3Common.cpp`, `src/V3Dead.cpp`
+
+### TIER 3: Gate-Level Features (Low Priority for RTL)
+
+#### 7. Strength Specifications (IEEE 1800-2017 10.3.4)
+**Current:** BBUNSUP
+**Impact:** Gate-level only
+```systemverilog
+assign (strong0, weak1) out = a & b;
+```
+
+#### 8. tri0/tri1/trireg Net Types (IEEE 1800-2017 6.6.3)
+**Current:** Partial support
+**Impact:** Gate-level only
+```systemverilog
+tri0 net1;  // Pulls to 0 when undriven
+trireg net2; // Holds last driven value
+```
+
+---
+
+## Implementation Priority for Next Session
+
+1. **casex/casez with matches** - Good ROI, commonly requested
+2. **Event repeat edge cases** - Should be straightforward timing fixes
+3. **Class diamond inheritance** - Important for complex UVM hierarchies
+4. **Tagged union %p output** - Polish feature, low effort if we fix V3Dead linkage
 
 ### Verified Working This Session
 - Virtual interfaces with output arguments (tested and working)
