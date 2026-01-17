@@ -90,6 +90,7 @@ Based on analysis of src/*.cpp and src/verilog.y
 |---------|-----------|-------|
 | ~~Tagged unions~~ | verilog.y:2106, 2278, 3936-3942 | ✓ NOW SUPPORTED |
 | ~~`matches` operator~~ | verilog.y:5153-5155, 3584 | ✓ NOW SUPPORTED |
+| ~~`matches` in ternary~~ | verilog.y:1077 | ✓ NOW SUPPORTED (precedence fix) |
 | Nettype declarations | verilog.y:2460-2478 | User-defined net types |
 | Size-changing cast on non-basic | V3Width.cpp:2713 | Cast limitations |
 
