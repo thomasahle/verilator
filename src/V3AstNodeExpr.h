@@ -6107,6 +6107,10 @@ public:
     bool sizeMattersLhs() const override { return false; }
 };
 class AstToStringN final : public AstNodeUniop {
+    // When the argument is a tagged union, we store its type so constant folding
+    // can be prevented even after the original variable is replaced with a constant
+    AstNodeDType* m_taggedUnionDTypep = nullptr;
+
 public:
     AstToStringN(FileLine* fl, AstNodeExpr* lhsp)
         : ASTGEN_SUPER_ToStringN(fl, lhsp) {
@@ -6119,6 +6123,12 @@ public:
     bool cleanOut() const override { return true; }
     bool cleanLhs() const override { return true; }
     bool sizeMattersLhs() const override { return false; }
+    // Tagged union support
+    void taggedUnionDTypep(const AstNodeDType* dtypep) {
+        m_taggedUnionDTypep = const_cast<AstNodeDType*>(dtypep);
+    }
+    AstNodeDType* taggedUnionDTypep() const { return m_taggedUnionDTypep; }
+    bool isTaggedUnion() const { return m_taggedUnionDTypep != nullptr; }
 };
 class AstToUpperN final : public AstNodeUniop {
     // string.toupper()

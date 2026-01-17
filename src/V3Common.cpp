@@ -108,6 +108,84 @@ static void makeVlToString(AstNodeUOrStructDType* nodep) {
 
     modp->addStmtsp(funcp);
 }
+static void makeVlToStringTaggedUnion(AstUnionDType* nodep) {
+    // Generate VL_TO_STRING for tagged unions
+    // Tagged unions have a discriminant (tag) at the MSB that identifies the active member
+    AstNodeModule* const modp = nodep->classOrPackagep();
+    UASSERT_OBJ(modp, nodep, "Unlinked union package");
+
+    // Count members and calculate tag width
+    int numMembers = 0;
+    int maxMemberWidth = 0;
+    for (const AstMemberDType* itemp = nodep->membersp(); itemp;
+         itemp = VN_CAST(itemp->nextp(), MemberDType)) {
+        ++numMembers;
+        if (itemp->width() > maxMemberWidth) maxMemberWidth = itemp->width();
+    }
+    int tagWidth = 1;
+    while ((1 << tagWidth) < numMembers) ++tagWidth;
+
+    // Determine the data type name based on union width
+    const int totalWidth = nodep->width();
+    std::string ctype;
+    if (totalWidth <= 8) {
+        ctype = "uint8_t";
+    } else if (totalWidth <= 16) {
+        ctype = "uint16_t";
+    } else if (totalWidth <= 32) {
+        ctype = "uint32_t";
+    } else if (totalWidth <= 64) {
+        ctype = "uint64_t";
+    } else {
+        ctype = "VlWide<" + cvtToStr((totalWidth + 31) / 32) + ">";
+    }
+
+    AstCFunc* const funcp
+        = new AstCFunc{nodep->fileline(), "VL_TO_STRING", nullptr, "std::string"};
+    funcp->argTypes("const " + ctype + "& obj");
+    funcp->isMethod(false);
+    funcp->isConst(false);
+    funcp->isStatic(false);
+    funcp->protect(false);
+
+    // Extract tag bits (MSB)
+    const int dataWidth = maxMemberWidth;
+    const std::string tagExtract = (totalWidth <= 64)
+                                       ? "(obj >> " + cvtToStr(dataWidth) + ") & "
+                                             + cvtToStr((1 << tagWidth) - 1)
+                                       : "/* wide tag extraction not yet supported */ 0";
+    funcp->addStmtsp(new AstCStmt{nodep->fileline(), "const int tag = " + tagExtract + ";"});
+
+    // Generate switch statement
+    funcp->addStmtsp(new AstCStmt{nodep->fileline(), "switch (tag) {"});
+    int tagValue = 0;
+    for (const AstMemberDType* itemp = nodep->membersp(); itemp;
+         itemp = VN_CAST(itemp->nextp(), MemberDType)) {
+        const std::string memberName = VIdProtect::protect(itemp->prettyName());
+        std::string caseStmt = "case " + cvtToStr(tagValue) + ": ";
+        if (itemp->width() == 0) {
+            // void member (e.g., "void Invalid")
+            caseStmt += "return \"'{" + memberName + "}\";";
+        } else {
+            // Member with data
+            const std::string dataMask = cvtToStr((1ULL << itemp->width()) - 1);
+            caseStmt += "return \"'{" + memberName + ":\" + VL_TO_STRING(obj & " + dataMask
+                        + ") + \"}\";";
+        }
+        funcp->addStmtsp(new AstCStmt{nodep->fileline(), caseStmt});
+        ++tagValue;
+    }
+    funcp->addStmtsp(
+        new AstCStmt{nodep->fileline(), "default: return \"'{<invalid tag>}\";"});
+    funcp->addStmtsp(new AstCStmt{nodep->fileline(), "}"});
+
+    // This shouldn't be reached but needed for C++ return
+    AstCExpr* const exprp = new AstCExpr{nodep->fileline(), "\"\""};
+    exprp->dtypeSetString();
+    funcp->addStmtsp(new AstCReturn{nodep->fileline(), exprp});
+
+    modp->addStmtsp(funcp);
+}
 static void makeToString(AstClass* nodep) {
     AstCFunc* const funcp = new AstCFunc{nodep->fileline(), "to_string", nullptr, "std::string"};
     funcp->isConst(true);
@@ -183,7 +261,19 @@ void V3Common::commonAll() {
     }
     for (AstNode* nodep = v3Global.rootp()->typeTablep()->typesp(); nodep;
          nodep = nodep->nextp()) {
-        if (AstNodeUOrStructDType* const dtypep = VN_CAST(nodep, NodeUOrStructDType)) {
+        if (AstUnionDType* const unionp = VN_CAST(nodep, UnionDType)) {
+            // Tagged unions need special VL_TO_STRING even though they're packed
+            if (unionp->isTagged()) {
+                // Skip if no package - the union type may have had its package link cleared
+                // during dead code elimination. %p formatting will still work with the
+                // default integer output.
+                if (unionp->classOrPackagep()) {
+                    makeVlToStringTaggedUnion(unionp);
+                }
+            } else if (!unionp->packed()) {
+                makeVlToString(unionp);
+            }
+        } else if (AstNodeUOrStructDType* const dtypep = VN_CAST(nodep, NodeUOrStructDType)) {
             if (!dtypep->packed()) makeVlToString(dtypep);
         }
     }

@@ -1337,6 +1337,11 @@ private:
     void visit(AstToStringN* nodep) override {
         if (jumpingOver()) return;
         if (!optimizable()) return;  // Accelerate
+        // Don't constant-fold tagged unions - they need runtime VL_TO_STRING
+        if (nodep->isTaggedUnion()) {
+            clearOptimizable(nodep, "Tagged union needs runtime VL_TO_STRING");
+            return;
+        }
         checkNodeInfo(nodep);
         iterateChildrenConst(nodep);
         if (!optimizable()) return;

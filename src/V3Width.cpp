@@ -6622,13 +6622,21 @@ class WidthVisitor final : public VNVisitor {
                                || VN_IS(dtypep, UnpackArrayDType)  //
                                || VN_IS(dtypep, QueueDType)
                                || (VN_IS(dtypep, NodeUOrStructDType)
-                                   && !VN_AS(dtypep, NodeUOrStructDType)->packed())) {
+                                   && !VN_AS(dtypep, NodeUOrStructDType)->packed())
+                               // Tagged unions need VL_TO_STRING even though they're packed
+                               || (VN_IS(dtypep, UnionDType)
+                                   && VN_AS(dtypep, UnionDType)->isTagged())) {
                         added = true;
                         newFormat += "%@";
                         VNRelinker handle;
                         argp->unlinkFrBack(&handle);
                         FileLine* const flp = nodep->fileline();
-                        AstNodeExpr* const newp = new AstToStringN{flp, argp};
+                        AstToStringN* const newp = new AstToStringN{flp, argp};
+                        // Mark tagged unions so constant folding is prevented
+                        if (VN_IS(dtypep, UnionDType)
+                            && VN_AS(dtypep, UnionDType)->isTagged()) {
+                            newp->taggedUnionDTypep(dtypep);
+                        }
                         handle.relink(newp);
                         // Set argp to what we replaced it with, as we will keep processing the
                         // next argument.

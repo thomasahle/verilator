@@ -258,6 +258,12 @@ class DeadVisitor final : public VNVisitor {
         if (nodep->fromp()->dtypep()) nodep->fromp()->dtypep()->user1Inc();  // structdtype
         checkAll(nodep);
     }
+    void visit(AstToStringN* nodep) override {
+        iterateChildren(nodep);
+        // Keep tagged union types alive for VL_TO_STRING generation in V3Common
+        if (nodep->taggedUnionDTypep()) nodep->taggedUnionDTypep()->user1Inc();
+        checkAll(nodep);
+    }
     void visit(AstModport* nodep) override {
         iterateChildren(nodep);
         if (m_elimCells) {

@@ -2658,6 +2658,8 @@ class ConstVisitor final : public VNVisitor {
     }
     bool matchToStringNConst(AstToStringN* nodep) {
         iterateChildren(nodep);
+        // Don't constant-fold tagged unions - they need runtime VL_TO_STRING
+        if (nodep->isTaggedUnion()) return false;
         if (const AstInitArray* const initp = VN_CAST(nodep->lhsp(), InitArray)) {
             if (!(m_doExpensive || m_params)) return false;
             // At present only support 1D unpacked arrays
