@@ -21,8 +21,8 @@
 
 **Verilator Test Suite Status:**
 - Class tests: 366+ pass
-- Randomize tests: 57/57 pass
-- Constraint tests: 63/63 pass
+- Randomize tests: 61/61 pass
+- Constraint tests: 64/64 pass
 - Assert tests: 192+ pass
 - Interface tests: 351+ pass
 - UVM tests: 70/70 pass
@@ -57,6 +57,11 @@
 - **matches in ternary** (IEEE 1800-2017) - Fixed precedence: `val matches tagged X ? 1 : 0` now works
 - **UVM MULTITOP fix** - Removed uvm_pkg_init module from uvm_pkg.sv; all 70 UVM tests now pass
 - **Covergroup clocking event in classes** (IEEE 1800-2017 19.7) - Fixed `covergroup cov @member; ... endgroup` inside a class. The clocking event expression now properly uses `__Vparentp` pointer to access enclosing class members.
+- **randomize(vars) with { constraints }** (IEEE 1800-2017 18.7) - Combined variable selection with inline constraints: `obj.randomize(a, b) with { a > 0; }`. Both syntaxes now work:
+  - `randomize(vars) with { constraints }` - variables in randomize call
+  - `randomize() with (vars) { constraints }` - variables in with clause
+- **Randomize tests:** 61/61 pass (previously 57/57)
+- **Constraint tests:** 64/64 pass (previously 63/63)
 
 ### Known Issues (Needs Investigation)
 - None currently - all tested scenarios work
