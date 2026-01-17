@@ -3859,6 +3859,22 @@ class LinkDotResolveVisitor final : public VNVisitor {
                         }
                     }
                 }
+            } else if (VN_IS(nodep->lhsp(), ParseRef) && nodep->lhsp()->name() == "$root") {
+                // $root.xxx - set up scope to be the $root module (IEEE 1800-2017 23.3.1)
+                VSymEnt* const rootEntp = m_statep->rootEntp();
+                // During prearray phase, $root module may not exist yet, use root entry directly
+                VSymEnt* lookupSymp = rootEntp;
+                if (!m_statep->forPrearray()) {
+                    lookupSymp = rootEntp->findIdFlat("$root");
+                }
+                if (lookupSymp) {
+                    m_ds.m_dotSymp = lookupSymp;
+                    m_ds.m_dotText = "$root";
+                    UINFO(8, indent() << "$root. " << m_ds.ascii());
+                } else {
+                    nodep->v3error("Cannot find $root module");
+                    m_ds.m_dotErr = true;
+                }
             } else if (AstClassOrPackageRef* const lhsp
                        = VN_CAST(nodep->lhsp(), ClassOrPackageRef)) {
                 // m_ds.m_dotText communicates the cell prefix between stages
@@ -4054,6 +4070,25 @@ class LinkDotResolveVisitor final : public VNVisitor {
             AstClassRefDType* const dtypep
                 = new AstClassRefDType{nodep->fileline(), classp, nullptr};
             AstThisRef* const newp = new AstThisRef{nodep->fileline(), VFlagChildDType{}, dtypep};
+            nodep->replaceWith(newp);
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+            return;
+        }
+        // Handle $root standalone (e.g., as function argument)
+        // $root.xxx is handled in the DOT visitor
+        if (nodep->name() == "$root") {
+            iterateChildren(nodep);
+            // Check if this is the LHS of a DOT expression (handled elsewhere)
+            const AstDot* const dotp = VN_CAST(nodep->backp(), Dot);
+            if (dotp && dotp->lhsp() == nodep) {
+                // $root is LHS of a DOT - this is handled in the DOT visitor
+                // Just return without modification
+                return;
+            }
+            // $root is standalone (e.g., as function argument)
+            // Replace with constant 0 since it represents a scope, not a value
+            UINFO(9, indent() << "$root standalone, replacing with const: " << nodep);
+            AstNodeExpr* newp = new AstConst{nodep->fileline(), AstConst::BitFalse{}};
             nodep->replaceWith(newp);
             VL_DO_DANGLING(pushDeletep(nodep), nodep);
             return;
@@ -4257,6 +4292,17 @@ class LinkDotResolveVisitor final : public VNVisitor {
                     } else if (VN_IS(cellp->modp(), NotFoundModule)) {
                         cellp->modNameFileline()->v3error("Cannot find file containing interface: "
                                                           << cellp->modp()->prettyNameQ());
+                    } else {
+                        // Non-interface cell used as value (e.g., in coverage function args).
+                        // Signal that this dot chain should resolve to a constant (0).
+                        // This allows hierarchical module references to be used in contexts
+                        // where the actual scope identity isn't needed (stub implementations).
+                        ok = true;
+                        UINFO(9, indent()
+                                  << "cell-as-value (non-iface), marking for const: " << cellp);
+                        // Mark as "error" so DOT visitor will replace entire expression with const
+                        // but don't actually print an error message
+                        m_ds.m_dotErr = true;
                     }
                 }
             } else if (allowFTask && VN_IS(foundp->nodep(), NodeFTask)) {
