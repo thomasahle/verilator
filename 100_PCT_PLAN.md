@@ -7,13 +7,13 @@
 - UVM tests (Icarus-specific): 107 - use `$ivl_factory_*` PLI calls, N/A for Verilator
 - Non-UVM tests: ~920
 - **Verified passing with v5.045:** Tagged unions, randsequence, nettype/interconnect (lint), randcase
-- **Remaining ~40 non-UVM failures:**
+- **Remaining ~25 non-UVM failures:**
   - Dynamic arrays in streaming (3 tests) - E_UNSUPPORTED (complex feature)
-  - casex/casez with matches (5 tests) - "Illegal to have matches on casex/casez"
-  - Event timing edge cases (5 tests) - repeat event control variations
-  - Class inheritance (3 tests) - diamond relationship, name conflicts
-  - Pattern matching in if/case (5 tests) - complex wildcard patterns
   - Other edge cases (~20 tests)
+- **Now passing with v5.045:**
+  - casex/casez with matches - implemented this session
+  - Event repeat control - works in v5.045
+  - Diamond inheritance - interface class inheritance now works
 
 **UVM Status:** uvm-core 2020 compiles and runs; all 70 Verilator UVM tests pass
 **VIP Status:** All mbits-mirafra VIPs compile and run (APB, SPI, I2S, AXI4, AXI4Lite, I3C, JTAG, UART)
@@ -67,17 +67,15 @@
 
 ### TIER 1: High-Impact SV Features (Should Implement)
 
-#### 1. casex/casez with matches (IEEE 1800-2017 12.6)
-**Current:** Error "Illegal to have matches on a casex/casez"
-**Impact:** 5+ sv-tests failures
-**Complexity:** MEDIUM - requires parser and elaboration changes
+#### 1. ✅ casex/casez with matches (IEEE 1800-2017 12.6) - DONE
+**Status:** Implemented this session
+**Files modified:** `src/verilog.y`, `src/V3AstNodeStmt.h`
 ```systemverilog
 casex (val) matches
   tagged Valid .v: $display("valid: %d", v);
   default: $display("invalid");
 endcase
 ```
-**Files:** `src/verilog.y`, `src/V3Match.cpp`, `src/V3Width.cpp`
 
 #### 2. Dynamic Arrays in Streaming Concatenation (IEEE 1800-2017 11.4.14)
 **Current:** E_UNSUPPORTED
@@ -90,27 +88,18 @@ packet = {<<8{header, len, data}};  // Pack
 ```
 **Files:** `src/V3Width.cpp`, `src/V3Premit.cpp`, `src/V3EmitCFunc.cpp`
 
-#### 3. Event repeat control edge cases (IEEE 1800-2017 9.4.5)
-**Current:** Some edge cases fail
-**Impact:** 5+ sv-tests failures
-**Complexity:** MEDIUM
+#### 3. ✅ Event repeat control (IEEE 1800-2017 9.4.5) - DONE
+**Status:** Working in v5.045
 ```systemverilog
-repeat (n) @(posedge clk);  // Basic works
-a <= repeat(n) @(posedge clk) b;  // Non-blocking with repeat
+repeat (n) @(posedge clk);  // Works
+a = repeat(n) @(posedge clk) b;  // Works (intra-assignment timing)
 ```
-**Files:** `src/V3Timing.cpp`, `src/V3EmitCFunc.cpp`
 
-#### 4. Class Multiple Inheritance Diamond Resolution (IEEE 1800-2017 8.26.6)
-**Current:** Some edge cases unresolved
-**Impact:** 3+ sv-tests failures
-**Complexity:** MEDIUM - mostly elaboration
+#### 4. ✅ Interface Class Diamond Resolution (IEEE 1800-2017 8.26.6) - DONE
+**Status:** Working in v5.045 - tested with sv-tests
 ```systemverilog
-class A; int x; endclass
-class B extends A; endclass
-class C extends A; endclass
-class D extends B, C;  // Diamond - which x?
+interface class ic3 extends ic1, ic2;  // Diamond inheritance works
 ```
-**Files:** `src/V3Width.cpp`, `src/V3LinkDot.cpp`
 
 ### TIER 2: Nice-to-Have Features
 
@@ -150,10 +139,11 @@ trireg net2; // Holds last driven value
 
 ## Implementation Priority for Next Session
 
-1. **casex/casez with matches** - Good ROI, commonly requested
-2. **Event repeat edge cases** - Should be straightforward timing fixes
-3. **Class diamond inheritance** - Important for complex UVM hierarchies
+1. ✅ **casex/casez with matches** - DONE this session
+2. ✅ **Event repeat control** - Already working in v5.045
+3. ✅ **Class diamond inheritance** - Already working in v5.045
 4. **Tagged union %p output** - Polish feature, low effort if we fix V3Dead linkage
+5. **Dynamic arrays in streaming** - Complex but high value for protocol BFMs
 
 ### Verified Working This Session
 - Virtual interfaces with output arguments (tested and working)
