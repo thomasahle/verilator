@@ -2,18 +2,17 @@
 
 ## Current Status (Updated 2026-01-17)
 
-**sv-tests Analysis (Verilator 5.045):**
-- Total tests: 1028
-- UVM tests (Icarus-specific): 107 - use `$ivl_factory_*` PLI calls, N/A for Verilator
-- Non-UVM tests: ~920
-- **Verified passing with v5.045:** Tagged unions, randsequence, nettype/interconnect (lint), randcase
-- **Remaining ~25 non-UVM failures:**
-  - Dynamic arrays in streaming (3 tests) - E_UNSUPPORTED (complex feature)
-  - Other edge cases (~20 tests)
-- **Now passing with v5.045:**
-  - casex/casez with matches - implemented this session
-  - Event repeat control - works in v5.045
-  - Diamond inheritance - interface class inheritance now works
+**sv-tests Analysis (Verilator 5.045, updated 2026-01-17):**
+- Total non-UVM tests: ~600 (excluding _bad/_inv expected-to-fail tests)
+- **Passing: 521/600 (87%)** with `-Wno-fatal` to ignore warnings
+- **Remaining failures (79 tests):**
+  - Dynamic arrays in streaming (3 tests) - E_UNSUPPORTED (complex)
+  - Tristate in pattern matching (2 tests) - E_UNSUPPORTED
+  - randsequence production function ports (1 test) - E_UNSUPPORTED
+  - Tests with bugs in bit widths (casex/casez_pattern) (2 tests)
+  - Expected-to-fail tests labeled wrong (various)
+  - External constraint definitions (1 test)
+- UVM tests (107): Use `$ivl_factory_*` PLI - Icarus-specific, N/A for Verilator
 
 **UVM Status:** uvm-core 2020 compiles and runs; all 70 Verilator UVM tests pass
 **VIP Status:** All mbits-mirafra VIPs compile and run (APB, SPI, I2S, AXI4, AXI4Lite, I3C, JTAG, UART)
