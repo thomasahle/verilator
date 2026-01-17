@@ -49,9 +49,9 @@
 - **new(default)** (IEEE 1800-2023) - Constructor call with default arguments
 - **matches in ternary** (IEEE 1800-2017) - Fixed precedence: `val matches tagged X ? 1 : 0` now works
 - **UVM MULTITOP fix** - Removed uvm_pkg_init module from uvm_pkg.sv; all 70 UVM tests now pass
+- **Covergroup clocking event in classes** (IEEE 1800-2017 19.7) - Fixed `covergroup cov @member; ... endgroup` inside a class. The clocking event expression now properly uses `__Vparentp` pointer to access enclosing class members.
 
 ### Known Issues (Needs Investigation)
-- **Covergroup clocking event in classes** - `covergroup cov @member; ... endgroup` inside a class triggers "Unknown node type reached emitter: EVENTCONTROL" error. The generated automatic sampling code isn't being fully transformed before emission. Basic covergroups without clocking events work correctly.
 - **Virtual interface output args** - Runtime null pointer when vif members used as function outputs
 
 ### Verified Working This Session
@@ -59,7 +59,7 @@
 - sv-tests chapter-18 non-UVM tests pass (randsequence, randcase, urandom, etc.)
 - Checker constructs compile and simulate
 - randsequence in modules, functions, and tasks
-- Basic covergroups in modules and classes (without clocking events)
+- Covergroups in classes with clocking events
 
 ## Remaining UVM/Constraint Features (Prioritized)
 
