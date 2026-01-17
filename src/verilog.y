@@ -3990,6 +3990,9 @@ class_new<nodeExprp>:    // IEEE: class_new
                         { $$ = AstDot::newIfPkg($<fl>2, $1, new AstNew{$2,  nullptr, true}); }
         |       packageClassScopeNoId yNEW__PAREN '(' list_of_argumentsE ')'
                         { $$ = AstDot::newIfPkg($<fl>2, $1, new AstNew{$2, $4, true}); }
+        //                      // IEEE-2023: 'default' means use default argument values
+        |       packageClassScopeNoId yNEW__PAREN '(' yDEFAULT ')'
+                        { $$ = AstDot::newIfPkg($<fl>2, $1, new AstNew{$2, nullptr, true}); }
         ;
 
 class_newNoScope<nodeExprp>:    // IEEE: class_new but no packageClassScope
@@ -3997,6 +4000,8 @@ class_newNoScope<nodeExprp>:    // IEEE: class_new but no packageClassScope
                 yNEW__ETC                               { $$ = new AstNew{$1,  nullptr}; }
         |       yNEW__ETC expr                          { $$ = new AstNewCopy{$1, $2}; }
         |       yNEW__PAREN '(' list_of_argumentsE ')'  { $$ = new AstNew{$1, $3}; }
+        //                      // IEEE-2023: 'default' means use default argument values
+        |       yNEW__PAREN '(' yDEFAULT ')'            { $$ = new AstNew{$1, nullptr}; }
         ;
 
 dynamic_array_new<nodeExprp>:   // ==IEEE: dynamic_array_new
@@ -4983,7 +4988,8 @@ class_constructor_arg_listList<nodep>:  // IEEE: part of class_constructor_arg_l
 
 class_constructor_arg<nodep>:  // ==IEEE: class_constructor_arg
                 tf_port_item                            { $$ = $1; }
-        |       yDEFAULT                                { $$ = nullptr; BBUNSUP($1, "Unsupported: new constructor 'default' argument"); }
+        //                      // IEEE-2023: 'default' means use default argument values
+        |       yDEFAULT                                { $$ = nullptr; }
         ;
 
 tf_port_item<nodep>:            // ==IEEE: tf_port_item
@@ -7875,9 +7881,9 @@ classExtendsOne<classExtendsp>:         // IEEE: part of class_declaration
                         { $$ = new AstClassExtends{$1->fileline(), $1, GRAMMARP->m_inImplements};
                           $$->addArgsp($3); }
         //                      // IEEE-2023: Added: yEXTENDS class_type '(' yDEFAULT ')'
+        //                      // 'default' means use default argument values, equivalent to no args
         |       class_typeExtImpList '(' yDEFAULT ')'
-                        { $$ = new AstClassExtends{$1->fileline(), $1, GRAMMARP->m_inImplements};
-                          BBUNSUP($3, "Unsupported: 'extends' with 'default'"); }
+                        { $$ = new AstClassExtends{$1->fileline(), $1, GRAMMARP->m_inImplements}; }
         ;
 
 classImplementsE<classExtendsp>:        // IEEE: part of class_declaration
