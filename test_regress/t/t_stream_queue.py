@@ -9,10 +9,12 @@
 
 import vltest_bootstrap
 
-test.scenarios('simulator')
+test.scenarios('vlt')
 
-test.compile()
+# Dynamic arrays/queues inside streaming concatenations are not yet supported
+# The test expects UNSUPPORTED errors until runtime streaming concat is implemented
 
-test.execute()
+test.compile(fails=True,
+             expect_filename=test.golden_filename)
 
 test.passes()

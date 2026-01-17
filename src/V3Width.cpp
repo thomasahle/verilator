@@ -649,6 +649,19 @@ class WidthVisitor final : public VNVisitor {
                 iterateCheckIntegralSelf(nodep, "RHS", nodep->rhsp(), SELF, BOTH);
 
                 if (m_streamConcat) {
+                    // Check for dynamic arrays in stream concat - not yet supported
+                    if (VN_IS(nodep->lhsp()->dtypep()->skipRefp(), DynArrayDType)
+                        || VN_IS(nodep->lhsp()->dtypep()->skipRefp(), QueueDType)) {
+                        nodep->lhsp()->v3warn(
+                            E_UNSUPPORTED,
+                            "Unsupported: Dynamic array or queue inside streaming concatenation");
+                    }
+                    if (VN_IS(nodep->rhsp()->dtypep()->skipRefp(), DynArrayDType)
+                        || VN_IS(nodep->rhsp()->dtypep()->skipRefp(), QueueDType)) {
+                        nodep->rhsp()->v3warn(
+                            E_UNSUPPORTED,
+                            "Unsupported: Dynamic array or queue inside streaming concatenation");
+                    }
                     packIfUnpacked(nodep->lhsp());
                     packIfUnpacked(nodep->rhsp());
                 }

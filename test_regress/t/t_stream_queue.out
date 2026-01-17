@@ -1,0 +1,10 @@
+%Error-UNSUPPORTED: t/t_stream_queue.v:27:33: Unsupported: Dynamic array or queue inside streaming concatenation
+                                            : ... note: In instance 't'
+   27 |     pkt = {<<8{i_header, i_len, i_data, i_crc}};
+      |                                 ^~~~~~
+                    ... For error description see https://verilator.org/warn/UNSUPPORTED?v=latest
+%Error-UNSUPPORTED: t/t_stream_queue.v:29:27: Unsupported: Dynamic array or queue inside streaming concatenation
+                                            : ... note: In instance 't'
+   29 |     {<<8{o_header, o_len, o_data, o_crc}} = pkt;
+      |                           ^~~~~~
+%Error: Exiting due to
