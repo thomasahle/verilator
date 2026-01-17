@@ -52,6 +52,43 @@
 ### Known Issues (Needs Investigation)
 - None currently
 
+## Remaining UVM/Constraint Features (Prioritized)
+
+### HIGH PRIORITY (UVM-Critical)
+
+1. **Complex Constraint Expression Operations** (V3Randomize.cpp:833, 1206)
+   - Power expressions only support `2**n`, general `base**exp` unsupported
+   - Some modulo/division patterns in constraints fail
+   - Example: `constraint c { value % divisor == 0; }` may fail
+
+2. **Array Element rand_mode() Control** (V3Randomize.cpp:423, 427, 436)
+   - `arr[i].rand_mode(0)` - unpacked array elements unsupported
+   - `dyn_arr[i].rand_mode(0)` - dynamic array elements unsupported
+   - `struct_var.field.rand_mode(0)` - struct members unsupported
+
+3. **Randomize with Both Arguments AND Constraints** (V3LinkDot.cpp:2010)
+   - `obj.randomize(var1, var2) with { constraints }` unsupported
+   - Must choose one or the other currently
+
+4. **Static Variable rand_mode/constraint_mode** (V3Randomize.cpp:465, 478)
+   - `rand_mode()` on static variables generates error
+
+### MEDIUM PRIORITY (UVM-Useful)
+
+5. **Cast Type Limitations** (V3Width.cpp:2619, 2675)
+   - `$cast` and static cast limited to certain type combinations
+
+6. **Associative Array Key String Limit** (V3Randomize.cpp:1347)
+   - Keys > 128 bits cannot be constrained (only first 128 bits used)
+
+7. **Enum methods on Wide Enums** (V3Width.cpp:9717)
+   - `enum.next()`, `enum.prev()`, `enum.name()` unsupported for > 64 bits
+
+### LOW PRIORITY (Rarely Used)
+
+8. **Public Functions > 64 bits** - DPI functions with wide return values
+9. **External Interfaces on Top-Level** - Interface ports on top module
+
 ## Executive Summary
 
 Achieving 100% on sv-tests requires implementing approximately 86 failing tests across 8 major feature categories. This plan prioritizes by impact, effort, and alignment with Verilator's simulation focus. Some features (tristate, strength modeling) are low-priority as they're primarily for gate-level simulation, not Verilator's RTL simulation target.
