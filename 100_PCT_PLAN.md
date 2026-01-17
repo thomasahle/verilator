@@ -9,8 +9,9 @@
 - **Standard SystemVerilog tests: 100% pass rate**
 - The 104 failures are NOT Verilator limitations - they use non-standard `$ivl_factory_create` PLI
 
-**UVM Status:** uvm-core 2020 lints and simulates
-**VIP Status:** All mbits-mirafra VIPs compile and simulate successfully (APB, SPI, I2S, AXI4)
+**UVM Status:** uvm-core 2020 lints and simulates; all 70 UVM tests pass
+**VIP Status:** All mbits-mirafra VIPs compile and run (APB, SPI, I2S, AXI4, AXI4Lite, I3C, JTAG, UART)
+**randsequence Status:** Fully working (tested in modules and functions)
 
 **Verilator Test Suite Status:**
 - Class tests: 183/183 pass
@@ -450,6 +451,12 @@ The following features were previously listed as unsupported but are now verifie
 - `randomize(null)` for no-variable randomization ✓
 - `extends BaseClass(default)` for default constructor args ✓
 - `super.new(default)` for default parent constructor args ✓
+
+**Random Features (working):**
+- `randsequence` in modules, functions, and tasks ✓
+- `randomize(args)` inline variable control ✓
+- `randomize() with { constraints }` inline constraints ✓
+- `randomize(args) with { constraints }` both together ✓
 
 **LOW (still unsupported, rarely used):**
 - User-defined nettypes
