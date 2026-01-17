@@ -4055,8 +4055,30 @@ class LinkDotResolveVisitor final : public VNVisitor {
             // Note m_ds.m_dotp remains nullptr; this is a reference not under a dot
         }
         if (nodep->name() == "super") {
-            nodep->v3warn(E_UNSUPPORTED, "Unsupported: super");
-            m_ds.m_dotErr = true;
+            iterateChildren(nodep);
+            if (m_statep->forPrimary()) return;  // The class might be parameterized somewhere
+            const VSymEnt* classSymp = getThisClassSymp();
+            if (!classSymp) {
+                nodep->v3error("'super' used outside class (IEEE 1800-2023 8.15)");
+                return;
+            }
+            AstClass* const classp = VN_AS(classSymp->nodep(), Class);
+            if (!classp->extendsp()) {
+                nodep->v3error("'super' used in class that does not extend another class");
+                return;
+            }
+            AstClass* const parentClassp = classp->extendsp()->classp();
+            if (!parentClassp) {
+                nodep->v3error("'super' used but parent class not resolved");
+                return;
+            }
+            AstClassRefDType* const dtypep
+                = new AstClassRefDType{nodep->fileline(), parentClassp, nullptr};
+            AstSuperRef* const newp
+                = new AstSuperRef{nodep->fileline(), VFlagChildDType{}, dtypep};
+            nodep->replaceWith(newp);
+            VL_DO_DANGLING(pushDeletep(nodep), nodep);
+            return;
         }
         if (nodep->name() == "this") {
             iterateChildren(nodep);

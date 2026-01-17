@@ -1679,6 +1679,13 @@ public:
         puts(VSelfPointerText::replaceThis(m_useSelfForThis, "this"));
         puts("}");
     }
+    void visit(AstSuperRef* nodep) override {
+        // 'super' refers to the parent class - cast 'this' to parent class type
+        putnbs(nodep, nodep->dtypep()->cType("", false, false));
+        puts("{");
+        puts(VSelfPointerText::replaceThis(m_useSelfForThis, "this"));
+        puts("}");
+    }
 
     //
     void visit(AstConsAssoc* nodep) override {

@@ -2848,6 +2848,25 @@ public:
     }
     int instrCount() const override { return widthInstrs(); }
 };
+class AstSuperRef final : public AstNodeExpr {
+    // Reference to 'super' (parent class).
+    // @astgen op1 := childDTypep : Optional[AstClassRefDType] // dtype of the parent class
+public:
+    AstSuperRef(FileLine* fl, VFlagChildDType, AstClassRefDType* dtypep)
+        : ASTGEN_SUPER_SuperRef(fl) {
+        childDTypep(dtypep);
+    }
+    AstSuperRef(FileLine* fl, AstClassRefDType* dtypep)
+        : ASTGEN_SUPER_SuperRef(fl) {
+        this->dtypep(dtypep);
+    }
+    ASTGEN_MEMBERS_AstSuperRef;
+    string emitC() override { return "super"; }
+    string emitVerilog() override { return "super"; }
+    bool sameNode(const AstNode* /*samep*/) const override { return true; }
+    bool cleanOut() const override { return true; }
+    AstNodeDType* getChildDTypep() const override { return childDTypep(); }
+};
 class AstSysIgnore final : public AstNodeExpr {
     // @astgen op1 := exprsp : List[AstNode] // Expressions to output (???)
 public:
