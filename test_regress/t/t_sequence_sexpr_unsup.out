@@ -1,58 +1,140 @@
-%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:65:7: Unsupported: ## [*] cycle delay range expression
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:40:9: Logical operator LOGAND expects 1 bit on the LHS, but LHS's VARREF 'a' generates 32 bits.
+                                                    : ... note: In instance 't'
+   40 |       a and b;
+      |         ^~~
+                     ... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=latest
+                     ... Use "/* verilator lint_off WIDTHTRUNC */" and lint_on around source to disable this message.
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:40:9: Logical operator LOGAND expects 1 bit on the RHS, but RHS's VARREF 'b' generates 32 bits.
+                                                    : ... note: In instance 't'
+   40 |       a and b;
+      |         ^~~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:44:9: Logical operator LOGOR expects 1 bit on the LHS, but LHS's VARREF 'a' generates 32 bits.
+                                                    : ... note: In instance 't'
+   44 |       a or b;
+      |         ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:44:9: Logical operator LOGOR expects 1 bit on the RHS, but RHS's VARREF 'b' generates 32 bits.
+                                                    : ... note: In instance 't'
+   44 |       a or b;
+      |         ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:48:9: Logical operator THROUGHOUT expects 1 bit on the LHS, but LHS's VARREF 'a' generates 32 bits.
+                                                    : ... note: In instance 't'
+   48 |       a throughout b;
+      |         ^~~~~~~~~~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:56:7: Logical operator SEXPR expects 1 bit on the exprp, but exprp's VARREF 'b' generates 32 bits.
+                                                    : ... note: In instance 't'
+   56 |       ## DELAY b;
+      |       ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:59:7: Logical operator SEXPR expects 1 bit on the exprp, but exprp's VARREF 'b' generates 32 bits.
+                                                    : ... note: In instance 't'
+   59 |       ## ( DELAY ) b;
+      |       ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:62:7: Logical operator SEXPR expects 1 bit on the exprp, but exprp's VARREF 'b' generates 32 bits.
+                                                    : ... note: In instance 't'
+   62 |       ## [1:2] b;
+      |       ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:65:7: Logical operator SEXPR expects 1 bit on the exprp, but exprp's VARREF 'b' generates 32 bits.
+                                                    : ... note: In instance 't'
    65 |       ## [*] b;
       |       ^~
-                    ... For error description see https://verilator.org/warn/UNSUPPORTED?v=latest
-%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:68:7: Unsupported: ## [+] cycle delay range expression
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:68:7: Logical operator SEXPR expects 1 bit on the exprp, but exprp's VARREF 'b' generates 32 bits.
+                                                    : ... note: In instance 't'
    68 |       ## [+] b;
       |       ^~
-%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:81:9: Unsupported: ## [*] cycle delay range expression
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:72:9: Logical operator SEXPR expects 1 bit on the preExprp, but preExprp's VARREF 'a' generates 32 bits.
+                                                    : ... note: In instance 't'
+   72 |       a ## DELAY b;
+      |         ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:72:9: Logical operator SEXPR expects 1 bit on the exprp, but exprp's VARREF 'b' generates 32 bits.
+                                                    : ... note: In instance 't'
+   72 |       a ## DELAY b;
+      |         ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:75:9: Logical operator SEXPR expects 1 bit on the preExprp, but preExprp's VARREF 'a' generates 32 bits.
+                                                    : ... note: In instance 't'
+   75 |       a ## ( DELAY ) b;
+      |         ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:75:9: Logical operator SEXPR expects 1 bit on the exprp, but exprp's VARREF 'b' generates 32 bits.
+                                                    : ... note: In instance 't'
+   75 |       a ## ( DELAY ) b;
+      |         ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:78:9: Logical operator SEXPR expects 1 bit on the preExprp, but preExprp's VARREF 'a' generates 32 bits.
+                                                    : ... note: In instance 't'
+   78 |       a ## [1:2] b;
+      |         ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:78:9: Logical operator SEXPR expects 1 bit on the exprp, but exprp's VARREF 'b' generates 32 bits.
+                                                    : ... note: In instance 't'
+   78 |       a ## [1:2] b;
+      |         ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:81:9: Logical operator SEXPR expects 1 bit on the preExprp, but preExprp's VARREF 'a' generates 32 bits.
+                                                    : ... note: In instance 't'
    81 |       a ## [*] b;
       |         ^~
-%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:84:9: Unsupported: ## [+] cycle delay range expression
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:81:9: Logical operator SEXPR expects 1 bit on the exprp, but exprp's VARREF 'b' generates 32 bits.
+                                                    : ... note: In instance 't'
+   81 |       a ## [*] b;
+      |         ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:84:9: Logical operator SEXPR expects 1 bit on the preExprp, but preExprp's VARREF 'a' generates 32 bits.
+                                                    : ... note: In instance 't'
    84 |       a ## [+] b;
       |         ^~
-%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:91:9: Unsupported: [*] boolean abbrev expression
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:84:9: Logical operator SEXPR expects 1 bit on the exprp, but exprp's VARREF 'b' generates 32 bits.
+                                                    : ... note: In instance 't'
+   84 |       a ## [+] b;
+      |         ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:88:9: Logical operator CONSECREP expects 1 bit on the EXPR, but EXPR's VARREF 'a' generates 32 bits.
+                                                    : ... note: In instance 't'
+   88 |       a [* 1 ];
+      |         ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:91:9: Logical operator CONSECREP expects 1 bit on the EXPR, but EXPR's VARREF 'a' generates 32 bits.
+                                                    : ... note: In instance 't'
    91 |       a [*];
       |         ^~
-%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:91:9: Unsupported: boolean abbrev (in sequence expression)
-   91 |       a [*];
-      |         ^~
-%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:94:9: Unsupported: [+] boolean abbrev expression
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:94:9: Logical operator CONSECREP expects 1 bit on the EXPR, but EXPR's VARREF 'a' generates 32 bits.
+                                                    : ... note: In instance 't'
    94 |       a [+];
       |         ^~~
-%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:94:9: Unsupported: boolean abbrev (in sequence expression)
-   94 |       a [+];
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:97:9: Logical operator NONCONSECREP expects 1 bit on the EXPR, but EXPR's VARREF 'a' generates 32 bits.
+                                                    : ... note: In instance 't'
+   97 |       a [= 1];
+      |         ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:100:9: Logical operator NONCONSECREP expects 1 bit on the EXPR, but EXPR's VARREF 'a' generates 32 bits.
+                                                     : ... note: In instance 't'
+  100 |       a [= 1:2];
+      |         ^~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:103:9: Logical operator GOTOREP expects 1 bit on the EXPR, but EXPR's VARREF 'a' generates 32 bits.
+                                                     : ... note: In instance 't'
+  103 |       a [-> 1];
       |         ^~~
-%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:97:9: Unsupported: [= boolean abbrev expression
-   97 |       a [= 1];
-      |         ^~
-%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:97:12: Unsupported: boolean abbrev (in sequence expression)
-   97 |       a [= 1];
-      |            ^
-%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:100:9: Unsupported: [= boolean abbrev expression
-  100 |       a [= 1:2];
-      |         ^~
-%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:100:12: Unsupported: boolean abbrev (in sequence expression)
-  100 |       a [= 1:2];
-      |            ^
-%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:109:27: Unsupported: sequence argument data type
-  109 |    sequence p_arg_seqence(sequence inseq);
-      |                           ^~~~~~~~
-%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:117:28: Unsupported: first_match with sequence_match_item
-  117 |       first_match (a, res0 = 1);
-      |                            ^
-%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:120:28: Unsupported: first_match with sequence_match_item
-  120 |       first_match (a, res0 = 1, res1 = 2);
-      |                            ^
-%Warning-COVERIGN: t/t_sequence_sexpr_unsup.v:123:10: Ignoring unsupported: cover sequence
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:106:9: Logical operator GOTOREP expects 1 bit on the EXPR, but EXPR's VARREF 'a' generates 32 bits.
+                                                     : ... note: In instance 't'
+  106 |       a [-> 1:2];
+      |         ^~~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:123:20: Logical operator PROPSPEC expects 1 bit on the Property, but Property's VARREF 'a' generates 32 bits.
+                                                      : ... note: In instance 't'
   123 |    cover sequence (s_a) $display("");
-      |          ^~~~~~~~
-                   ... For warning description see https://verilator.org/warn/COVERIGN?v=latest
-                   ... Use "/* verilator lint_off COVERIGN */" and lint_on around source to disable this message.
-%Warning-COVERIGN: t/t_sequence_sexpr_unsup.v:124:10: Ignoring unsupported: cover sequence
+      |                    ^~~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:124:22: Logical operator PROPSPEC expects 1 bit on the Property, but Property's VARREF 'a' generates 32 bits.
+                                                      : ... note: In instance 't'
   124 |    cover sequence (@(posedge a) disable iff (b) s_a) $display("");
-      |          ^~~~~~~~
-%Warning-COVERIGN: t/t_sequence_sexpr_unsup.v:125:10: Ignoring unsupported: cover sequence
+      |                      ^~~~~~~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:124:22: Logical operator PROPSPEC expects 1 bit on the Disable, but Disable's VARREF 'b' generates 32 bits.
+                                                      : ... note: In instance 't'
+  124 |    cover sequence (@(posedge a) disable iff (b) s_a) $display("");
+      |                      ^~~~~~~
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:125:33: Logical operator PROPSPEC expects 1 bit on the Property, but Property's VARREF 'a' generates 32 bits.
+                                                      : ... note: In instance 't'
   125 |    cover sequence (disable iff (b) s_a) $display("");
-      |          ^~~~~~~~
+      |                                 ^
+%Warning-WIDTHTRUNC: t/t_sequence_sexpr_unsup.v:125:33: Logical operator PROPSPEC expects 1 bit on the Disable, but Disable's VARREF 'b' generates 32 bits.
+                                                      : ... note: In instance 't'
+  125 |    cover sequence (disable iff (b) s_a) $display("");
+      |                                 ^
+%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:123:4: Unsupported: Unclocked assertion
+                                                    : ... note: In instance 't'
+  123 |    cover sequence (s_a) $display("");
+      |    ^~~~~
+                    ... For error description see https://verilator.org/warn/UNSUPPORTED?v=latest
+%Error-UNSUPPORTED: t/t_sequence_sexpr_unsup.v:125:4: Unsupported: Unclocked assertion
+                                                    : ... note: In instance 't'
+  125 |    cover sequence (disable iff (b) s_a) $display("");
+      |    ^~~~~
 %Error: Exiting due to
