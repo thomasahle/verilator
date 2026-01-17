@@ -6529,6 +6529,10 @@ class WidthVisitor final : public VNVisitor {
             }
         }
     }
+    void visit(AstRSReturn* nodep) override {
+        // Randsequence return statement with optional return value
+        if (nodep->valuep()) userIterateAndNext(nodep->valuep(), WidthVP{SELF, BOTH}.p());
+    }
 
     void visit(AstRelease* nodep) override {
         userIterateAndNext(nodep->lhsp(), WidthVP{SELF, BOTH}.p());

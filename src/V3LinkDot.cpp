@@ -1969,10 +1969,7 @@ class LinkDotFindVisitor final : public VNVisitor {
     void visit(AstRSProd* nodep) override {
         VL_RESTORER(m_curSymp);
         m_curSymp = m_statep->insertBlock(m_curSymp, nodep->name(), nodep, m_classOrPackagep);
-        if (nodep->fvarp())
-            nodep->fvarp()->v3warn(E_UNSUPPORTED,
-                                   "Unsupported: randsequence production function variable");
-        // Production function ports are now supported (handled in V3RandSequence.cpp)
+        // Production function return types (fvarp) and ports are handled in V3RandSequence.cpp
         iterateChildren(nodep);
     }
 

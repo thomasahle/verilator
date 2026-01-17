@@ -443,7 +443,8 @@ class LinkJumpVisitor final : public VNVisitor {
         iterateChildren(nodep);
         const AstFunc* const funcp = VN_CAST(m_ftaskp, Func);
         if (m_randsequencep) {
-            nodep->replaceWith(new AstRSReturn{nodep->fileline()});
+            AstNodeExpr* valuep = nodep->lhsp() ? nodep->lhsp()->unlinkFrBack() : nullptr;
+            nodep->replaceWith(new AstRSReturn{nodep->fileline(), valuep});
             VL_DO_DANGLING(pushDeletep(nodep), nodep);
             return;
         } else if (m_inFork) {

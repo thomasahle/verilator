@@ -175,15 +175,39 @@ class RandSequenceVisitor final : public VNVisitor {
                 }
             }
         }
-        AstNode* const newp
-            = new AstStmtExpr{fl, new AstTaskRef{fl, VN_AS(prodFuncp, Task), argsp}};
+        AstNode* newp = nullptr;
+        if (AstFunc* const funcp = VN_CAST(prodFuncp, Func)) {
+            // Production is a function - call it and ignore return value for now
+            // TODO: support capturing return value for use in caller
+            newp = new AstStmtExpr{fl, new AstFuncRef{fl, funcp, argsp}};
+        } else {
+            // Production is a task
+            newp = new AstStmtExpr{fl, new AstTaskRef{fl, VN_AS(prodFuncp, Task), argsp}};
+        }
         return newp;
     }
 
     void newProdFunc(AstRSProd* nodep) {
-        // Task, as time may pass
-        AstTask* const newp
-            = new AstTask{nodep->fileline(), m_rsp->name() + "_" + nodep->name(), nullptr};
+        // Create a function if the production has a return type, otherwise a task
+        // (task because time may pass in productions)
+        AstNodeFTask* newp = nullptr;
+        const string funcName = m_rsp->name() + "_" + nodep->name();
+        if (nodep->fvarp()) {
+            // Production has a return type - create a function
+            AstVar* const fvarp = nodep->fvarp();
+            AstVar* const newFvarp = fvarp->cloneTree(false);
+            newFvarp->funcLocal(true);
+            newFvarp->funcReturn(true);
+            newFvarp->direction(VDirection::OUTPUT);
+            newFvarp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
+            AstFunc* const funcp = new AstFunc{nodep->fileline(), funcName, nullptr, newFvarp};
+            // Set function dtype from return var (since V3Width has already run)
+            funcp->dtypeFrom(newFvarp);
+            newp = funcp;
+        } else {
+            // No return type - create a task
+            newp = new AstTask{nodep->fileline(), funcName, nullptr};
+        }
         // Note: production function ports are added later in visit(AstRSProd),
         // after break var and localized vars, to match the argument order in newProdFuncRef
         m_modp->addStmtsp(newp);
@@ -514,9 +538,8 @@ class RandSequenceVisitor final : public VNVisitor {
         m_jumpBlockp = new AstJumpBlock{nodep->fileline(), nullptr};
         m_prodFuncp->addStmtsp(m_jumpBlockp);
 
-        if (nodep->fvarp())
-            nodep->fvarp()->v3warn(E_UNSUPPORTED,
-                                   "Unsupported: randsequence production function variable");
+        // Note: fvarp (production function return type) is now handled in newProdFunc()
+        // which creates an AstFunc with the appropriate return type
 
         // Move children into m_prodFuncp, and iterate there
         if (!nodep->rulesp()) {  // Nothing to do
@@ -627,7 +650,28 @@ class RandSequenceVisitor final : public VNVisitor {
     }
     void visit(AstRSReturn* nodep) override {
         UASSERT_OBJ(m_jumpBlockp, nodep, "RSReturn not under production jump block");
-        nodep->replaceWith(new AstJumpGo{nodep->fileline(), m_jumpBlockp});
+        AstNode* newp = nullptr;
+        // If the production is a function and we have a return value, assign it
+        if (nodep->valuep()) {
+            AstFunc* const funcp = VN_CAST(m_prodFuncp, Func);
+            if (funcp) {
+                AstVar* const fvarp = VN_AS(funcp->fvarp(), Var);
+                UASSERT_OBJ(fvarp, nodep, "Function has no return variable");
+                newp = new AstAssign{
+                    nodep->fileline(),
+                    new AstVarRef{nodep->fileline(), fvarp, VAccess::WRITE},
+                    nodep->valuep()->unlinkFrBack()};
+            } else {
+                nodep->v3error("Return with value in void production");
+            }
+        }
+        AstJumpGo* const jumpgop = new AstJumpGo{nodep->fileline(), m_jumpBlockp};
+        if (newp) {
+            newp->addNext(jumpgop);
+        } else {
+            newp = jumpgop;
+        }
+        nodep->replaceWith(newp);
         VL_DO_DANGLING(pushDeletep(nodep), nodep);
     }
     void visit(AstVarRef* nodep) override {

@@ -966,9 +966,12 @@ public:
 };
 class AstRSReturn final : public AstNodeStmt {
     // randsequence return
+    // @astgen op1 := valuep : Optional[AstNodeExpr]
 public:
-    explicit AstRSReturn(FileLine* fl)
-        : ASTGEN_SUPER_RSReturn(fl) {}
+    explicit AstRSReturn(FileLine* fl, AstNodeExpr* valuep = nullptr)
+        : ASTGEN_SUPER_RSReturn(fl) {
+        this->valuep(valuep);
+    }
     ASTGEN_MEMBERS_AstRSReturn;
     string verilogKwd() const override { return "return"; }
     bool isBrancher() const override { V3ERROR_NA_RETURN(true); }  // Node removed early
