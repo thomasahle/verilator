@@ -24,6 +24,7 @@
 - Sequence tests: all pass
 
 ### Recent Fixes (This Session)
+- **Anonymous struct emission for tagged unions** (IEEE 1800-2017 7.3.2) - Fixed C++ code generation bug where anonymous struct types inside tagged unions weren't being emitted to header files. Now VL_TO_STRING declarations have matching struct definitions.
 - **Streaming concat with dynamic arrays** (IEEE 1800-2017 11.4.14) - Added E_UNSUPPORTED warning for dynamic arrays/queues inside streaming concatenation (e.g., `{<<8{header, len, data_arr}}`). Previously generated broken C++ code.
 - **Sequence match items in properties** (IEEE 1800-2017 16.10) - Fixed AstSeqMatchItem transformation in V3AssertProp for constructs like `(valid, x = in) |-> ##4 (out == x + 4)`
 - **$root hierarchical references** (IEEE 1800-2017 23.3.1) - $root standalone and $root.module.instance paths
