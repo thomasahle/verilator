@@ -35,9 +35,10 @@ Based on analysis of src/*.cpp and src/verilog.y
 - **File:** V3LinkDot.cpp:1988
 - **Note:** Basic inline constraints work; complex patterns may not
 
-### 4. `super` keyword
-- **File:** V3LinkDot.cpp:3861
+### 4. ~~`super` keyword~~ ✓ NOW SUPPORTED
+- **Status:** WORKS - see test_regress/t/t_class_super.v
 - **Note:** Calling parent class methods explicitly
+- **Verified:** January 2026
 
 ### 5. `$cast` to certain types
 - **File:** V3Width.cpp:2519, 2548, 2575
@@ -126,7 +127,7 @@ Based on analysis of src/*.cpp and src/verilog.y
 ### Other
 | Feature | File:Line | Notes |
 |---------|-----------|-------|
-| `wait_order` | verilog.y:3721-3725 | Ordering statement |
+| ~~`wait_order`~~ | verilog.y:3721-3725 | ✓ NOW SUPPORTED (Jan 2026) |
 | `expect` | verilog.y:3738-3742 | Expect statement |
 | Checker constructs | verilog.y:1123, 7530-7533 | Checker keyword |
 | `deassign` | verilog.y:3570 | Verilog 1995 |
