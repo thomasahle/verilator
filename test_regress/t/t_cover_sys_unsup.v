@@ -1,6 +1,7 @@
-// DESCRIPTION: Verilator: Verilog Test module for SystemVerilog 'alias'
+// DESCRIPTION: Verilator: Test for coverage system functions
 //
-// Simple bi-directional alias test.
+// The coverage system functions ($coverage_control, $coverage_get, etc.)
+// are implemented as stubs that return 0 for success or no-ops.
 //
 // This file ONLY is placed under the Creative Commons Public Domain, for
 // any use, without warranty, 2025 by Wilson Snyder.
@@ -9,33 +10,37 @@
 module t;
   real r;
   int i;
+  string s;
+
   initial begin
+    // Test coverage system functions (stub implementations return 0)
+    // control_constant: SV_COV_START=0, SV_COV_STOP=1, SV_COV_RESET=2, SV_COV_CHECK=3
+    // coverage_type: SV_COV_ASSERTION=1, SV_COV_FSM_STATE=2, SV_COV_STATEMENT=3, SV_COV_TOGGLE=23
+    // scope_def: SV_COV_MODULE=10, SV_COV_HIER=11
 
-    // control_constant = `SV_COV_START, `SV_COV_STOP, `SV_COV_RESET, `SV_COV_CHECK
-    // coverage_type = `SV_COV_ASSERTION, `SV_COV_FSM_STATE, `SV_COV_STATEMENT,`SV_COV_TOGGLE
-    // scope_def = [`SV_COV_MODULE, "unique module def name"], [`SV_COV_HIER, "module name"],
-    //               [`SV_COV_MODULE, instance_name], [`SV_COV_HIER, instance_name]
-    i = $coverage_control(`SV_COV_START, `SV_COV_TOGGLE, `SV_COV_MODULE, t);
-    // returns `SV_COV_OK, `SV_COV_ERROR, `SV_COV_NOCOV, `SV_COV_PARTIAL
+    i = $coverage_control(0, 23, 10, $root);
+    if (i !== 0) $stop;
 
-    i = $coverage_get(`SV_COV_TOGGLE, `SV_COV_MODULE, t);
-    // returns number or `SC_COV_OVERFLOW, `SC_COV_ERROR, `SV_COV_NOCOV
+    i = $coverage_get(23, 10, $root);
+    if (i !== 0) $stop;
 
-    i = $coverage_get_max(`SV_COV_TOGGLE, `SV_COV_MODULE, t);
-    // returns number or `SC_COV_OVERFLOW, `SC_COV_ERROR, `SV_COV_NOCOV
+    i = $coverage_get_max(23, 10, $root);
+    if (i !== 0) $stop;
 
     r = $get_coverage();
+    if (r != 0.0) $stop;
 
     $set_coverage_db_name("filename");
 
-    i = $coverage_save(coverage_type, "filename");
-    // returns `SV_COV_OK, `SC_COV_NOCOV, `SC_COV_ERROR
+    i = $coverage_save(23, "filename");
+    if (i !== 0) $stop;
 
     $load_coverage_db("filename");
 
-    i = $coverage_merge(coverage_type, "filename");
-    // returns `SV_COV_OK, `SC_COV_NOCOV, `SC_COV_ERROR
+    i = $coverage_merge(23, "filename");
+    if (i !== 0) $stop;
 
+    $write("*-* All Coverage System Function Tests Passed\n");
     $finish;
   end
 
