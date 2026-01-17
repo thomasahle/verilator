@@ -777,6 +777,9 @@ BISONPRE_VERSION(3.7,%define api.header.include {"V3ParseBison.h"})
 %token<fl>              yD_COVERAGE_GET_MAX "$coverage_get_max"
 %token<fl>              yD_COVERAGE_MERGE "$coverage_merge"
 %token<fl>              yD_COVERAGE_SAVE "$coverage_save"
+%token<fl>              yD_GET_COVERAGE "$get_coverage"
+%token<fl>              yD_LOAD_COVERAGE_DB "$load_coverage_db"
+%token<fl>              yD_SET_COVERAGE_DB_NAME "$set_coverage_db_name"
 %token<fl>              yD_DIMENSIONS   "$dimensions"
 %token<fl>              yD_DISPLAY      "$display"
 %token<fl>              yD_DISPLAYB     "$displayb"
@@ -4589,6 +4592,9 @@ system_f_or_t_expr_call<nodeExprp>:  // IEEE: part of system_tf_call (can be tas
         |       yD_COVERAGE_GET_MAX '(' exprList ')'    { $$ = new AstCoverageGetMax{$1, $3}; }
         |       yD_COVERAGE_MERGE '(' exprList ')'      { $$ = new AstCoverageMerge{$1, $3}; }
         |       yD_COVERAGE_SAVE '(' exprList ')'       { $$ = new AstCoverageSave{$1, $3}; }
+        |       yD_GET_COVERAGE '(' ')'                 { $$ = new AstGetCoverage{$1}; }
+        |       yD_LOAD_COVERAGE_DB '(' expr ')'        { $$ = new AstLoadCoverageDb{$1, $3}; }
+        |       yD_SET_COVERAGE_DB_NAME '(' expr ')'    { $$ = new AstSetCoverageDbName{$1, $3}; }
         //
         |       yD_DIMENSIONS '(' exprOrDataType ')'    { $$ = new AstAttrOf{$1, VAttrType::DIM_DIMENSIONS, $3}; }
         |       yD_DIST_CHI_SQUARE '(' expr ',' expr ')'        { $$ = new AstDistChiSquare{$1, $3, $5}; }

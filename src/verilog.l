@@ -527,7 +527,7 @@ vnum    {vnum1}|{vnum2}|{vnum3}|{vnum4}|{vnum5}
   "$fell"               { FL; return yD_FELL; }
   "$fell_gclk"          { FL; return yD_FELL_GCLK; }
   "$future_gclk"        { FL; return yD_FUTURE_GCLK; }
-  "$get_coverage"       { FL; STR; ERROR_RSVD_WORD("IEEE 1800-2005"); return yaD_PLI; }
+  "$get_coverage"       { FL; return yD_GET_COVERAGE; }
   "$high"               { FL; return yD_HIGH; }
   "$increment"          { FL; return yD_INCREMENT; }
   "$inferred_clock"     { FL; STR; ERROR_RSVD_WORD("IEEE 1800-2005"); return yaD_PLI; }
@@ -536,7 +536,7 @@ vnum    {vnum1}|{vnum2}|{vnum3}|{vnum4}|{vnum5}
   "$isunbounded"        { FL; return yD_ISUNBOUNDED; }
   "$isunknown"          { FL; return yD_ISUNKNOWN; }
   "$left"               { FL; return yD_LEFT; }
-  "$load_coverage_db"   { FL; STR; ERROR_RSVD_WORD("IEEE 1800-2005"); return yaD_PLI; }
+  "$load_coverage_db"   { FL; return yD_LOAD_COVERAGE_DB; }
   "$low"                { FL; return yD_LOW; }
   "$onehot"             { FL; return yD_ONEHOT; }
   "$onehot0"            { FL; return yD_ONEHOT0; }
@@ -547,7 +547,7 @@ vnum    {vnum1}|{vnum2}|{vnum3}|{vnum4}|{vnum5}
   "$root"               { FL; return yD_ROOT; }
   "$rose"               { FL; return yD_ROSE; }
   "$rose_gclk"          { FL; return yD_ROSE_GCLK; }
-  "$set_coverage_db_name" { FL; STR; ERROR_RSVD_WORD("IEEE 1800-2005"); return yaD_PLI; }
+  "$set_coverage_db_name" { FL; return yD_SET_COVERAGE_DB_NAME; }
   "$size"               { FL; return yD_SIZE; }
   "$stable"             { FL; return yD_STABLE; }
   "$stable_gclk"        { FL; return yD_STABLE_GCLK; }

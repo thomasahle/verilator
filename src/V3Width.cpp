@@ -2028,6 +2028,18 @@ class WidthVisitor final : public VNVisitor {
         if (nodep->didWidthAndSet()) return;
         userIterateAndNext(nodep->argsp(), WidthVP{SELF, BOTH}.p());
     }
+    void visit(AstGetCoverage* nodep) override {
+        if (nodep->didWidthAndSet()) return;
+        // No arguments, type set in constructor
+    }
+    void visit(AstLoadCoverageDb* nodep) override {
+        if (nodep->didWidthAndSet()) return;
+        userIterateAndNext(nodep->filenamep(), WidthVP{SELF, BOTH}.p());
+    }
+    void visit(AstSetCoverageDbName* nodep) override {
+        if (nodep->didWidthAndSet()) return;
+        userIterateAndNext(nodep->filenamep(), WidthVP{SELF, BOTH}.p());
+    }
     void visit(AstCvtPackString* nodep) override {
         if (nodep->didWidthAndSet()) return;
         // Opaque returns, so arbitrary

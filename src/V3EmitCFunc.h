@@ -994,6 +994,18 @@ public:
         // Stub: return 0 (success)
         putns(nodep, "0");
     }
+    void visit(AstGetCoverage* nodep) override {
+        // Stub: return 0.0 (no coverage)
+        putns(nodep, "0.0");
+    }
+    void visit(AstLoadCoverageDb* nodep) override {
+        // Stub: no-op (consume filename argument but do nothing)
+        putns(nodep, "");
+    }
+    void visit(AstSetCoverageDbName* nodep) override {
+        // Stub: no-op (consume filename argument but do nothing)
+        putns(nodep, "");
+    }
     void visit(AstFError* nodep) override {
         putns(nodep, "VL_FERROR_I");
         puts(nodep->strp()->isString() ? "N(" : "W(");

@@ -1813,6 +1813,23 @@ public:
     string emitC() override { V3ERROR_NA_RETURN(""); }
     bool cleanOut() const override { return true; }
 };
+class AstGetCoverage final : public AstNodeExpr {
+    // IEEE: $get_coverage()
+    // Stub implementation that returns 0.0
+public:
+    explicit AstGetCoverage(FileLine* fl)
+        : ASTGEN_SUPER_GetCoverage(fl) {
+        dtypeSetDouble();
+    }
+    ASTGEN_MEMBERS_AstGetCoverage;
+    string emitVerilog() override { return "$get_coverage"; }
+    string emitC() override { return "0.0"; }
+    bool cleanOut() const override { return true; }
+    bool isGateOptimizable() const override { return false; }
+    bool isPredictOptimizable() const override { return false; }
+    int instrCount() const override { return widthInstrs(); }
+    bool isSystemFunc() const override { return true; }
+};
 class AstGotoRep final : public AstNodeExpr {
     // SVA goto repetition operator (IEEE 1800-2017 16.9.2)
     // expr[->n] or expr[->m:n] - boolean is true exactly n times (not necessarily consecutive)
@@ -1979,6 +1996,25 @@ public:
     void name(const string& name) override { m_name = name; }
     bool index() const { return m_index; }
     bool isExprCoverageEligible() const override { return false; }
+};
+class AstLoadCoverageDb final : public AstNodeExpr {
+    // IEEE: $load_coverage_db(filename)
+    // Stub implementation - no-op
+    // @astgen op1 := filenamep : AstNodeExpr
+public:
+    AstLoadCoverageDb(FileLine* fl, AstNodeExpr* filenamep)
+        : ASTGEN_SUPER_LoadCoverageDb(fl) {
+        dtypeSetVoid();
+        this->filenamep(filenamep);
+    }
+    ASTGEN_MEMBERS_AstLoadCoverageDb;
+    string emitVerilog() override { return "$load_coverage_db"; }
+    string emitC() override { return ""; }
+    bool cleanOut() const override { return true; }
+    bool isGateOptimizable() const override { return false; }
+    bool isPredictOptimizable() const override { return false; }
+    int instrCount() const override { return widthInstrs(); }
+    bool isSystemFunc() const override { return true; }
 };
 class AstMatches final : public AstNodeExpr {
     // Matches operator for tagged union pattern matching
@@ -2672,6 +2708,25 @@ public:
     bool cleanOut() const override { return true; }
     int instrCount() const override { return widthInstrs(); }
     bool sameNode(const AstNode* /*samep*/) const override { return true; }
+};
+class AstSetCoverageDbName final : public AstNodeExpr {
+    // IEEE: $set_coverage_db_name(filename)
+    // Stub implementation - no-op
+    // @astgen op1 := filenamep : AstNodeExpr
+public:
+    AstSetCoverageDbName(FileLine* fl, AstNodeExpr* filenamep)
+        : ASTGEN_SUPER_SetCoverageDbName(fl) {
+        dtypeSetVoid();
+        this->filenamep(filenamep);
+    }
+    ASTGEN_MEMBERS_AstSetCoverageDbName;
+    string emitVerilog() override { return "$set_coverage_db_name"; }
+    string emitC() override { return ""; }
+    bool cleanOut() const override { return true; }
+    bool isGateOptimizable() const override { return false; }
+    bool isPredictOptimizable() const override { return false; }
+    int instrCount() const override { return widthInstrs(); }
+    bool isSystemFunc() const override { return true; }
 };
 class AstSetWildcard final : public AstNodeExpr {
     // Set a wildcard assoc array element and return object, '{}
