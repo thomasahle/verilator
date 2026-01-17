@@ -6534,10 +6534,13 @@ clocking_skewE<nodeExprp>:          // IEEE: [clocking_skew]
 clocking_skew<nodeExprp>:           // IEEE: clocking_skew
                 delay_control                           { $$ = $1->lhsp()->unlinkFrBack(); $1->deleteTree(); }
         |      yPOSEDGE delay_controlE                  { $$ = nullptr;
+                                                          BBUNSUP($1, "Unsupported: clocking event edge override");
                                                           if ($2) { $$ = $2->lhsp()->unlinkFrBack(); $2->deleteTree(); } }
         |      yNEGEDGE delay_controlE                  { $$ = nullptr;
+                                                          BBUNSUP($1, "Unsupported: clocking event edge override");
                                                           if ($2) { $$ = $2->lhsp()->unlinkFrBack(); $2->deleteTree(); } }
         |      yEDGE delay_controlE                     { $$ = nullptr;
+                                                          BBUNSUP($1, "Unsupported: clocking event edge override");
                                                           if ($2) { $$ = $2->lhsp()->unlinkFrBack(); $2->deleteTree(); } }
         ;
 
