@@ -280,9 +280,9 @@ static void process() {
             V3Inst::dearrayAll(v3Global.rootp());
             V3LinkDot::linkDotArrayed(v3Global.rootp());
 
-            if (v3Global.opt.timing().isSetTrue()) {
+            if (v3Global.opt.timing().isSetTrue() || v3Global.usesTiming()) {
                 // Generate classes and tasks required to maintain proper lifetimes for references
-                // in forks
+                // in forks. Also needed when timing constructs are used (e.g., assertions)
                 V3Fork::makeDynamicScopes(v3Global.rootp());
                 V3Fork::makeTasks(v3Global.rootp());
             }
@@ -452,8 +452,9 @@ static void process() {
             // Reorder assignments in pipelined blocks
             if (v3Global.opt.fReorder()) V3Split::splitReorderAll(v3Global.rootp());
 
-            if (v3Global.opt.timing().isSetTrue()) {
-                // Convert AST for timing if requested
+            if (v3Global.opt.timing().isSetTrue() || v3Global.usesTiming()) {
+                // Convert AST for timing if requested, or if timing constructs
+                // were detected (e.g., assertions with cycle delays create EventControls)
                 // Needs to be after V3Gate, as that step modifies sentrees
                 // Needs to be before V3Delayed, as delayed assignments are handled differently in
                 // suspendable processes

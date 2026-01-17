@@ -452,6 +452,7 @@ private:
         {
             AstEventControl* const controlp = new AstEventControl{
                 flp, new AstSenTree{flp, sensesp->cloneTree(false)}, nullptr};
+            v3Global.setUsesTiming();
             AstLoop* const loopp = new AstLoop{flp};
             loopp->addStmtsp(new AstLoopTest{
                 flp, loopp,
@@ -526,6 +527,7 @@ private:
                     // For unbounded: just wait one cycle (keep trying forever)
                     retryStmts = new AstEventControl{
                         flp, new AstSenTree{flp, sensesp->cloneTree(false)}, nullptr};
+                    v3Global.setUsesTiming();
                 } else {
                     // For bounded: decrement attempts and wait one cycle if attempts > 1
                     // (attempts == 1 means this is our last chance, no need to wait)
@@ -535,6 +537,7 @@ private:
                                    new AstConst{flp, 1}}};
                     AstEventControl* const retryControl = new AstEventControl{
                         flp, new AstSenTree{flp, sensesp->cloneTree(false)}, nullptr};
+                    v3Global.setUsesTiming();
                     // Wait only if we have more attempts after decrement
                     AstIf* const waitIf = new AstIf{
                         flp,
