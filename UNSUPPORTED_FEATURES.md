@@ -114,7 +114,7 @@ Based on analysis of src/*.cpp and src/verilog.y
 | Feature | File:Line | Notes |
 |---------|-----------|-------|
 | Default clocking identifier | verilog.y:2727 | Default block reference |
-| Clocking edge override | verilog.y:6294-6298 | Edge specification |
+| ~~Clocking edge override~~ | verilog.y:6536-6544 | ✓ NOW WARNS (posedge/negedge/edge in clocking skew) |
 
 ### Config/Library
 | Feature | File:Line | Notes |
