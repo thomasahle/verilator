@@ -2002,13 +2002,12 @@ class LinkDotFindVisitor final : public VNVisitor {
         // Type depends on the method used, let V3Width figure it out later
         if (nodep->exprsp()
             || nodep->constraintsp()) {  // Else empty expression and pretend no "with"
+            // Combine variable list (exprsp) and inline constraints (constraintsp)
+            // into a single expression list for the constraint solver
+            // IEEE 1800-2017 18.7: randomize(a, b) with { c > 0; } means
+            // randomize only a and b with additional constraint c > 0
             AstNode* exprOrConstraintsp = nullptr;
-            if (nodep->exprsp() && nodep->constraintsp()) {
-                // When support this probably should change AstWith to separate out
-                // the expr from the constraint equation using separate op2/op3 similar
-                // to AstWithParse
-                nodep->v3warn(E_UNSUPPORTED, "Unsupported: 'randomize with (...) {...}'");
-            } else if (nodep->exprsp())
+            if (nodep->exprsp())
                 exprOrConstraintsp = nodep->exprsp()->unlinkFrBackWithNext();
             if (nodep->constraintsp())
                 exprOrConstraintsp = AstNode::addNext(
