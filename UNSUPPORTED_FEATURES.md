@@ -128,7 +128,7 @@ Based on analysis of src/*.cpp and src/verilog.y
 | Feature | File:Line | Notes |
 |---------|-----------|-------|
 | ~~`wait_order`~~ | verilog.y:3721-3725 | ✓ NOW SUPPORTED (Jan 2026) |
-| `expect` | verilog.y:3738-3742 | Expect statement |
+| ~~`expect`~~ | verilog.y:3898-3903 | ✓ NOW SUPPORTED (maps to AstAssert with EXPECT type) |
 | Checker constructs | verilog.y:1123, 7530-7533 | Checker keyword |
 | `deassign` | verilog.y:3570 | Verilog 1995 |
 | `trireg` | verilog.y:1863 | Net type |
