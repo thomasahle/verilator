@@ -526,12 +526,24 @@ class EmitCHeader final : public EmitCConstInit {
     void emitStructs(const AstNodeModule* modp) {
         // Track structs that've been emitted already
         std::set<AstNodeUOrStructDType*> emitted;
+        // First emit structs from typedefs in this module
         for (const AstNode* nodep = modp->stmtsp(); nodep; nodep = nodep->nextp()) {
             const AstTypedef* const tdefp = VN_CAST(nodep, Typedef);
             if (!tdefp) continue;
             AstNodeUOrStructDType* const sdtypep
                 = VN_CAST(tdefp->dtypep()->skipRefToEnump(), NodeUOrStructDType);
             if (!sdtypep) continue;
+            emitStructDecl(modp, sdtypep, emitted);
+        }
+        // Also emit unpacked structs from the type table that belong to this module.
+        // This catches anonymous structs (e.g., struct members of tagged unions)
+        // which aren't typedef'd but still need VL_TO_STRING support.
+        for (AstNode* nodep = v3Global.rootp()->typeTablep()->typesp(); nodep;
+             nodep = nodep->nextp()) {
+            AstNodeUOrStructDType* const sdtypep = VN_CAST(nodep, NodeUOrStructDType);
+            if (!sdtypep) continue;
+            if (sdtypep->packed()) continue;  // Packed structs handled differently
+            if (sdtypep->classOrPackagep() != modp) continue;  // Only emit for this module
             emitStructDecl(modp, sdtypep, emitted);
         }
     }
