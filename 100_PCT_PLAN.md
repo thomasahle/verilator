@@ -52,9 +52,10 @@
 - **Covergroup clocking event in classes** (IEEE 1800-2017 19.7) - Fixed `covergroup cov @member; ... endgroup` inside a class. The clocking event expression now properly uses `__Vparentp` pointer to access enclosing class members.
 
 ### Known Issues (Needs Investigation)
-- **Virtual interface output args** - Runtime null pointer when vif members used as function outputs
+- None currently - all tested scenarios work
 
 ### Verified Working This Session
+- Virtual interfaces with output arguments (tested and working)
 - All mbits-mirafra VIPs compile and run end-to-end UVM tests
 - sv-tests chapter-18 non-UVM tests pass (randsequence, randcase, urandom, etc.)
 - Checker constructs compile and simulate
