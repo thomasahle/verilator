@@ -34,6 +34,8 @@
 - case...matches variable binding patterns
 - **super keyword** (IEEE 1800-2023 8.15) - Parent class method calls
 - **randomize(null)** (IEEE 1800-2017 18.7) - No-variable randomization
+- **extends (default)** (IEEE 1800-2023) - Class inheritance with default constructor args
+- **new(default)** (IEEE 1800-2023) - Constructor call with default arguments
 
 ### Known Issues (Needs Investigation)
 - **matches in ternary expressions** - `val = tmp matches tagged a ? 1 : 0` fails but `if (tmp matches tagged a)` works. Grammar precedence issue between `yMATCHES` and ternary `?:`. Workaround: use parentheses `(tmp matches tagged a) ? 1 : 0`

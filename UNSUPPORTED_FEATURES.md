@@ -44,6 +44,12 @@ Based on analysis of src/*.cpp and src/verilog.y
 - **File:** V3Width.cpp:2519, 2548, 2575
 - **Note:** Some cast targets unsupported
 
+### 6. ~~`extends (default)` and `new(default)`~~ ✓ NOW SUPPORTED
+- **Status:** WORKS - see test_regress/t/t_class_extends_default.v
+- **Syntax:** `class Child extends Parent(default);`, `super.new(default);`
+- **Note:** IEEE 1800-2023 feature for using default constructor arguments
+- **Verified:** January 2026
+
 ---
 
 ## MEDIUM PRIORITY (Less Common)

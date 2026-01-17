@@ -4988,8 +4988,8 @@ class_constructor_arg_listList<nodep>:  // IEEE: part of class_constructor_arg_l
 
 class_constructor_arg<nodep>:  // ==IEEE: class_constructor_arg
                 tf_port_item                            { $$ = $1; }
-        //                      // IEEE-2023: 'default' means use default argument values
-        |       yDEFAULT                                { $$ = nullptr; }
+        //                      // IEEE-2023: 'default' in declaration inherits from outer context
+        |       yDEFAULT                                { $$ = nullptr; BBUNSUP($1, "Unsupported: new constructor 'default' argument"); }
         ;
 
 tf_port_item<nodep>:            // ==IEEE: tf_port_item
