@@ -5221,13 +5221,3 @@ package uvm_pkg;
   endfunction
 
 endpackage : uvm_pkg
-
-// Helper module to initialize UVM globals early
-// Instantiate this in your testbench top to ensure phases are ready
-// before any initial blocks try to access them
-module uvm_pkg_init;
-  initial begin
-    // Initialize global phases at time 0
-    uvm_pkg::__init_global_phases();
-  end
-endmodule
