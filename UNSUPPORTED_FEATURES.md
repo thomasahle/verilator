@@ -75,7 +75,7 @@ Based on analysis of src/*.cpp and src/verilog.y
 |---------|-----------|-------|
 | `default :/` constraint | verilog.y:7953 | Distribution constraint |
 | `constraint_mode()` on static | V3Randomize.cpp:404 | Static variable rand_mode |
-| `randomize(null)` | V3Width.cpp:4806 | Randomize with null |
+| ~~`randomize(null)`~~ | V3Width.cpp:4806 | ✓ NOW SUPPORTED (Jan 2026) |
 | Complex constraint expressions | V3Randomize.cpp:817, 1190 | Some expressions unsupported |
 
 ### Type System
