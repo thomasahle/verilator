@@ -2457,14 +2457,47 @@ class CoverageGroupVisitor final : public VNVisitor {
         // Create event control: @(clock_event) sample();
         // Clone the clock event and create a SenTree
         AstSenItem* const clonedEventp = clockEventp->cloneTree(false);
+
+        // Transform enclosing class references in the clocked event expression to use __Vparentp
+        // The clock event may reference members of the enclosing class (e.g., @m_clk)
+        if (m_enclosingClassp && m_parentPtrVarp && clonedEventp->sensp()) {
+            // Unlink sensp before transforming to avoid backlink issues when visitor
+            // deletes nodes (deleteTree fails if backlink is still set)
+            AstNode* const unlinkedp = clonedEventp->sensp()->unlinkFrBack();
+            AstNodeExpr* const sensp = VN_AS(unlinkedp, NodeExpr);
+            EnclosingClassTransformVisitor visitor{sensp, covergroupp, m_enclosingClassp,
+                                                   m_parentPtrVarp};
+            // Set the transformed (or original if unchanged) expression back
+            clonedEventp->sensp(visitor.rootp());
+        }
+
         AstSenTree* const sentreep = new AstSenTree{fl, clonedEventp};
         AstEventControl* const eventCtrlp = new AstEventControl{fl, sentreep, sampleStmtp};
 
         // Create forever loop: forever @(clock_event) sample();
         AstLoop* const foreverp = new AstLoop{fl, eventCtrlp};
 
+        // For covergroups in classes, add wait(__Vparentp != null) before the forever loop
+        // This ensures the parent pointer is set before we try to dereference it
+        AstNode* forkBodyp = foreverp;
+        if (m_enclosingClassp && m_parentPtrVarp) {
+            // Create condition: __Vparentp != null
+            AstVarRef* const parentRefp = new AstVarRef{fl, m_parentPtrVarp, VAccess::READ};
+            AstConst* const nullp = new AstConst{fl, AstConst::Null{}};
+            AstNeq* const condp = new AstNeq{fl, parentRefp, nullp};
+
+            // Create wait statement: wait(__Vparentp != null);
+            AstWait* const waitp = new AstWait{fl, condp, nullptr};
+
+            // Chain: wait(__Vparentp != null); forever @(...) sample();
+            waitp->addNextHere(foreverp);
+            forkBodyp = waitp;
+
+            UINFO(4, "Added wait for __Vparentp before auto-sampling loop" << endl);
+        }
+
         // Create a begin block for the fork branch
-        AstBegin* const forkBranchp = new AstBegin{fl, "", foreverp, false};
+        AstBegin* const forkBranchp = new AstBegin{fl, "", forkBodyp, false};
 
         // Create fork...join_none with the forever loop
         AstFork* const forkp = new AstFork{fl, VJoinType::JOIN_NONE, ""};
