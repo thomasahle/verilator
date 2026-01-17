@@ -396,8 +396,16 @@ The following features were previously listed as unsupported but are now verifie
 - `matches` operator ✓
 - Extern task/function ✓
 
+**Class Features (working):**
+- `super` keyword for parent method calls ✓
+- `randomize(null)` for no-variable randomization ✓
+- `extends BaseClass(default)` for default constructor args ✓
+- `super.new(default)` for default parent constructor args ✓
+
 **LOW (still unsupported, rarely used):**
 - User-defined nettypes
 - Strength specifications
 - Tristate pull types
 - Checker constructs
+- `function new(default)` declaration-side default (inherits constructor interface)
+- Clocking event edge override in clocking blocks
