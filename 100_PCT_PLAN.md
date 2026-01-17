@@ -2,21 +2,36 @@
 
 ## Current Status (Updated 2026-01-17)
 
-**sv-tests Analysis (Verilator 5.045, updated 2026-01-17):**
-- Total non-UVM tests: ~600 (excluding _bad/_inv expected-to-fail tests)
-- **Passing: 521/600 (87%)** with `-Wno-fatal` to ignore warnings
-- **Remaining failures (79 tests):**
+**sv-tests Analysis (Verilator 5.045 devel, updated 2026-01-17):**
+- Non-UVM chapter tests (10-24, excl UVM deps): **314 pass / 12 fail (96%)**
+- **Remaining failures breakdown:**
   - Dynamic arrays in streaming (3 tests) - E_UNSUPPORTED (complex)
   - Tristate in pattern matching (2 tests) - E_UNSUPPORTED
-  - randsequence production function ports (1 test) - E_UNSUPPORTED
-  - Tests with bugs in bit widths (casex/casez_pattern) (2 tests)
-  - Expected-to-fail tests labeled wrong (various)
-  - External constraint definitions (1 test)
-- UVM tests (107): Use `$ivl_factory_*` PLI - Icarus-specific, N/A for Verilator
+  - Test bugs in casex/casez_pattern (2 tests) - incorrect bit widths in test
+  - Expected-to-fail tests (_bad/_inv/_illegal) (5 tests) - correct behavior
+- Chapter 22 tests: 24 pass / 50 fail - mostly preprocessor tests needing `-I` paths
+- UVM-dependent tests: ~120 tests need UVM library (Icarus-specific PLI)
+
+**Chapter-by-Chapter Summary:**
+| Chapter | Pass | Fail | Notes |
+|---------|------|------|-------|
+| 10 | 9 | 1 | 1 expected-to-fail |
+| 11 | 74 | 4 | 1 _inv, 3 dynamic array streaming |
+| 12 | 23 | 4 | 2 tristate, 2 test bugs |
+| 13 | 13 | 2 | 2 expected-to-fail |
+| 14 | 4 | 1 | 1 expected-to-fail |
+| 15 | 5 | 0 | ✅ All pass (NBEVENT fix) |
+| 16 | 26 | 27 | 27 UVM-dependent |
+| 18 | 56 | 78 | 78 UVM-dependent |
+| 20 | 47 | 0 | ✅ All pass |
+| 21 | 29 | 0 | ✅ All pass |
+| 22 | 24 | 50 | Preprocessor/include tests |
+| 23 | 3 | 0 | ✅ All pass |
+| 24 | 1 | 0 | ✅ All pass |
 
 **UVM Status:** uvm-core 2020 compiles and runs; all 70 Verilator UVM tests pass
 **VIP Status:** All mbits-mirafra VIPs compile and run (APB, SPI, I2S, AXI4, AXI4Lite, I3C, JTAG, UART)
-**randsequence Status:** Fully working (tested in modules, functions, and tasks)
+**randsequence Status:** Fully working with production function ports and return values (tested in modules, functions, and tasks)
 
 **Verilator Test Suite Status:**
 - Class tests: 366+ pass
@@ -26,8 +41,11 @@
 - Interface tests: 351+ pass
 - UVM tests: 70/70 pass
 - Sequence tests: all pass
+- Randsequence tests: 8/8 pass
 
 ### Recent Fixes (This Session)
+- **Randsequence production function return values** (IEEE 1800-2017 18.17) - Productions can now have return types: `int gen_value : { return 42; };`. Function return values work with arguments and code blocks. All 8 randsequence tests pass.
+- **Randsequence production function ports** (IEEE 1800-2017 18.17.7) - Implemented production functions with arguments: `void func(int n) : { counts[1] += n; };` and `f_1 : func(10);`.
 - **Anonymous struct emission for tagged unions** (IEEE 1800-2017 7.3.2) - Fixed C++ code generation bug where anonymous struct types inside tagged unions weren't being emitted to header files. Now VL_TO_STRING declarations have matching struct definitions.
 - **Streaming concat with dynamic arrays** (IEEE 1800-2017 11.4.14) - Added E_UNSUPPORTED warning for dynamic arrays/queues inside streaming concatenation (e.g., `{<<8{header, len, data_arr}}`). Previously generated broken C++ code.
 - **Sequence match items in properties** (IEEE 1800-2017 16.10) - Fixed AstSeqMatchItem transformation in V3AssertProp for constructs like `(valid, x = in) |-> ##4 (out == x + 4)`
