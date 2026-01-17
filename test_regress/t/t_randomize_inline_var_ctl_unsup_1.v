@@ -19,6 +19,6 @@ module t;
       Foo foos[] = new[1];
       void'(foo.randomize(Foo::get().x));
       void'(foo.randomize(foos[0].x));
-      void'(foo.randomize(null));
+      // randomize(null) is now supported, so test it works in t_randomize_null.py
    end
 endmodule
