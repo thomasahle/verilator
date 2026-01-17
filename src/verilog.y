@@ -1038,7 +1038,6 @@ BISONPRE_VERSION(3.7,%define api.header.include {"V3ParseBison.h"})
 
 // These prevent other conflicts
 %left           yP_ANDANDAND
-%left           yMATCHES
 %left           prTAGGED
 //UNSUP %left   prSEQ_CLOCKING
 
@@ -1075,7 +1074,7 @@ BISONPRE_VERSION(3.7,%define api.header.include {"V3ParseBison.h"})
 %left           '^' yP_XNOR
 %left           '&' yP_NAND
 %left           yP_EQUAL yP_NOTEQUAL yP_CASEEQUAL yP_CASENOTEQUAL yP_WILDEQUAL yP_WILDNOTEQUAL
-%left           '>' '<' yP_GTE yP_LTE yP_LTE__IGNORE yINSIDE yDIST
+%left           '>' '<' yP_GTE yP_LTE yP_LTE__IGNORE yINSIDE yDIST yMATCHES
 %left           yP_SLEFT yP_SRIGHT yP_SSRIGHT
 %left           '+' '-'
 %left           '*' '/' '%'

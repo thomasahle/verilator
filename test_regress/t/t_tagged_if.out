@@ -14,14 +14,6 @@
    42 |     int         Arr[4];                  
       |                 ^~~
         ... See the manual at https://verilator.org/verilator_doc.html?v=latest for more assistance.
-%Error: t/t_tagged_if.v:55:9: Unpacked data type 'struct{}' in packed struct/union (IEEE 1800-2023 7.2.1)
-                            : ... note: In instance 't'
-   55 |       } JmpC;
-      |         ^~~~
-%Error: t/t_tagged_if.v:49:7: Unpacked data type 'struct{}' in packed struct/union (IEEE 1800-2023 7.2.1)
-                            : ... note: In instance 't'
-   49 |     } Add;
-      |       ^~~
 %Error: t/t_tagged_if.v:62:13: Unpacked data type 'chandle' in packed struct/union (IEEE 1800-2023 7.2.1)
                              : ... note: In instance 't'
    62 |     chandle Handle;
