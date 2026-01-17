@@ -51,7 +51,14 @@
 - **UVM MULTITOP fix** - Removed uvm_pkg_init module from uvm_pkg.sv; all 70 UVM tests now pass
 
 ### Known Issues (Needs Investigation)
-- None currently
+- **Covergroup internal fault** - Parsing works but compilation crashes; needs debugging
+- **Virtual interface output args** - Runtime null pointer when vif members used as function outputs
+
+### Verified Working This Session
+- All mbits-mirafra VIPs compile and run end-to-end UVM tests
+- sv-tests chapter-18 non-UVM tests pass (randsequence, randcase, urandom, etc.)
+- Checker constructs compile and simulate
+- randsequence in modules, functions, and tasks
 
 ## Remaining UVM/Constraint Features (Prioritized)
 
