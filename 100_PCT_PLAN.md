@@ -13,11 +13,12 @@
 **VIP Status:** All mbits-mirafra VIPs compile and simulate successfully (APB, SPI, I2S, AXI4)
 
 **Verilator Test Suite Status:**
-- Class tests: 185/185 pass
-- Randomize tests: 60/60 pass
-- Constraint tests: 64/64 pass
+- Class tests: 183/183 pass
+- Randomize tests: 59/59 pass
+- Constraint tests: 63/63 pass
 - Assert tests: 96/96 pass
-- Interface tests: 184/184 pass
+- Interface tests: 175/175 pass
+- UVM tests: 70/70 pass
 - Sequence tests: 4/4 pass
 
 ### Recent Fixes (This Session)
@@ -46,6 +47,7 @@
 - **extends (default)** (IEEE 1800-2023) - Class inheritance with default constructor args
 - **new(default)** (IEEE 1800-2023) - Constructor call with default arguments
 - **matches in ternary** (IEEE 1800-2017) - Fixed precedence: `val matches tagged X ? 1 : 0` now works
+- **UVM MULTITOP fix** - Removed uvm_pkg_init module from uvm_pkg.sv; all 70 UVM tests now pass
 
 ### Known Issues (Needs Investigation)
 - None currently
