@@ -431,6 +431,43 @@ class AssertPropIfVisitor final : public VNVisitor {
         // IEEE 1800-2017 16.10: Sequence expression with match items
         // (sexpr, x=a, y=b) - when sexpr matches, execute match items
         iterateChildren(nodep);
+
+        FileLine* const flp = nodep->fileline();
+        AstNodeExpr* seqp = nodep->seqp()->unlinkFrBack();
+        AstNode* matchItemsp = nullptr;
+        if (nodep->matchItemsp()) {
+            matchItemsp = nodep->matchItemsp()->unlinkFrBackWithNext();
+        }
+
+        if (matchItemsp) {
+            // Create a PExpr (property expression block) that:
+            // 1. Evaluates the sequence
+            // 2. On pass, executes the match items
+            AstSampled* const sampledSeqp = new AstSampled{flp, seqp};
+            sampledSeqp->dtypeFrom(seqp);
+
+            // Create AstSeqMatchAction for the match items (will be lowered by V3SeqMatch)
+            AstSeqMatchAction* const actionp = new AstSeqMatchAction{flp, matchItemsp};
+
+            // Build: if (sampled(seq)) { match_items; pass; } else { fail; }
+            AstBegin* const passBlock = new AstBegin{flp, "", nullptr, true};
+            passBlock->addStmtsp(actionp);
+            passBlock->addStmtsp(new AstPExprClause{flp, true});
+
+            AstIf* const ifp = new AstIf{flp, sampledSeqp, passBlock,
+                                         new AstPExprClause{flp, false}};
+
+            AstBegin* const bodyp = new AstBegin{flp, "", nullptr, true};
+            bodyp->addStmtsp(ifp);
+
+            AstPExpr* const pexprp = new AstPExpr{flp, bodyp, nodep->dtypep()};
+
+            nodep->replaceWith(pexprp);
+        } else {
+            // No match items - just use the sequence expression directly
+            nodep->replaceWith(seqp);
+        }
+        VL_DO_DANGLING(nodep->deleteTree(), nodep);
     }
     // Helper to transform PExprClause nodes in a tree
     // For implication LHS: pass -> check RHS, fail -> vacuous pass
