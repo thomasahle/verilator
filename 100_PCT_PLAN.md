@@ -51,7 +51,7 @@
 - **UVM MULTITOP fix** - Removed uvm_pkg_init module from uvm_pkg.sv; all 70 UVM tests now pass
 
 ### Known Issues (Needs Investigation)
-- **Covergroup clocking event in classes** - `covergroup cov @member; ... endgroup` inside a class generates invalid C++ code (accesses instance member as static). Basic covergroups without clocking work fine.
+- **Covergroup clocking event in classes** - `covergroup cov @member; ... endgroup` inside a class triggers "Unknown node type reached emitter: EVENTCONTROL" error. The generated automatic sampling code isn't being fully transformed before emission. Basic covergroups without clocking events work correctly.
 - **Virtual interface output args** - Runtime null pointer when vif members used as function outputs
 
 ### Verified Working This Session
