@@ -4860,9 +4860,11 @@ class WidthVisitor final : public VNVisitor {
         nodep->v3error("Member reference from interface to "
                        << nodep->prettyNameQ() << " is not referencing a valid task or function ");
     }
-    void handleRandomizeArgs(AstNodeFTaskRef* const nodep, AstClass* const classp) {
+    // Returns true if randomize(null) was detected
+    bool handleRandomizeArgs(AstNodeFTaskRef* const nodep, AstClass* const classp,
+                             bool hasWithClause) {
         bool hasNonNullArgs = false;
-        AstConst* nullp = nullptr;
+        AstArg* nullArgp = nullptr;
         for (AstNode *pinp = nodep->pinsp(), *nextp = nullptr; pinp; pinp = nextp) {
             nextp = pinp->nextp();
             AstArg* const argp = VN_CAST(pinp, Arg);
@@ -4871,7 +4873,7 @@ class WidthVisitor final : public VNVisitor {
             AstNodeExpr* exprp = argp->exprp();
             if (AstConst* const constp = VN_CAST(exprp, Const)) {
                 if (constp->num().isNull()) {
-                    nullp = constp;
+                    nullArgp = argp;
                     continue;
                 }
             }
@@ -4925,13 +4927,21 @@ class WidthVisitor final : public VNVisitor {
                 VL_DO_DANGLING(argp->unlinkFrBack()->deleteTree(), argp);
             }
         }
-        if (nullp) {
+        if (nullArgp) {
             if (hasNonNullArgs) {
-                nullp->v3error("Cannot pass more arguments to 'randomize(null)'");
-            } else {
-                nullp->v3warn(E_UNSUPPORTED, "Unsupported: 'randomize(null)'");
+                nullArgp->v3error("Cannot pass more arguments to 'randomize(null)'");
+                return false;
             }
+            if (hasWithClause) {
+                nullArgp->v3warn(E_UNSUPPORTED,
+                                 "Unsupported: 'randomize(null) with {...}' inline constraints");
+                return false;
+            }
+            // randomize(null) without with clause - remove the null arg and signal success
+            VL_DO_DANGLING(nullArgp->unlinkFrBack()->deleteTree(), nullArgp);
+            return true;
         }
+        return false;
     }
     void methodCallClass(AstMethodCall* nodep, AstClassRefDType* adtypep) {
         // No need to width-resolve the class, as it was done when we did the child
@@ -4949,7 +4959,15 @@ class WidthVisitor final : public VNVisitor {
             }
             methodCallLValueRecurse(nodep, nodep->fromp(), VAccess::WRITE);
             V3Randomize::newRandomizeFunc(m_memberMap, first_classp);
-            handleRandomizeArgs(nodep, first_classp);
+            const bool isNullRandomize = handleRandomizeArgs(nodep, first_classp, withp != nullptr);
+            if (isNullRandomize) {
+                // randomize(null) with no with clause - just return 1 (success)
+                // IEEE 1800-2017 18.7: randomize(null) randomizes no variables
+                AstConst* const onep = new AstConst{nodep->fileline(), AstConst::Signed32{}, 1};
+                nodep->replaceWith(onep);
+                VL_DO_DANGLING(pushDeletep(nodep), nodep);
+                return;
+            }
         } else if (nodep->name() == "srandom") {
             methodOkArguments(nodep, 1, 1);
             iterateCheckSigned32(nodep, "argument", methodArg(nodep, 0), BOTH);
@@ -7756,7 +7774,16 @@ class WidthVisitor final : public VNVisitor {
                                            adtypep->findBitDType(), adtypep);
                 for (const AstNode* argp = nodep->pinsp(); argp; argp = argp->nextp())
                     userIterateAndNext(VN_AS(argp, Arg)->exprp(), WidthVP{SELF, BOTH}.p());
-                handleRandomizeArgs(nodep, classp);
+                const bool isNullRandomize
+                    = handleRandomizeArgs(nodep, classp, withp != nullptr);
+                if (isNullRandomize) {
+                    // randomize(null) without with clause - just return 1 (success)
+                    AstConst* const onep
+                        = new AstConst{nodep->fileline(), AstConst::Signed32{}, 1};
+                    nodep->replaceWith(onep);
+                    VL_DO_DANGLING(pushDeletep(nodep), nodep);
+                    return;
+                }
             } else if (nodep->name() == "srandom") {
                 nodep->taskp(V3Randomize::newSRandomFunc(m_memberMap, classp));
                 m_memberMap.clear();
