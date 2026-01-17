@@ -32,6 +32,7 @@
 - wait_order statement runtime support
 - Non-blocking event triggers in tasks
 - case...matches variable binding patterns
+- **super keyword** (IEEE 1800-2023 8.15) - Parent class method calls
 
 ### Known Issues (Needs Investigation)
 - **matches in ternary expressions** - `val = tmp matches tagged a ? 1 : 0` fails but `if (tmp matches tagged a)` works. Grammar precedence issue between `yMATCHES` and ternary `?:`. Workaround: use parentheses `(tmp matches tagged a) ? 1 : 0`
