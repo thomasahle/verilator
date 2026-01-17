@@ -2000,23 +2000,37 @@ class LinkDotFindVisitor final : public VNVisitor {
             VL_DO_DANGLING(argp->deleteTree(), argp);
         }
         // Type depends on the method used, let V3Width figure it out later
-        if (nodep->exprsp()
-            || nodep->constraintsp()) {  // Else empty expression and pretend no "with"
-            // Combine variable list (exprsp) and inline constraints (constraintsp)
-            // into a single expression list for the constraint solver
-            // IEEE 1800-2017 18.7: randomize(a, b) with { c > 0; } means
-            // randomize only a and b with additional constraint c > 0
-            AstNode* exprOrConstraintsp = nullptr;
-            if (nodep->exprsp())
-                exprOrConstraintsp = nodep->exprsp()->unlinkFrBackWithNext();
-            if (nodep->constraintsp())
-                exprOrConstraintsp = AstNode::addNext(
-                    exprOrConstraintsp, nodep->constraintsp()->unlinkFrBackWithNext());
+        // Handle randomize() with (vars) { constraints } syntax:
+        // - vars from exprsp() are the variables to randomize (added as randomize args)
+        // - constraints from constraintsp() are the inline constraints (added to AstWith)
+        // IEEE 1800-2017 18.7: randomize(a, b) with { c > 0; } means
+        // randomize only a and b with additional constraint c > 0
+        if (nodep->exprsp() && funcrefp->name() == "randomize") {
+            // Convert variable list from with (vars) to randomize() arguments
+            AstNode* varsp = nodep->exprsp()->unlinkFrBackWithNext();
+            for (AstNode* varp = varsp; varp; varp = varp->nextp()) {
+                AstNodeExpr* exprp = VN_AS(varp->cloneTree(false), NodeExpr);
+                AstArg* newArgp = new AstArg{varp->fileline(), "", exprp};
+                funcrefp->addPinsp(newArgp);
+            }
+            VL_DO_DANGLING(varsp->deleteTree(), varsp);
+        }
+        if (nodep->constraintsp()) {  // Has inline constraints
+            AstNode* constraintsp = nodep->constraintsp()->unlinkFrBackWithNext();
             AstLambdaArgRef* const indexArgRefp
                 = new AstLambdaArgRef{argFl, name + "__DOT__index", true};
             AstLambdaArgRef* const valueArgRefp = new AstLambdaArgRef{argFl, name, false};
             AstWith* const newp
-                = new AstWith{nodep->fileline(), indexArgRefp, valueArgRefp, exprOrConstraintsp};
+                = new AstWith{nodep->fileline(), indexArgRefp, valueArgRefp, constraintsp};
+            funcrefp->addPinsp(newp);
+        } else if (nodep->exprsp() && funcrefp->name() != "randomize") {
+            // Non-randomize with (expr) { } - no constraints, just expression
+            AstNode* exprsp = nodep->exprsp()->unlinkFrBackWithNext();
+            AstLambdaArgRef* const indexArgRefp
+                = new AstLambdaArgRef{argFl, name + "__DOT__index", true};
+            AstLambdaArgRef* const valueArgRefp = new AstLambdaArgRef{argFl, name, false};
+            AstWith* const newp
+                = new AstWith{nodep->fileline(), indexArgRefp, valueArgRefp, exprsp};
             funcrefp->addPinsp(newp);
         }
         funcrefp->addPinsp(argp);

@@ -9,8 +9,14 @@
 
 import vltest_bootstrap
 
-test.scenarios('vlt')
+test.scenarios('simulator')
 
-test.lint(fails=True, expect_filename=test.golden_filename)
+# This test requires a solver for constraint solving
+if not test.have_solver:
+    test.skip("No solver available")
+
+test.compile(verilator_flags2=['-Wno-IGNOREDRETURN'])
+
+test.execute()
 
 test.passes()
