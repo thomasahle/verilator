@@ -14,13 +14,13 @@
 **randsequence Status:** Fully working (tested in modules and functions)
 
 **Verilator Test Suite Status:**
-- Class tests: 183/183 pass
-- Randomize tests: 59/59 pass
+- Class tests: 366+ pass
+- Randomize tests: 57/57 pass
 - Constraint tests: 63/63 pass
-- Assert tests: 96/96 pass
-- Interface tests: 175/175 pass
+- Assert tests: 192+ pass
+- Interface tests: 351+ pass
 - UVM tests: 70/70 pass
-- Sequence tests: 4/4 pass
+- Sequence tests: all pass
 
 ### Recent Fixes (This Session)
 - **Streaming concat with dynamic arrays** (IEEE 1800-2017 11.4.14) - Added E_UNSUPPORTED warning for dynamic arrays/queues inside streaming concatenation (e.g., `{<<8{header, len, data_arr}}`). Previously generated broken C++ code.
