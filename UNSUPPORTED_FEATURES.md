@@ -31,9 +31,10 @@ Based on analysis of src/*.cpp and src/verilog.y
 - **Syntax:** `repeat (n) @(posedge clk)`
 - **Verified:** January 2026
 
-### 3. Inline constraints with `randomize with (...) {...}`
-- **File:** V3LinkDot.cpp:1988
-- **Note:** Basic inline constraints work; complex patterns may not
+### 3. ~~Inline constraints with `randomize with (...) {...}`~~ ✓ NOW SUPPORTED
+- **Status:** WORKS - see test_regress/t/t_randomize_with_vars.v
+- **Syntax:** `obj.randomize(a, b) with { a > 0; }` - combines variable selection with constraints
+- **Verified:** January 2026
 
 ### 4. ~~`super` keyword~~ ✓ NOW SUPPORTED
 - **Status:** WORKS - see test_regress/t/t_class_super.v
