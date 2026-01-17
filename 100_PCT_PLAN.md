@@ -57,11 +57,14 @@
 
 ### Verified Working This Session
 - Virtual interfaces with output arguments (tested and working)
-- All mbits-mirafra VIPs compile and run end-to-end UVM tests
+- All mbits-mirafra VIPs compile and run end-to-end UVM tests (APB VIP timeout is testbench issue, not Verilator)
 - sv-tests chapter-18 non-UVM tests pass (randsequence, randcase, urandom, etc.)
 - Checker constructs compile and simulate
 - randsequence in modules, functions, and tasks
 - Covergroups in classes with clocking events
+- All constraint tests pass (complex, soft, queue foreach, weighted distribution)
+- All assertion tests pass (sequence local vars, property if, strong/weak, range delay)
+- All sampled UVM tests pass (config_db, factory_override, sequence_basic, scoreboard)
 
 ## Remaining UVM/Constraint Features (Prioritized)
 
