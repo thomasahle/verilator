@@ -56,19 +56,19 @@
 
 ### HIGH PRIORITY (UVM-Critical)
 
-1. **Complex Constraint Expression Operations** (V3Randomize.cpp:833, 1206)
-   - Power expressions only support `2**n`, general `base**exp` unsupported
-   - Some modulo/division patterns in constraints fail
-   - Example: `constraint c { value % divisor == 0; }` may fail
+1. **Power Expressions in Constraints** (V3Randomize.cpp)
+   - `2**exp` works (variable exponent OK with base 2)
+   - `base**exp` with variable base is unsupported (SMT solver limitation)
+   - Constant expressions like `3**2` work fine
 
 2. **Array Element rand_mode() Control** (V3Randomize.cpp:423, 427, 436)
    - `arr[i].rand_mode(0)` - unpacked array elements unsupported
    - `dyn_arr[i].rand_mode(0)` - dynamic array elements unsupported
    - `struct_var.field.rand_mode(0)` - struct members unsupported
 
-3. **Randomize with Both Arguments AND Constraints** (V3LinkDot.cpp:2010)
-   - `obj.randomize(var1, var2) with { constraints }` unsupported
-   - Must choose one or the other currently
+3. ~~**Randomize with Both Arguments AND Constraints**~~ ✅ WORKS
+   - `obj.randomize(var1, var2) with { constraints }` works correctly
+   - Note: V3LinkDot.cpp:2010 error is for array method `with (item) { }` syntax, not randomize
 
 4. **Static Variable rand_mode/constraint_mode** (V3Randomize.cpp:465, 478)
    - `rand_mode()` on static variables generates error
