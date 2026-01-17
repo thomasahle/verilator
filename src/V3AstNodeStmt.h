@@ -368,6 +368,7 @@ class AstCase final : public AstNodeStmt {
     // @astgen op2 := itemsp : List[AstCaseItem]
     // @astgen op3 := notParallelp : List[AstNode] // assertion code for non-full case's
     VCaseType m_casex;  // 0=case, 1=casex, 2=casez
+    bool m_matches = false;  // case...matches (for tagged union pattern matching)
     bool m_fullPragma = false;  // Synthesis full_case
     bool m_parallelPragma = false;  // Synthesis parallel_case
     bool m_uniquePragma = false;  // unique case
@@ -386,15 +387,16 @@ public:
     int instrCount() const override { return INSTR_COUNT_BRANCH; }
     string verilogKwd() const override { return casez() ? "casez" : casex() ? "casex" : "case"; }
     bool sameNode(const AstNode* samep) const override {
-        return m_casex == VN_DBG_AS(samep, Case)->m_casex;
+        const AstCase* const sp = VN_DBG_AS(samep, Case);
+        return m_casex == sp->m_casex && m_matches == sp->m_matches;
     }
     bool casex() const { return m_casex == VCaseType::CT_CASEX; }
     bool casez() const { return m_casex == VCaseType::CT_CASEZ; }
     bool caseInside() const { return m_casex == VCaseType::CT_CASEINSIDE; }
     bool caseSimple() const { return m_casex == VCaseType::CT_CASE; }
-    bool caseMatches() const { return m_casex == VCaseType::CT_MATCHES; }
+    bool caseMatches() const { return m_matches; }
     void caseInsideSet() { m_casex = VCaseType::CT_CASEINSIDE; }
-    void caseMatchesSet() { m_casex = VCaseType::CT_MATCHES; }
+    void caseMatchesSet() { m_matches = true; }
     bool fullPragma() const { return m_fullPragma; }
     void fullPragma(bool flag) { m_fullPragma = flag; }
     bool parallelPragma() const { return m_parallelPragma; }

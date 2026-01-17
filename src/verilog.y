@@ -3737,7 +3737,7 @@ statement_item<nodeStmtp>:          // IEEE: statement_item
         //                      // case...matches for tagged union pattern matching (IEEE 1800-2017 12.5.4)
         |       unique_priorityE caseStart caseAttrE yMATCHES case_itemListMatches yENDCASE
                         { $$ = $2; if ($5) $2->addItemsp($5);
-                          if (!$2->caseSimple()) $4->v3error("Illegal to have matches on a casex/casez");
+                          // casex/casez with matches is now supported (IEEE 1800-2017 12.6)
                           $2->caseMatchesSet();
                           if ($1 == uniq_UNIQUE) $2->uniquePragma(true);
                           if ($1 == uniq_UNIQUE0) $2->unique0Pragma(true);
