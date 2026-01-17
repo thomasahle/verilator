@@ -1972,9 +1972,7 @@ class LinkDotFindVisitor final : public VNVisitor {
         if (nodep->fvarp())
             nodep->fvarp()->v3warn(E_UNSUPPORTED,
                                    "Unsupported: randsequence production function variable");
-        if (nodep->portsp())
-            nodep->portsp()->v3warn(E_UNSUPPORTED,
-                                    "Unsupported: randsequence production function ports");
+        // Production function ports are now supported (handled in V3RandSequence.cpp)
         iterateChildren(nodep);
     }
 
@@ -5597,6 +5595,13 @@ class LinkDotResolveVisitor final : public VNVisitor {
         LINKDOT_VISIT_START();
         UINFO(5, indent() << "visit " << nodep);
         checkNoDot(nodep);
+        // Mark production function ports as valid I/O variables (like function ports)
+        // so they don't trigger the "does not appear in port list" error
+        for (AstNode* portp = nodep->portsp(); portp; portp = portp->nextp()) {
+            if (AstVar* const varp = VN_CAST(portp, Var)) {
+                varp->user4(true);
+            }
+        }
         symIterateChildren(nodep, m_statep->getNodeSym(nodep));
     }
     void visit(AstRSProdItem* nodep) override {

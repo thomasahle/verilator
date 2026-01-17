@@ -147,12 +147,13 @@ class RandSequenceVisitor final : public VNVisitor {
         return taskp;
     }
 
-    AstNode* newProdFuncRef(AstNode* nodep, AstRSProd* prodp, AstVar* breakVarp) {
+    AstNode* newProdFuncRef(AstNode* nodep, AstRSProd* prodp, AstVar* breakVarp,
+                            AstNodeExpr* prodItemArgsp = nullptr) {
         auto it = m_prodFuncps.find(prodp);
         UASSERT_OBJ(it != m_prodFuncps.end(), nodep, "No production function made");
         AstNodeFTask* const prodFuncp = it->second;
         FileLine* const fl = nodep->fileline();
-        AstArg* const argsp
+        AstArg* argsp
             = new AstArg{fl, breakVarp->name(), new AstVarRef{fl, breakVarp, VAccess::WRITE}};
         for (auto& itr : m_localizeNames) {
             const AstVar* const lvarp = itr.second;
@@ -160,6 +161,19 @@ class RandSequenceVisitor final : public VNVisitor {
             UASSERT_OBJ(iovarp, nodep, "No new port variable for local variable" << lvarp);
             argsp->addNext(new AstArg{nodep->fileline(), "__Vrsarg_" + lvarp->name(),
                                       new AstVarRef{fl, iovarp, VAccess::READWRITE}});
+        }
+        // Add production function arguments from the call site
+        if (prodItemArgsp) {
+            for (AstNode* argp = prodItemArgsp; argp; argp = argp->nextp()) {
+                // Arguments may be AstArg nodes (from list_of_argumentsE) or raw expressions
+                if (AstArg* const asArg = VN_CAST(argp, Arg)) {
+                    // If it's already an AstArg, clone the entire node
+                    argsp->addNext(asArg->cloneTree(false));
+                } else if (AstNodeExpr* const asExpr = VN_CAST(argp, NodeExpr)) {
+                    // If it's a raw expression, wrap it in AstArg
+                    argsp->addNext(new AstArg{asExpr->fileline(), "", asExpr->cloneTree(false)});
+                }
+            }
         }
         AstNode* const newp
             = new AstStmtExpr{fl, new AstTaskRef{fl, VN_AS(prodFuncp, Task), argsp}};
@@ -170,6 +184,8 @@ class RandSequenceVisitor final : public VNVisitor {
         // Task, as time may pass
         AstTask* const newp
             = new AstTask{nodep->fileline(), m_rsp->name() + "_" + nodep->name(), nullptr};
+        // Note: production function ports are added later in visit(AstRSProd),
+        // after break var and localized vars, to match the argument order in newProdFuncRef
         m_modp->addStmtsp(newp);
         m_prodFuncps.emplace(nodep, newp);
         UINFOTREE(9, newp, "newProd", "");
@@ -479,6 +495,19 @@ class RandSequenceVisitor final : public VNVisitor {
         m_breakVarp = newBreakVar(nodep->fileline(), true);
         m_prodFuncp->addStmtsp(m_breakVarp);
 
+        // Add production function ports after break var and localized vars
+        // (to match argument order in newProdFuncRef)
+        if (nodep->portsp()) {
+            AstNode* portsp = nodep->portsp()->unlinkFrBackWithNext();
+            for (AstNode* portp = portsp; portp; portp = portp->nextp()) {
+                if (AstVar* const varp = VN_CAST(portp, Var)) {
+                    varp->funcLocal(true);
+                    varp->lifetime(VLifetime::AUTOMATIC_EXPLICIT);
+                }
+            }
+            m_prodFuncp->addStmtsp(portsp);
+        }
+
         // Put JumpBlock immediately under the new function to support
         // a future break/return.  V3Const will rip it out if unneeded.
         VL_RESTORER(m_jumpBlockp);
@@ -488,9 +517,6 @@ class RandSequenceVisitor final : public VNVisitor {
         if (nodep->fvarp())
             nodep->fvarp()->v3warn(E_UNSUPPORTED,
                                    "Unsupported: randsequence production function variable");
-        if (nodep->portsp())
-            nodep->portsp()->v3warn(E_UNSUPPORTED,
-                                    "Unsupported: randsequence production function ports");
 
         // Move children into m_prodFuncp, and iterate there
         if (!nodep->rulesp()) {  // Nothing to do
@@ -578,8 +604,8 @@ class RandSequenceVisitor final : public VNVisitor {
         UASSERT_OBJ(m_prodFuncp, nodep, "RSProdItem not under production");
         AstRSProd* const foundp = nodep->prodp();
         UASSERT_OBJ(foundp, nodep, "Unlinked production reference");
-        // Convert to task call
-        AstNode* const newp = newProdFuncRef(nodep, foundp, m_breakVarp);
+        // Convert to task call, passing any arguments from the production call
+        AstNode* const newp = newProdFuncRef(nodep, foundp, m_breakVarp, nodep->argsp());
         // The production might have done a "break;", skip other steps if so
         newp->addNext(new AstIf{nodep->fileline(),
                                 new AstVarRef{nodep->fileline(), m_breakVarp, VAccess::READ},

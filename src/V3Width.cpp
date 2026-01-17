@@ -6517,6 +6517,18 @@ class WidthVisitor final : public VNVisitor {
         userIterateAndNext(nodep->prodlistsp(), nullptr);
         userIterateAndNext(nodep->weightStmtsp(), nullptr);
     }
+    void visit(AstRSProdItem* nodep) override {
+        // Process arguments to randsequence production items
+        // The AstArg nodes need didWidth set, and we need to width-check their expressions
+        for (AstNodeExpr* argp = nodep->argsp(); argp; argp = VN_AS(argp->nextp(), NodeExpr)) {
+            if (AstArg* const aargp = VN_CAST(argp, Arg)) {
+                aargp->didWidth(true);  // AstArg has no dtype, just mark it as widthed
+                if (aargp->exprp()) {
+                    userIterateAndNext(aargp->exprp(), WidthVP{SELF, BOTH}.p());
+                }
+            }
+        }
+    }
 
     void visit(AstRelease* nodep) override {
         userIterateAndNext(nodep->lhsp(), WidthVP{SELF, BOTH}.p());
